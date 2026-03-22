@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --version)",
+      "Bash(powershell.exe -Command \"node --version; npm --version\")",
+      "Bash(powershell.exe -Command \"where.exe node\")",
+      "Bash(powershell.exe -Command \"Test-Path ''C:\\\\Program Files\\\\nodejs\\\\node.exe''; Test-Path ''C:\\\\Program Files \\(x86\\)\\\\nodejs\\\\node.exe''; Get-ChildItem ''C:\\\\'' -Filter ''node*'' -ErrorAction SilentlyContinue\")",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(dir /b \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\node_modules\\\\@supabase\")",
+      "Bash(del \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\next.config.ts\")"
+    ]
+  }
+}
