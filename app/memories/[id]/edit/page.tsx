@@ -1,34 +1,68 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createMemory } from '@/actions/memories'
+import { useState, useEffect } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import { updateMemory } from '@/actions/memories'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
+import { createClient } from '@/lib/supabase/client'
 
-export default function NewMemoryPage() {
+export default function EditMemoryPage() {
   const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
+
   const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [category, setCategory] = useState('')
+  const [title, setTitle] = useState('')
+  const [date, setDate] = useState('')
+  const [location, setLocation] = useState('')
+  const [description, setDescription] = useState('')
+  const [allTags, setAllTags] = useState<string[]>([])
+
+  const today = new Date().toISOString().split('T')[0]
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from('memories')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (data) {
+        setTitle(data.title)
+        setDate(data.happened_at)
+        setLocation(data.location_name ?? '')
+        setDescription(data.description ?? '')
+        setCategory(data.category ?? '')
+        setTags(data.tags ?? [])
+      }
+      setFetching(false)
+    }
+
+    load()
+  }, [id])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const form = new FormData(e.currentTarget)
-
     try {
-      await createMemory({
-        title: form.get('title') as string,
-        happened_at: form.get('happened_at') as string,
-        location_name: form.get('location_name') as string,
-        description: form.get('description') as string,
+      await updateMemory({
+        id,
+        title,
+        happened_at: date,
+        location_name: location,
+        description,
         category: category || undefined,
         tags,
       })
@@ -38,7 +72,13 @@ export default function NewMemoryPage() {
     }
   }
 
-  const today = new Date().toISOString().split('T')[0]
+  if (fetching) {
+    return (
+      <main className="min-h-screen p-4 max-w-lg mx-auto flex items-center justify-center">
+        <p className="text-muted-foreground text-sm">Caricamento…</p>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen p-4 max-w-lg mx-auto">
@@ -50,10 +90,7 @@ export default function NewMemoryPage() {
           >
             ← Indietro
           </button>
-          <h1 className="text-2xl font-semibold tracking-tight">Nuovo ricordo</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Cosa vuoi ricordare?
-          </p>
+          <h1 className="text-2xl font-semibold tracking-tight">Modifica ricordo</h1>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -61,10 +98,10 @@ export default function NewMemoryPage() {
             <Label htmlFor="title">Titolo *</Label>
             <Input
               id="title"
-              name="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
               placeholder="es. Cena al Baffo"
               required
-              autoFocus
             />
           </div>
 
@@ -72,8 +109,9 @@ export default function NewMemoryPage() {
             <Label htmlFor="happened_at">Data *</Label>
             <Input
               id="happened_at"
-              name="happened_at"
               type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
               max={today}
               required
             />
@@ -83,13 +121,14 @@ export default function NewMemoryPage() {
             <Label htmlFor="location_name">Luogo</Label>
             <Input
               id="location_name"
-              name="location_name"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
               placeholder="es. Milano, Ristorante Baffo"
             />
           </div>
 
           <div className="space-y-2">
-            <Label>Categoria *</Label>
+            <Label>Categoria</Label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map((cat) => (
                 <button
@@ -114,6 +153,7 @@ export default function NewMemoryPage() {
             <TagInput
               value={tags}
               onChange={setTags}
+              suggestions={allTags}
               placeholder="es. Luca, Parigi, Estate2025…"
             />
           </div>
@@ -122,7 +162,8 @@ export default function NewMemoryPage() {
             <Label htmlFor="description">Descrizione</Label>
             <textarea
               id="description"
-              name="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
               placeholder="Racconta brevemente questo momento…"
               rows={4}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
@@ -132,7 +173,7 @@ export default function NewMemoryPage() {
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Salvataggio…' : 'Crea ricordo'}
+            {loading ? 'Salvataggio…' : 'Salva modifiche'}
           </Button>
         </form>
       </div>

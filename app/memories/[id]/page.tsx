@@ -2,6 +2,9 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
+import { CategoryBadge } from '@/components/memory/CategoryBadge'
+import { TagBadge } from '@/components/memory/TagBadge'
+import { DeleteButton } from '@/components/memory/DeleteButton'
 import InviteForm from './InviteForm'
 
 function formatDate(dateStr: string) {
@@ -58,29 +61,59 @@ export default async function MemoryPage({ params }: { params: { id: string } })
 
   if (!isParticipant) notFound()
 
+  const isCreator = memory.created_by === user?.id
+
   const contributions = [...memory.memory_contributions].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
 
   const participants = memory.memory_participants.filter((p) => p.joined_at)
+  const tags: string[] = (memory as { tags?: string[] }).tags ?? []
 
   return (
     <main className="min-h-screen p-4 max-w-lg mx-auto">
       <div className="py-8 space-y-6">
-        <div>
-          <Link href="/dashboard" className="text-sm text-muted-foreground block mb-4">
+        {/* Back + actions */}
+        <div className="flex items-center justify-between">
+          <Link href="/dashboard" className="text-sm text-muted-foreground">
             ← I tuoi ricordi
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight">{memory.title}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            {formatDate(memory.happened_at)}
-            {memory.location_name && ` · ${memory.location_name}`}
-          </p>
-          {memory.description && (
-            <p className="text-sm mt-3 text-foreground/80">{memory.description}</p>
+          {isCreator && (
+            <div className="flex gap-2">
+              <Link href={`/memories/${params.id}/edit`}>
+                <Button variant="outline" size="sm">Modifica</Button>
+              </Link>
+              <DeleteButton memoryId={params.id} />
+            </div>
           )}
         </div>
 
+        {/* Memory header */}
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight">{memory.title}</h1>
+          <p className="text-sm text-muted-foreground">
+            {formatDate(memory.happened_at)}
+            {memory.location_name && ` · ${memory.location_name}`}
+          </p>
+
+          {/* Category + Tags */}
+          {((memory as { category?: string | null }).category || tags.length > 0) && (
+            <div className="flex items-center gap-2 flex-wrap pt-1">
+              <CategoryBadge category={(memory as { category?: string | null }).category} size="md" />
+              {tags.map((tag) => (
+                <TagBadge key={tag} tag={tag} />
+              ))}
+            </div>
+          )}
+
+          {memory.description && (
+            <p className="text-sm mt-3 text-foreground/80 leading-relaxed whitespace-pre-wrap">
+              {memory.description}
+            </p>
+          )}
+        </div>
+
+        {/* Participants */}
         {participants.length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-muted-foreground">Con:</span>
@@ -98,6 +131,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           </div>
         )}
 
+        {/* Contributions */}
         <div className="space-y-4">
           <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
             Contributi
@@ -145,6 +179,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           )}
         </div>
 
+        {/* Actions */}
         <div className="pt-2 space-y-3">
           <Link href={`/memories/${params.id}/contribute`}>
             <Button className="w-full">+ Aggiungi contributo</Button>
