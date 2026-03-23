@@ -46,6 +46,8 @@ export interface Database {
           description: string | null
           happened_at: string
           location_name: string | null
+          category: string | null
+          tags: string[]
           created_by: string
           created_at: string
           updated_at: string
@@ -56,6 +58,8 @@ export interface Database {
           description?: string | null
           happened_at: string
           location_name?: string | null
+          category?: string | null
+          tags?: string[]
           created_by: string
           created_at?: string
           updated_at?: string
@@ -66,6 +70,8 @@ export interface Database {
           description?: string | null
           happened_at?: string
           location_name?: string | null
+          category?: string | null
+          tags?: string[]
           created_by?: string
           created_at?: string
           updated_at?: string
