@@ -2,9 +2,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
-import { CategoryBadge } from '@/components/memory/CategoryBadge'
-import { TagBadge } from '@/components/memory/TagBadge'
 import { DeleteButton } from '@/components/memory/DeleteButton'
+import { getCategoryByValue } from '@/lib/constants/categories'
 import InviteForm from './InviteForm'
 
 function formatDate(dateStr: string) {
@@ -25,7 +24,6 @@ function formatTime(dateStr: string) {
 
 export default async function MemoryPage({ params }: { params: { id: string } }) {
   const supabase = await createServerClient()
-
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: memory } = await supabase
@@ -58,56 +56,101 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   const isParticipant = memory.memory_participants.some(
     (p) => p.user_id === user?.id && p.joined_at
   )
-
   if (!isParticipant) notFound()
 
   const isCreator = memory.created_by === user?.id
-
   const contributions = [...memory.memory_contributions].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
-
   const participants = memory.memory_participants.filter((p) => p.joined_at)
   const tags: string[] = (memory as { tags?: string[] }).tags ?? []
+  const category = (memory as { category?: string | null }).category
+  const catInfo = getCategoryByValue(category)
 
   return (
-    <main className="min-h-screen p-4 max-w-lg mx-auto">
-      <div className="py-8 space-y-6">
-        {/* Back + actions */}
-        <div className="flex items-center justify-between">
-          <Link href="/dashboard" className="text-sm text-muted-foreground">
-            ← I tuoi ricordi
+    <main className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto px-4 pb-16">
+
+        {/* Top navigation */}
+        <div className="flex items-center justify-between pt-6 pb-2">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            I tuoi ricordi
           </Link>
           {isCreator && (
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <Link href={`/memories/${params.id}/edit`}>
-                <Button variant="outline" size="sm">Modifica</Button>
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  Modifica
+                </Button>
               </Link>
               <DeleteButton memoryId={params.id} />
             </div>
           )}
         </div>
 
-        {/* Memory header */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight">{memory.title}</h1>
-          <p className="text-sm text-muted-foreground">
-            {formatDate(memory.happened_at)}
-            {memory.location_name && ` · ${memory.location_name}`}
-          </p>
+        {/* Memory hero section */}
+        <div className="pt-6 pb-8 border-b border-border/50">
+          {/* Category label */}
+          {catInfo && (
+            <Link
+              href={`/dashboard?category=${catInfo.value}`}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-3 group"
+            >
+              <span>{catInfo.emoji}</span>
+              <span className="uppercase tracking-wider group-hover:underline underline-offset-2">
+                {catInfo.label}
+              </span>
+            </Link>
+          )}
 
-          {/* Category + Tags */}
-          {((memory as { category?: string | null }).category || tags.length > 0) && (
-            <div className="flex items-center gap-2 flex-wrap pt-1">
-              <CategoryBadge category={(memory as { category?: string | null }).category} size="md" />
+          {/* Title */}
+          <h1 className="text-3xl font-bold tracking-tight leading-tight mb-3">
+            {memory.title}
+          </h1>
+
+          {/* Meta: date + location */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-4">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              {formatDate(memory.happened_at)}
+            </span>
+            {memory.location_name && (
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {memory.location_name}
+              </span>
+            )}
+          </div>
+
+          {/* Tags — clickable, link to filtered dashboard */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
               {tags.map((tag) => (
-                <TagBadge key={tag} tag={tag} />
+                <Link
+                  key={tag}
+                  href={`/dashboard?tag=${encodeURIComponent(tag)}`}
+                  className="inline-flex items-center rounded-full bg-muted hover:bg-muted/70 px-3 py-1 text-xs font-medium text-foreground/70 hover:text-foreground transition-colors"
+                >
+                  #{tag}
+                </Link>
               ))}
             </div>
           )}
 
+          {/* Description */}
           {memory.description && (
-            <p className="text-sm mt-3 text-foreground/80 leading-relaxed whitespace-pre-wrap">
+            <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">
               {memory.description}
             </p>
           )}
@@ -115,62 +158,95 @@ export default async function MemoryPage({ params }: { params: { id: string } })
 
         {/* Participants */}
         {participants.length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-muted-foreground">Con:</span>
-            {participants.map((p) => {
-              const name = p.users?.display_name ?? p.users?.email ?? p.invited_email ?? '?'
-              return (
-                <span
-                  key={p.id}
-                  className="text-xs bg-secondary rounded-full px-3 py-1"
-                >
-                  {name}
-                </span>
-              )
-            })}
+          <div className="py-5 border-b border-border/50">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5">
+              Partecipanti
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {participants.map((p) => {
+                const name =
+                  p.users?.display_name ?? p.users?.email ?? p.invited_email ?? '?'
+                const initials = name.slice(0, 2).toUpperCase()
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1.5"
+                  >
+                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                      {initials}
+                    </div>
+                    <span className="text-xs font-medium">{name}</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
         {/* Contributions */}
-        <div className="space-y-4">
-          <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-            Contributi
-          </h2>
+        <div className="pt-6">
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+              Contributi · {contributions.length}
+            </p>
+            <Link href={`/memories/${params.id}/contribute`}>
+              <Button size="sm" className="rounded-full px-4 text-xs">
+                + Aggiungi
+              </Button>
+            </Link>
+          </div>
 
           {contributions.length === 0 ? (
-            <div className="text-center py-8 space-y-2">
-              <p className="text-muted-foreground text-sm">Ancora nessun contributo.</p>
-              <p className="text-xs text-muted-foreground">Sii il primo ad aggiungere qualcosa.</p>
+            <div className="text-center py-12 space-y-2">
+              <div className="text-3xl mb-3">✦</div>
+              <p className="text-sm font-medium">Ancora nessun contributo.</p>
+              <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                Aggiungi i tuoi pensieri, ricordi o note su questo momento.
+              </p>
             </div>
           ) : (
             <ul className="space-y-4">
               {contributions.map((c) => {
                 const authorName =
-                  (c as { users?: { display_name?: string | null; email?: string | null } }).users?.display_name ??
-                  (c as { users?: { display_name?: string | null; email?: string | null } }).users?.email ??
+                  (c as { users?: { display_name?: string | null; email?: string | null } }).users
+                    ?.display_name ??
+                  (c as { users?: { display_name?: string | null; email?: string | null } }).users
+                    ?.email ??
                   'Anonimo'
                 const isOwn = c.author_id === user?.id
                 return (
                   <li
                     key={c.id}
-                    className={`rounded-xl border p-4 space-y-2 ${isOwn ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
+                    className={`rounded-2xl p-4 space-y-2 ${
+                      isOwn
+                        ? 'bg-foreground/5 border border-foreground/10'
+                        : 'bg-card border border-border'
+                    }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium">{isOwn ? 'Tu' : authorName}</span>
-                      <span className="text-xs text-muted-foreground">{formatTime(c.created_at)}</span>
+                      <span className="text-xs font-semibold">
+                        {isOwn ? 'Tu' : authorName}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatTime(c.created_at)}
+                      </span>
                     </div>
                     {c.text_content && (
-                      <p className="text-sm whitespace-pre-wrap">{c.text_content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/85">
+                        {c.text_content}
+                      </p>
                     )}
                     {c.media_url && (
                       <img
                         src={c.media_url}
                         alt={c.caption ?? ''}
-                        className="w-full rounded-lg object-cover max-h-64"
+                        className="w-full rounded-xl object-cover max-h-64"
                       />
                     )}
                     {c.caption && c.content_type === 'photo' && (
-                      <p className="text-xs text-muted-foreground italic">{c.caption}</p>
+                      <p className="text-xs text-muted-foreground italic">
+                        {c.caption}
+                      </p>
                     )}
                   </li>
                 )
@@ -179,12 +255,8 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           )}
         </div>
 
-        {/* Actions */}
-        <div className="pt-2 space-y-3">
-          <Link href={`/memories/${params.id}/contribute`}>
-            <Button className="w-full">+ Aggiungi contributo</Button>
-          </Link>
-
+        {/* Invite section */}
+        <div className="mt-8 pt-6 border-t border-border/50">
           <InviteForm memoryId={params.id} />
         </div>
       </div>

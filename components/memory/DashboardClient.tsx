@@ -1,10 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { CategoryBadge } from './CategoryBadge'
-import { TagBadge } from './TagBadge'
 import { CATEGORIES } from '@/lib/constants/categories'
 
 interface Memory {
@@ -33,10 +32,36 @@ function formatDate(dateStr: string) {
   })
 }
 
+function getCategoryInfo(value: string | null) {
+  if (!value) return null
+  return CATEGORIES.find((c) => c.value === value) ?? null
+}
+
 export function DashboardClient({ memories, allTags }: DashboardClientProps) {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
   const [search, setSearch] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [activeTags, setActiveTags] = useState<string[]>([])
+  const [activeCategory, setActiveCategory] = useState<string | null>(
+    searchParams.get('category')
+  )
+  const [activeTags, setActiveTags] = useState<string[]>(
+    searchParams.get('tag') ? [searchParams.get('tag')!] : []
+  )
+
+  // Sync URL params
+  useEffect(() => {
+    const params = new URLSearchParams()
+    if (activeCategory) params.set('category', activeCategory)
+    if (activeTags.length === 1) params.set('tag', activeTags[0])
+    const qs = params.toString()
+    router.replace(qs ? `?${qs}` : '/dashboard', { scroll: false })
+  }, [activeCategory, activeTags])
+
+  const usedCategories = useMemo(() => {
+    const used = new Set(memories.map((m) => m.category).filter(Boolean))
+    return CATEGORIES.filter((c) => used.has(c.value))
+  }, [memories])
 
   const filteredMemories = useMemo(() => {
     return memories.filter((m) => {
@@ -46,13 +71,9 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
         m.title.toLowerCase().includes(q) ||
         (m.description ?? '').toLowerCase().includes(q) ||
         (m.location_name ?? '').toLowerCase().includes(q)
-
       const matchesCategory = !activeCategory || m.category === activeCategory
-
       const matchesTags =
-        activeTags.length === 0 ||
-        activeTags.every((t) => m.tags.includes(t))
-
+        activeTags.length === 0 || activeTags.every((t) => m.tags.includes(t))
       return matchesSearch && matchesCategory && matchesTags
     })
   }, [memories, search, activeCategory, activeTags])
@@ -63,155 +84,224 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
     )
   }
 
-  const hasFilters = search || activeCategory || activeTags.length > 0
+  function resetFilters() {
+    setSearch('')
+    setActiveCategory(null)
+    setActiveTags([])
+  }
+
+  const hasFilters = !!(search || activeCategory || activeTags.length > 0)
+  const activeFiltersCount =
+    (search ? 1 : 0) + (activeCategory ? 1 : 0) + activeTags.length
 
   return (
-    <main className="min-h-screen p-4 max-w-lg mx-auto">
-      <div className="py-8 space-y-5">
+    <main className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto px-4 pb-16">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold tracking-tight">I tuoi ricordi</h1>
-          <Link href="/memories/new">
-            <Button size="sm">+ Nuovo</Button>
-          </Link>
+        <div className="pt-10 pb-6">
+          <div className="flex items-center justify-between mb-1">
+            <h1 className="text-3xl font-bold tracking-tight">I tuoi ricordi</h1>
+            <Link href="/memories/new">
+              <Button size="sm" className="rounded-full px-4">
+                + Nuovo
+              </Button>
+            </Link>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {memories.length === 0
+              ? 'Il tuo libro dei momenti ti aspetta.'
+              : `${memories.length} moment${memories.length === 1 ? 'o' : 'i'} conservat${memories.length === 1 ? 'o' : 'i'}`}
+          </p>
         </div>
 
         {/* Search */}
-        <input
-          type="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Cerca ricordi…"
-          className="w-full rounded-lg border border-input bg-background px-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-        />
-
-        {/* Category filter */}
-        <div className="flex gap-2 flex-wrap">
-          <button
-            onClick={() => setActiveCategory(null)}
-            className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-              !activeCategory
-                ? 'bg-primary text-primary-foreground border-primary'
-                : 'bg-background border-input hover:bg-accent'
-            }`}
+        <div className="relative mb-4">
+          <svg
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
           >
-            Tutti
-          </button>
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.value}
-              onClick={() =>
-                setActiveCategory(
-                  activeCategory === cat.value ? null : cat.value
-                )
-              }
-              className={`rounded-full px-3 py-1 text-xs font-medium border transition-colors ${
-                activeCategory === cat.value
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background border-input hover:bg-accent'
-              }`}
-            >
-              {cat.emoji} {cat.label}
-            </button>
-          ))}
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cerca tra i tuoi ricordi…"
+            className="w-full rounded-xl border border-input bg-background pl-10 pr-4 py-2.5 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
         </div>
 
-        {/* Tag filter */}
-        {allTags.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap">
-            {allTags.map((tag) => (
-              <TagBadge
-                key={tag}
-                tag={tag}
-                active={activeTags.includes(tag)}
-                onClick={() => toggleTag(tag)}
-              />
+        {/* Category filter — only show used categories */}
+        {usedCategories.length > 0 && (
+          <div className="flex gap-2 flex-wrap mb-3">
+            <button
+              onClick={() => setActiveCategory(null)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
+                !activeCategory
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+              }`}
+            >
+              Tutti
+            </button>
+            {usedCategories.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() =>
+                  setActiveCategory(
+                    activeCategory === cat.value ? null : cat.value
+                  )
+                }
+                className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
+                  activeCategory === cat.value
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-background border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                }`}
+              >
+                {cat.emoji} {cat.label}
+              </button>
             ))}
           </div>
         )}
 
-        {/* Reset filters */}
+        {/* Tag filter */}
+        {allTags.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap mb-3">
+            {allTags.map((tag) => {
+              const isActive = activeTags.includes(tag)
+              return (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => toggleTag(tag)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all border ${
+                    isActive
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-muted/50 text-muted-foreground border-transparent hover:border-border hover:text-foreground'
+                  }`}
+                >
+                  #{tag}
+                </button>
+              )
+            })}
+          </div>
+        )}
+
+        {/* Active filters summary */}
         {hasFilters && (
-          <button
-            onClick={() => {
-              setSearch('')
-              setActiveCategory(null)
-              setActiveTags([])
-            }}
-            className="text-xs text-muted-foreground underline underline-offset-2"
-          >
-            Azzera filtri
-          </button>
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-muted-foreground">
+              {filteredMemories.length} risultat{filteredMemories.length === 1 ? 'o' : 'i'}
+            </span>
+            <button
+              onClick={resetFilters}
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Azzera filtri
+            </button>
+          </div>
         )}
 
         {/* Memory list */}
         {filteredMemories.length === 0 ? (
-          <div className="text-center py-16 space-y-3">
+          <div className="text-center py-20 space-y-4">
             {memories.length === 0 ? (
               <>
-                <p className="text-4xl">🫧</p>
-                <p className="text-muted-foreground text-sm">
-                  Non hai ancora nessun ricordo.
-                  <br />
-                  Inizia creando il primo momento.
+                <div className="text-5xl mb-2">✦</div>
+                <p className="text-lg font-medium">Nessun ricordo ancora.</p>
+                <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                  Ogni momento vissuto merita di essere custodito.
+                  Inizia dal primo.
                 </p>
                 <Link href="/memories/new">
-                  <Button className="mt-2">Crea il primo ricordo</Button>
+                  <Button className="mt-2 rounded-full px-6">
+                    Crea il tuo primo ricordo
+                  </Button>
                 </Link>
               </>
             ) : (
               <>
-                <p className="text-3xl">🔍</p>
-                <p className="text-muted-foreground text-sm">
-                  Nessun ricordo trovato con questi filtri.
+                <div className="text-4xl mb-2">○</div>
+                <p className="text-base font-medium">Nessun risultato</p>
+                <p className="text-sm text-muted-foreground">
+                  Nessun ricordo corrisponde ai filtri selezionati.
                 </p>
+                <button
+                  onClick={resetFilters}
+                  className="text-sm text-foreground underline underline-offset-2"
+                >
+                  Rimuovi i filtri
+                </button>
               </>
             )}
           </div>
         ) : (
           <ul className="space-y-3">
             {filteredMemories.map((memory) => {
-              const contributionCount = memory.memory_contributions?.length ?? 0
+              const catInfo = getCategoryInfo(memory.category)
               return (
                 <li key={memory.id}>
-                  <Link href={`/memories/${memory.id}`}>
-                    <div className="rounded-xl border bg-card p-4 hover:bg-accent transition-colors space-y-2.5">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <h2 className="font-medium text-sm leading-tight truncate">
-                            {memory.title}
-                          </h2>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {formatDate(memory.happened_at)}
-                            {memory.location_name && ` · ${memory.location_name}`}
-                          </p>
-                        </div>
-                        {contributionCount > 0 && (
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {contributionCount} contribut{contributionCount === 1 ? 'o' : 'i'}
+                  <Link href={`/memories/${memory.id}`} className="block group">
+                    <div className="rounded-2xl border bg-card p-5 hover:border-foreground/20 transition-all hover:shadow-sm space-y-3">
+                      {/* Top row: category + date */}
+                      <div className="flex items-center justify-between gap-2">
+                        {catInfo ? (
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {catInfo.emoji} {catInfo.label}
                           </span>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatDate(memory.happened_at)}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <div>
+                        <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
+                          {memory.title}
+                        </h2>
+                        {memory.location_name && (
+                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                            <span>📍</span>
+                            <span>{memory.location_name}</span>
+                          </p>
                         )}
                       </div>
 
+                      {/* Description preview */}
                       {memory.description && (
-                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                           {memory.description}
                         </p>
                       )}
 
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {memory.category && (
-                          <CategoryBadge category={memory.category} size="sm" />
-                        )}
-                        {memory.tags.slice(0, 3).map((tag) => (
-                          <TagBadge key={tag} tag={tag} />
-                        ))}
-                        {memory.tags.length > 3 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{memory.tags.length - 3}
-                          </span>
-                        )}
-                      </div>
+                      {/* Tags */}
+                      {memory.tags.length > 0 && (
+                        <div className="flex gap-1.5 flex-wrap">
+                          {memory.tags.slice(0, 4).map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                            >
+                              #{tag}
+                            </span>
+                          ))}
+                          {memory.tags.length > 4 && (
+                            <span className="text-xs text-muted-foreground self-center">
+                              +{memory.tags.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </Link>
                 </li>

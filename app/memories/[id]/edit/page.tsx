@@ -24,7 +24,6 @@ export default function EditMemoryPage() {
   const [date, setDate] = useState('')
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
-  const [allTags, setAllTags] = useState<string[]>([])
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -47,7 +46,6 @@ export default function EditMemoryPage() {
       }
       setFetching(false)
     }
-
     load()
   }, [id])
 
@@ -55,7 +53,6 @@ export default function EditMemoryPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     try {
       await updateMemory({
         id,
@@ -67,46 +64,57 @@ export default function EditMemoryPage() {
         tags,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore imprevisto.')
+      setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
       setLoading(false)
     }
   }
 
   if (fetching) {
     return (
-      <main className="min-h-screen p-4 max-w-lg mx-auto flex items-center justify-center">
+      <main className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground text-sm">Caricamento…</p>
       </main>
     )
   }
 
   return (
-    <main className="min-h-screen p-4 max-w-lg mx-auto">
-      <div className="py-8 space-y-6">
-        <div>
+    <main className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto px-4 pb-16">
+        <div className="pt-6 pb-8">
           <button
             onClick={() => router.back()}
-            className="text-sm text-muted-foreground mb-4 block"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
-            ← Indietro
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Indietro
           </button>
-          <h1 className="text-2xl font-semibold tracking-tight">Modifica ricordo</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Modifica ricordo</h1>
+          <p className="text-sm text-muted-foreground">
+            Aggiorna i dettagli di questo momento.
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="title">Titolo *</Label>
+            <Label htmlFor="title" className="text-sm font-medium">
+              Titolo <span className="text-muted-foreground font-normal">*</span>
+            </Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="es. Cena al Baffo"
+              placeholder="Come chiami questo momento?"
               required
+              className="text-base"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="happened_at">Data *</Label>
+            <Label htmlFor="happened_at" className="text-sm font-medium">
+              Quando è successo? <span className="text-muted-foreground font-normal">*</span>
+            </Label>
             <Input
               id="happened_at"
               type="date"
@@ -118,30 +126,32 @@ export default function EditMemoryPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location_name">Luogo</Label>
+            <Label htmlFor="location_name" className="text-sm font-medium">
+              Dove eravate?
+            </Label>
             <Input
               id="location_name"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="es. Milano, Ristorante Baffo"
+              placeholder="Es. Roma, Trastevere"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Categoria</Label>
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Capitolo della vita</Label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.value}
                   type="button"
                   onClick={() => setCategory(cat.value === category ? '' : cat.value)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors text-left ${
+                  className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
                     category === cat.value
-                      ? 'border-primary bg-primary/5 text-primary font-medium'
-                      : 'border-input hover:bg-accent'
+                      ? 'border-foreground bg-foreground text-background font-medium'
+                      : 'border-border hover:border-foreground/30 hover:bg-accent/50'
                   }`}
                 >
-                  <span>{cat.emoji}</span>
+                  <span className="text-base">{cat.emoji}</span>
                   <span>{cat.label}</span>
                 </button>
               ))}
@@ -149,31 +159,43 @@ export default function EditMemoryPage() {
           </div>
 
           <div className="space-y-2">
-            <Label>Tag</Label>
+            <Label className="text-sm font-medium">Connessioni</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Persone, luoghi, temi — tutto ciò che collega questo momento agli altri.
+            </p>
             <TagInput
               value={tags}
               onChange={setTags}
-              suggestions={allTags}
-              placeholder="es. Luca, Parigi, Estate2025…"
+              placeholder="Es. Luca, Sardegna, estate…"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Descrizione</Label>
+            <Label htmlFor="description" className="text-sm font-medium">
+              Il racconto
+            </Label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Racconta brevemente questo momento…"
-              rows={4}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              placeholder="Cosa è successo? Come ti sei sentito? Cosa vuoi ricordare di questo momento…"
+              rows={5}
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Salvataggio…' : 'Salva modifiche'}
+          <Button
+            type="submit"
+            className="w-full rounded-full py-6 text-base font-medium"
+            disabled={loading}
+          >
+            {loading ? 'Salvataggio…' : 'Salva le modifiche'}
           </Button>
         </form>
       </div>

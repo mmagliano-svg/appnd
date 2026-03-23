@@ -20,9 +20,7 @@ export default function NewMemoryPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     const form = new FormData(e.currentTarget)
-
     try {
       await createMemory({
         title: form.get('title') as string,
@@ -33,7 +31,7 @@ export default function NewMemoryPage() {
         tags,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Errore imprevisto.')
+      setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
       setLoading(false)
     }
   }
@@ -41,35 +39,45 @@ export default function NewMemoryPage() {
   const today = new Date().toISOString().split('T')[0]
 
   return (
-    <main className="min-h-screen p-4 max-w-lg mx-auto">
-      <div className="py-8 space-y-6">
-        <div>
+    <main className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto px-4 pb-16">
+        <div className="pt-6 pb-8">
           <button
             onClick={() => router.back()}
-            className="text-sm text-muted-foreground mb-4 block"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
           >
-            ← Indietro
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Indietro
           </button>
-          <h1 className="text-2xl font-semibold tracking-tight">Nuovo ricordo</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Cosa vuoi ricordare?
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Nuovo ricordo</h1>
+          <p className="text-sm text-muted-foreground">
+            Cattura il momento prima che sfugga.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Titolo */}
           <div className="space-y-2">
-            <Label htmlFor="title">Titolo *</Label>
+            <Label htmlFor="title" className="text-sm font-medium">
+              Titolo <span className="text-muted-foreground font-normal">*</span>
+            </Label>
             <Input
               id="title"
               name="title"
-              placeholder="es. Cena al Baffo"
+              placeholder="Come chiami questo momento?"
               required
               autoFocus
+              className="text-base"
             />
           </div>
 
+          {/* Data */}
           <div className="space-y-2">
-            <Label htmlFor="happened_at">Data *</Label>
+            <Label htmlFor="happened_at" className="text-sm font-medium">
+              Quando è successo? <span className="text-muted-foreground font-normal">*</span>
+            </Label>
             <Input
               id="happened_at"
               name="happened_at"
@@ -79,60 +87,83 @@ export default function NewMemoryPage() {
             />
           </div>
 
+          {/* Luogo */}
           <div className="space-y-2">
-            <Label htmlFor="location_name">Luogo</Label>
+            <Label htmlFor="location_name" className="text-sm font-medium">
+              Dove eravate?
+            </Label>
             <Input
               id="location_name"
               name="location_name"
-              placeholder="es. Milano, Ristorante Baffo"
+              placeholder="Es. Roma, Trastevere"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label>Categoria *</Label>
+          {/* Categoria */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">
+              Capitolo della vita
+            </Label>
             <div className="grid grid-cols-2 gap-2">
               {CATEGORIES.map((cat) => (
                 <button
                   key={cat.value}
                   type="button"
                   onClick={() => setCategory(cat.value === category ? '' : cat.value)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors text-left ${
+                  className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
                     category === cat.value
-                      ? 'border-primary bg-primary/5 text-primary font-medium'
-                      : 'border-input hover:bg-accent'
+                      ? 'border-foreground bg-foreground text-background font-medium'
+                      : 'border-border hover:border-foreground/30 hover:bg-accent/50'
                   }`}
                 >
-                  <span>{cat.emoji}</span>
+                  <span className="text-base">{cat.emoji}</span>
                   <span>{cat.label}</span>
                 </button>
               ))}
             </div>
           </div>
 
+          {/* Tag */}
           <div className="space-y-2">
-            <Label>Tag</Label>
+            <Label className="text-sm font-medium">
+              Connessioni
+            </Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Persone, luoghi, temi — tutto ciò che collega questo momento agli altri.
+            </p>
             <TagInput
               value={tags}
               onChange={setTags}
-              placeholder="es. Luca, Parigi, Estate2025…"
+              placeholder="Es. Luca, Sardegna, estate…"
             />
           </div>
 
+          {/* Descrizione */}
           <div className="space-y-2">
-            <Label htmlFor="description">Descrizione</Label>
+            <Label htmlFor="description" className="text-sm font-medium">
+              Il racconto
+            </Label>
             <textarea
               id="description"
               name="description"
-              placeholder="Racconta brevemente questo momento…"
-              rows={4}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              placeholder="Cosa è successo? Come ti sei sentito? Cosa vuoi ricordare di questo momento…"
+              rows={5}
+              className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
             />
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && (
+            <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Salvataggio…' : 'Crea ricordo'}
+          <Button
+            type="submit"
+            className="w-full rounded-full py-6 text-base font-medium"
+            disabled={loading}
+          >
+            {loading ? 'Salvataggio…' : 'Salva il ricordo'}
           </Button>
         </form>
       </div>
