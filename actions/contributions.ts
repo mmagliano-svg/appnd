@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import type { ContentType } from '@/lib/supabase/types'
 
 export interface CreateContributionInput {
@@ -45,5 +46,6 @@ export async function createContribution(input: CreateContributionInput) {
     throw new Error('Impossibile salvare il contributo. Riprova.')
   }
 
+  revalidatePath(`/memories/${input.memoryId}`)
   redirect(`/memories/${input.memoryId}`)
 }
