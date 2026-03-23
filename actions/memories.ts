@@ -202,5 +202,5 @@ export async function getAllUserTags(): Promise<string[]> {
     .filter(Boolean)
 
   // Return unique tags sorted alphabetically
-  return [...new Set(allTags)].sort()
+  return Array.from(new Set(allTags)).sort()
 }
