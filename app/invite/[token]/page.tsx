@@ -1,5 +1,6 @@
 import { acceptInvite } from '@/actions/invites'
 import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 
 function formatDate(dateStr: string) {
@@ -11,10 +12,9 @@ function formatDate(dateStr: string) {
 }
 
 export default async function InvitePage({ params }: { params: { token: string } }) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const { data: invite } = await supabase
+  // Use admin client for token lookup — RLS would block anonymous reads
+  const adminSupabase = createAdminClient()
+  const { data: invite } = await adminSupabase
     .from('memory_participants')
     .select(`
       id,
@@ -39,6 +39,10 @@ export default async function InvitePage({ params }: { params: { token: string }
       </main>
     )
   }
+
+  // Check current session (separate from admin client)
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
   const memory = invite.memories
   const alreadyJoined = Boolean(invite.joined_at)
@@ -70,8 +74,8 @@ export default async function InvitePage({ params }: { params: { token: string }
             <div className="text-4xl">📬</div>
             <h1 className="text-2xl font-bold tracking-tight">Sei stato invitato</h1>
             {memory && (
-              <div className="space-y-1">
-                <p className="font-semibold text-lg leading-snug">"{memory.title}"</p>
+              <div className="rounded-2xl border border-border bg-card p-4 text-left space-y-1 mt-4">
+                <p className="font-semibold leading-snug">"{memory.title}"</p>
                 <p className="text-sm text-muted-foreground">
                   {formatDate(memory.happened_at)}
                   {memory.location_name && ` · ${memory.location_name}`}
