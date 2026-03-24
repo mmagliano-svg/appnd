@@ -77,47 +77,37 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
         </div>
 
         {/* Header */}
-        <div className="pt-8 pb-8 border-b border-border/50">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
+        <div className="pt-10 pb-10 border-b border-border/50">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-4">
             Connessione
           </p>
-          <h1 className="text-4xl font-bold tracking-tight mb-2">
+          <h1 className="text-5xl font-bold tracking-tight mb-4 leading-none">
             {capitalize(tag)}
           </h1>
-          <p className="text-sm text-muted-foreground mb-5">
+          <p className="text-base text-muted-foreground">
             {count === 0
-              ? 'Nessun momento legato a questa connessione.'
+              ? 'Ancora nessun momento.'
               : count === 1
-              ? '1 momento collegato'
-              : `${count} momenti collegati`}
+              ? '1 momento vissuto insieme.'
+              : `${count} momenti vissuti insieme.`}
           </p>
-
-          {/* Active chip */}
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center rounded-full bg-foreground text-background px-3 py-1.5 text-xs font-semibold">
-              #{tag}
-            </span>
-            {count > 0 && (
-              <span className="text-xs text-muted-foreground">
-                · tutti i momenti legati a questa connessione
-              </span>
-            )}
-          </div>
+          {/* Subtle tag anchor — secondary, not protagonist */}
+          <p className="text-xs text-muted-foreground/50 mt-3">#{tag}</p>
         </div>
 
         {/* Empty state */}
         {count === 0 ? (
           <div className="text-center py-24 space-y-3">
             <div className="text-4xl mb-3">○</div>
-            <p className="text-base font-medium">Nessun ricordo qui.</p>
+            <p className="text-base font-medium">Nessun momento ancora.</p>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-              Non hai ancora momenti legati a questa connessione.
+              I momenti legati a {capitalize(tag)} appariranno qui.
             </p>
             <Link
               href="/memories/new"
               className="inline-block text-sm text-foreground underline underline-offset-2 mt-1"
             >
-              Crea un ricordo
+              Aggiungi un ricordo
             </Link>
           </div>
         ) : (
