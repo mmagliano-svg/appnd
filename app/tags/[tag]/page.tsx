@@ -2,14 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCategoryByValue } from '@/lib/constants/categories'
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
+import { formatMemoryDate } from '@/lib/utils/dates'
 
 function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
@@ -29,7 +22,8 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
       memories (
         id,
         title,
-        happened_at,
+        start_date,
+        end_date,
         location_name,
         description,
         category,
@@ -46,7 +40,8 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
     .filter(Boolean) as Array<{
       id: string
       title: string
-      happened_at: string
+      start_date: string
+      end_date: string | null
       location_name: string | null
       description: string | null
       category: string | null
@@ -55,7 +50,7 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
 
   const tagged = allMemories
     .filter((m) => m.tags?.includes(tag))
-    .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
+    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
   const count = tagged.length
 
@@ -129,7 +124,7 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
                           <span />
                         )}
                         <span className="text-xs text-muted-foreground shrink-0">
-                          {formatDate(memory.happened_at)}
+                          {formatMemoryDate(memory.start_date, memory.end_date)}
                         </span>
                       </div>
 

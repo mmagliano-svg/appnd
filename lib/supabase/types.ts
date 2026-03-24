@@ -45,6 +45,8 @@ export interface Database {
           title: string
           description: string | null
           happened_at: string
+          start_date: string
+          end_date: string | null
           location_name: string | null
           category: string | null
           tags: string[]
@@ -56,7 +58,9 @@ export interface Database {
           id?: string
           title: string
           description?: string | null
-          happened_at: string
+          happened_at?: string
+          start_date: string
+          end_date?: string | null
           location_name?: string | null
           category?: string | null
           tags?: string[]
@@ -69,6 +73,8 @@ export interface Database {
           title?: string
           description?: string | null
           happened_at?: string
+          start_date?: string
+          end_date?: string | null
           location_name?: string | null
           category?: string | null
           tags?: string[]

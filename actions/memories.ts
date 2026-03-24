@@ -8,7 +8,8 @@ import { revalidatePath } from 'next/cache'
 
 export interface CreateMemoryInput {
   title: string
-  happened_at: string
+  start_date: string
+  end_date?: string
   location_name?: string
   description?: string
   category?: string
@@ -18,7 +19,8 @@ export interface CreateMemoryInput {
 export interface UpdateMemoryInput {
   id: string
   title: string
-  happened_at: string
+  start_date: string
+  end_date?: string
   location_name?: string
   description?: string
   category?: string
@@ -36,7 +38,9 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
     .from('memories')
     .insert({
       title: input.title.trim(),
-      happened_at: input.happened_at,
+      happened_at: input.start_date,
+      start_date: input.start_date,
+      end_date: input.end_date || null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
@@ -70,7 +74,9 @@ export async function createMemory(input: CreateMemoryInput) {
     .from('memories')
     .insert({
       title: input.title.trim(),
-      happened_at: input.happened_at,
+      happened_at: input.start_date,
+      start_date: input.start_date,
+      end_date: input.end_date || null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
@@ -121,7 +127,9 @@ export async function updateMemory(input: UpdateMemoryInput) {
     .from('memories')
     .update({
       title: input.title.trim(),
-      happened_at: input.happened_at,
+      happened_at: input.start_date,
+      start_date: input.start_date,
+      end_date: input.end_date || null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
@@ -181,7 +189,8 @@ export async function getUserMemories() {
       memories (
         id,
         title,
-        happened_at,
+        start_date,
+        end_date,
         location_name,
         description,
         category,
@@ -202,11 +211,12 @@ export async function getUserMemories() {
     .filter(Boolean)
     .sort((a, b) => {
       if (!a || !b) return 0
-      return new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime()
+      return new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
     }) as Array<{
       id: string
       title: string
-      happened_at: string
+      start_date: string
+      end_date: string | null
       location_name: string | null
       description: string | null
       category: string | null

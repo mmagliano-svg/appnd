@@ -5,11 +5,13 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CATEGORIES } from '@/lib/constants/categories'
+import { formatMemoryDate, formatMemoryDateShort } from '@/lib/utils/dates'
 
 interface Memory {
   id: string
   title: string
-  happened_at: string
+  start_date: string
+  end_date: string | null
   location_name: string | null
   description: string | null
   category: string | null
@@ -22,21 +24,6 @@ interface Memory {
 interface DashboardClientProps {
   memories: Memory[]
   allTags: string[]
-}
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-function formatDateShort(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'short',
-  })
 }
 
 function getCategoryInfo(value: string | null) {
@@ -104,7 +91,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
   // 3 most recent memories
   const recentMemories = useMemo(() => {
     return [...memories]
-      .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
+      .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
       .slice(0, 3)
   }, [memories])
 
@@ -196,7 +183,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                         </h3>
                         <div className="flex items-center justify-between">
                           <p className="text-xs text-muted-foreground">
-                            {formatDateShort(memory.happened_at)}
+                            {formatMemoryDateShort(memory.start_date, memory.end_date)}
                           </p>
                           {contribCount > 0 && (
                             <span className="text-xs text-muted-foreground/60">
@@ -400,7 +387,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                           <span />
                         )}
                         <span className="text-xs text-muted-foreground shrink-0">
-                          {formatDate(memory.happened_at)}
+                          {formatMemoryDate(memory.start_date, memory.end_date)}
                         </span>
                       </div>
 

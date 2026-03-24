@@ -4,16 +4,8 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteButton } from '@/components/memory/DeleteButton'
 import { getCategoryByValue } from '@/lib/constants/categories'
+import { formatMemoryDateFull } from '@/lib/utils/dates'
 import InviteForm from './InviteForm'
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
 
 function formatTime(dateStr: string) {
   return new Date(dateStr).toLocaleTimeString('it-IT', {
@@ -120,7 +112,10 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              {formatDate(memory.happened_at)}
+              {formatMemoryDateFull(
+                (memory as { start_date?: string }).start_date ?? memory.happened_at,
+                (memory as { end_date?: string | null }).end_date ?? null
+              )}
             </span>
             {memory.location_name && (
               <span className="flex items-center gap-1.5">

@@ -21,7 +21,9 @@ export default function EditMemoryPage() {
   const [tags, setTags] = useState<string[]>([])
   const [category, setCategory] = useState('')
   const [title, setTitle] = useState('')
-  const [date, setDate] = useState('')
+  const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
   const [allTags, setAllTags] = useState<string[]>([])
@@ -43,7 +45,9 @@ export default function EditMemoryPage() {
 
       if (data) {
         setTitle(data.title)
-        setDate(data.happened_at)
+        setStartDate(data.start_date ?? data.happened_at)
+        setEndDate(data.end_date ?? '')
+        setMemoryType(data.end_date ? 'period' : 'day')
         setLocation(data.location_name ?? '')
         setDescription(data.description ?? '')
         setCategory(data.category ?? '')
@@ -62,7 +66,8 @@ export default function EditMemoryPage() {
       await updateMemory({
         id,
         title,
-        happened_at: date,
+        start_date: startDate,
+        end_date: memoryType === 'period' ? endDate || undefined : undefined,
         location_name: location,
         description,
         category: category || undefined,
@@ -116,18 +121,71 @@ export default function EditMemoryPage() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="happened_at" className="text-sm font-medium">
-              Quando è successo? <span className="text-muted-foreground font-normal">*</span>
-            </Label>
-            <Input
-              id="happened_at"
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              max={today}
-              required
-            />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <Label className="text-sm font-medium">
+                {memoryType === 'period' ? 'Quanto è durato?' : 'Quando è successo?'}{' '}
+                <span className="text-muted-foreground font-normal">*</span>
+              </Label>
+              <div className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={() => { setMemoryType('day'); setEndDate('') }}
+                  className={`px-3 py-1.5 font-medium transition-colors ${
+                    memoryType === 'day'
+                      ? 'bg-foreground text-background'
+                      : 'bg-background text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  Giorno
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMemoryType('period')}
+                  className={`px-3 py-1.5 font-medium transition-colors border-l border-border ${
+                    memoryType === 'period'
+                      ? 'bg-foreground text-background'
+                      : 'bg-background text-muted-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  Periodo
+                </button>
+              </div>
+            </div>
+
+            {memoryType === 'day' ? (
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={today}
+                required
+              />
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">Dal</p>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    max={today}
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground">Al</p>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    min={startDate}
+                    max={today}
+                    required
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

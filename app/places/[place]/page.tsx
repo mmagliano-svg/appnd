@@ -2,14 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCategoryByValue } from '@/lib/constants/categories'
-
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
+import { formatMemoryDate } from '@/lib/utils/dates'
 
 export default async function PlacePage({ params }: { params: { place: string } }) {
   const place = decodeURIComponent(params.place)
@@ -24,7 +17,8 @@ export default async function PlacePage({ params }: { params: { place: string } 
       memories (
         id,
         title,
-        happened_at,
+        start_date,
+        end_date,
         location_name,
         description,
         category,
@@ -41,7 +35,8 @@ export default async function PlacePage({ params }: { params: { place: string } 
     .filter(Boolean) as Array<{
       id: string
       title: string
-      happened_at: string
+      start_date: string
+      end_date: string | null
       location_name: string | null
       description: string | null
       category: string | null
@@ -50,7 +45,7 @@ export default async function PlacePage({ params }: { params: { place: string } 
 
   const placeMemories = allMemories
     .filter((m) => m.location_name?.toLowerCase() === place.toLowerCase())
-    .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
+    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
   const count = placeMemories.length
 
@@ -112,7 +107,7 @@ export default async function PlacePage({ params }: { params: { place: string } 
                         <span />
                       )}
                       <span className="text-xs text-muted-foreground shrink-0">
-                        {formatDate(memory.happened_at)}
+                        {formatMemoryDate(memory.start_date, memory.end_date)}
                       </span>
                     </div>
 
