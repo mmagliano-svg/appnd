@@ -127,9 +127,9 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
               const otherTags = (memory.tags ?? []).filter((t) => t !== tag)
               return (
                 <li key={memory.id}>
-                  <Link href={`/memories/${memory.id}`} className="block group">
-                    <div className="rounded-2xl border bg-card p-5 hover:border-foreground/20 transition-all hover:shadow-sm space-y-2.5">
-
+                  <div className="rounded-2xl border bg-card hover:border-foreground/20 transition-all hover:shadow-sm">
+                    {/* Card body — links to memory */}
+                    <Link href={`/memories/${memory.id}`} className="block p-5 space-y-2.5 group">
                       <div className="flex items-center justify-between gap-2">
                         {catInfo ? (
                           <span className="text-xs text-muted-foreground font-medium">
@@ -160,28 +160,28 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
                           {memory.description}
                         </p>
                       )}
+                    </Link>
 
-                      {otherTags.length > 0 && (
-                        <div className="flex gap-1.5 flex-wrap pt-0.5">
-                          {otherTags.slice(0, 4).map((t) => (
-                            <Link
-                              key={t}
-                              href={`/tags/${encodeURIComponent(t)}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center rounded-full bg-muted hover:bg-muted/70 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              #{t}
-                            </Link>
-                          ))}
-                          {otherTags.length > 4 && (
-                            <span className="text-xs text-muted-foreground self-center">
-                              +{otherTags.length - 4}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </Link>
+                    {/* Other tags — outside the card link to avoid nested <a> */}
+                    {otherTags.length > 0 && (
+                      <div className="flex gap-1.5 flex-wrap px-5 pb-4">
+                        {otherTags.slice(0, 4).map((t) => (
+                          <Link
+                            key={t}
+                            href={`/tags/${encodeURIComponent(t)}`}
+                            className="inline-flex items-center rounded-full bg-muted hover:bg-muted/70 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            #{t}
+                          </Link>
+                        ))}
+                        {otherTags.length > 4 && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            +{otherTags.length - 4}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </li>
               )
             })}
