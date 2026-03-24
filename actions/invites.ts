@@ -57,7 +57,7 @@ export async function createInvite(memoryId: string, email: string) {
   if (process.env.RESEND_API_KEY) {
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
-      from: 'Appnd <noreply@appnd.app>',
+      from: 'Appnd <onboarding@resend.dev>',
       to: email,
       subject: `${inviterName} ti invita a ricordare insieme`,
       html: `
