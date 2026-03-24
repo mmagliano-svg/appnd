@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { generateInviteToken } from '@/lib/utils/invite'
 import { redirect } from 'next/navigation'
 import { Resend } from 'resend'
@@ -88,7 +88,11 @@ export async function acceptInvite(token: string) {
     redirect(`/auth/login?next=/invite/${token}`)
   }
 
-  const { data: invite, error: inviteError } = await supabase
+  // Use admin client to bypass RLS — invited user's user_id is still NULL
+  // so they can't read or update their own invite row via regular client
+  const admin = createAdminClient()
+
+  const { data: invite, error: inviteError } = await admin
     .from('memory_participants')
     .select('id, memory_id, joined_at')
     .eq('invite_token', token)
@@ -102,10 +106,10 @@ export async function acceptInvite(token: string) {
     redirect(`/memories/${invite.memory_id}`)
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await admin
     .from('memory_participants')
     .update({
-      user_id: user.id,
+      user_id: user!.id,
       joined_at: new Date().toISOString(),
     })
     .eq('id', invite.id)
