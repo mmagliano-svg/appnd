@@ -5,7 +5,8 @@ import { generateInviteToken } from '@/lib/utils/invite'
 import { redirect } from 'next/navigation'
 import { Resend } from 'resend'
 
-export async function createInvite(memoryId: string, email: string) {
+// Generate invite link immediately — email is optional
+export async function createInvite(memoryId: string, email?: string) {
   const supabase = await createServerClient()
 
   const { data: { user }, error: userError } = await supabase.auth.getUser()
@@ -36,12 +37,13 @@ export async function createInvite(memoryId: string, email: string) {
     .single()
 
   const token = generateInviteToken()
+  const normalizedEmail = email?.toLowerCase().trim() || null
 
   const { error: inviteError } = await supabase
     .from('memory_participants')
     .insert({
       memory_id: memoryId,
-      invited_email: email.toLowerCase().trim(),
+      invited_email: normalizedEmail,
       invite_token: token,
     })
 
@@ -54,11 +56,12 @@ export async function createInvite(memoryId: string, email: string) {
   const inviterName = inviter?.display_name ?? inviter?.email ?? 'Qualcuno'
   const memoryTitle = memory?.title ?? 'un ricordo condiviso'
 
-  if (process.env.RESEND_API_KEY) {
+  // Send email only if provided and Resend is configured
+  if (normalizedEmail && process.env.RESEND_API_KEY) {
     const resend = new Resend(process.env.RESEND_API_KEY)
     await resend.emails.send({
       from: 'Appnd <onboarding@resend.dev>',
-      to: email,
+      to: normalizedEmail,
       subject: `${inviterName} ti invita a ricordare insieme`,
       html: `
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
