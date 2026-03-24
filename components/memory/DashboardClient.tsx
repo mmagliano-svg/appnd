@@ -86,6 +86,21 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
       .map(([tag, count]) => ({ tag, count }))
   }, [tagCounts])
 
+  // Top places by frequency
+  const topPlaces = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const m of memories) {
+      if (m.location_name?.trim()) {
+        const loc = m.location_name.trim()
+        counts[loc] = (counts[loc] ?? 0) + 1
+      }
+    }
+    return Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([place, count]) => ({ place, count }))
+  }, [memories])
+
   // 3 most recent memories
   const recentMemories = useMemo(() => {
     return [...memories]
@@ -225,7 +240,36 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
               </div>
             )}
 
-            {/* 3 — Rivivi per capitoli */}
+            {/* 3 — Luoghi che hai vissuto */}
+            {topPlaces.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Luoghi che hai vissuto
+                </p>
+                <div className="space-y-1.5">
+                  {topPlaces.map(({ place, count }) => (
+                    <Link
+                      key={place}
+                      href={`/places/${encodeURIComponent(place)}`}
+                      className="flex items-center justify-between rounded-xl px-4 py-3 border border-border bg-card hover:border-foreground/20 hover:bg-accent/20 transition-all group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-sm font-medium">{place}</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        {count} moment{count === 1 ? 'o' : 'i'}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4 — Rivivi per capitoli */}
             {usedCategories.length > 1 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
