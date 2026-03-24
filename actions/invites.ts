@@ -12,7 +12,7 @@ export async function createInvite(memoryId: string, email?: string) {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) redirect('/auth/login')
 
-  const { data: participant } = await supabase
+  const { data: participant, error: participantError } = await supabase
     .from('memory_participants')
     .select('id')
     .eq('memory_id', memoryId)
@@ -20,21 +20,29 @@ export async function createInvite(memoryId: string, email?: string) {
     .not('joined_at', 'is', null)
     .single()
 
+  if (participantError) {
+    console.error('[createInvite] participant check error:', participantError)
+  }
   if (!participant) {
+    console.error('[createInvite] participant not found for user', user.id, 'memory', memoryId)
     throw new Error('Non sei autorizzato a invitare in questo ricordo.')
   }
 
-  const { data: memory } = await supabase
+  const { data: memory, error: memoryError } = await supabase
     .from('memories')
     .select('title')
     .eq('id', memoryId)
     .single()
 
-  const { data: inviter } = await supabase
+  if (memoryError) console.error('[createInvite] memory fetch error:', memoryError)
+
+  const { data: inviter, error: inviterError } = await supabase
     .from('users')
     .select('display_name, email')
     .eq('id', user.id)
     .single()
+
+  if (inviterError) console.error('[createInvite] inviter fetch error:', inviterError)
 
   const token = generateInviteToken()
   const normalizedEmail = email?.toLowerCase().trim() || null
@@ -50,6 +58,7 @@ export async function createInvite(memoryId: string, email?: string) {
     })
 
   if (inviteError) {
+    console.error('[createInvite] insert error:', inviteError)
     throw new Error('Impossibile creare l\'invito. Riprova.')
   }
 
