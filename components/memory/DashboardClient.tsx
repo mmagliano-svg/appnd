@@ -385,51 +385,84 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
             )}
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-0">
             {filteredMemories.map((memory) => {
               const catInfo = getCategoryInfo(memory.category)
               const isPeriod = Boolean(memory.end_date)
+
+              /* ── PERIODO — nessuna card, capitolo di vita ── */
+              if (isPeriod) {
+                return (
+                  <li key={memory.id} className="border-t border-border/50 pt-8 pb-7">
+                    <Link href={`/memories/${memory.id}`} className="block group space-y-2">
+                      {catInfo && (
+                        <span className="text-xs font-medium text-muted-foreground tracking-wider">
+                          {catInfo.emoji} {catInfo.label}
+                        </span>
+                      )}
+                      <p className="text-3xl font-bold tracking-tight leading-none text-foreground group-hover:opacity-70 transition-opacity">
+                        {formatPeriodDisplay(memory.start_date, memory.end_date!)}
+                      </p>
+                      <div className="pt-0.5 space-y-0.5">
+                        <h2 className="text-base font-medium leading-snug text-foreground/75 group-hover:text-foreground transition-colors">
+                          {memory.title}
+                        </h2>
+                        {memory.location_name && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <span>📍</span>
+                            <span>{memory.location_name}</span>
+                          </p>
+                        )}
+                      </div>
+                      {memory.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed pt-0.5">
+                          {memory.description}
+                        </p>
+                      )}
+                    </Link>
+
+                    {/* Tags — fuori dal Link per evitare <a> annidati */}
+                    {memory.tags.length > 0 && (
+                      <div className="flex gap-1.5 flex-wrap mt-3">
+                        {memory.tags.slice(0, 5).map((tag) => (
+                          <Link
+                            key={tag}
+                            href={`/tags/${encodeURIComponent(tag)}`}
+                            className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
+                          >
+                            #{tag}
+                          </Link>
+                        ))}
+                        {memory.tags.length > 5 && (
+                          <span className="text-xs text-muted-foreground self-center">
+                            +{memory.tags.length - 5}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {/* Future: eventi contenuti in questo periodo */}
+                  </li>
+                )
+              }
+
+              /* ── EVENTO — card classica ── */
               return (
-                <li key={memory.id}>
+                <li key={memory.id} className="mb-3">
                   <Link href={`/memories/${memory.id}`} className="block group">
                     <div className="rounded-2xl border bg-card p-5 hover:border-foreground/20 transition-all hover:shadow-sm space-y-3">
-
-                      {isPeriod ? (
-                        /* ── PERIODO — data dominante ── */
-                        <>
-                          {catInfo && (
-                            <span className="text-xs text-muted-foreground font-medium">
-                              {catInfo.emoji} {catInfo.label}
-                            </span>
-                          )}
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1.5">
-                              Periodo
-                            </p>
-                            <p className="text-2xl font-bold tracking-tight leading-none text-foreground">
-                              {formatPeriodDisplay(memory.start_date, memory.end_date!)}
-                            </p>
-                            <div className="mt-2.5 h-px w-10 bg-foreground/20 rounded-full" />
-                          </div>
-                          {/* Future: nested events within the period go here */}
-                        </>
-                      ) : (
-                        /* ── EVENTO — data piccola in alto ── */
-                        <div className="flex items-center justify-between gap-2">
-                          {catInfo ? (
-                            <span className="text-xs text-muted-foreground font-medium">
-                              {catInfo.emoji} {catInfo.label}
-                            </span>
-                          ) : (
-                            <span />
-                          )}
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatMemoryDate(memory.start_date, null)}
+                      <div className="flex items-center justify-between gap-2">
+                        {catInfo ? (
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {catInfo.emoji} {catInfo.label}
                           </span>
-                        </div>
-                      )}
+                        ) : (
+                          <span />
+                        )}
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatMemoryDate(memory.start_date, null)}
+                        </span>
+                      </div>
 
-                      {/* Title — shared */}
                       <div>
                         <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
                           {memory.title}
@@ -442,14 +475,12 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                         )}
                       </div>
 
-                      {/* Description preview — shared */}
                       {memory.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                           {memory.description}
                         </p>
                       )}
 
-                      {/* Tags — shared */}
                       {memory.tags.length > 0 && (
                         <div className="flex gap-1.5 flex-wrap">
                           {memory.tags.slice(0, 5).map((tag) => (

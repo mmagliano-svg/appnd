@@ -91,59 +91,81 @@ export default async function PlacePage({ params }: { params: { place: string } 
         </div>
 
         {/* Memory list */}
-        <ul className="space-y-3 pt-6">
+        <ul className="space-y-0 pt-6">
           {placeMemories.map((memory) => {
             const catInfo = getCategoryByValue(memory.category)
+            const isPeriod = Boolean(memory.end_date)
+
+            if (isPeriod) {
+              return (
+                <li key={memory.id} className="border-t border-border/50 pt-8 pb-7">
+                  <Link href={`/memories/${memory.id}`} className="block group space-y-2">
+                    {catInfo && (
+                      <span className="text-xs font-medium text-muted-foreground tracking-wider">
+                        {catInfo.emoji} {catInfo.label}
+                      </span>
+                    )}
+                    <p className="text-3xl font-bold tracking-tight leading-none text-foreground group-hover:opacity-70 transition-opacity">
+                      {formatPeriodDisplay(memory.start_date, memory.end_date!)}
+                    </p>
+                    <div className="pt-0.5 space-y-0.5">
+                      <h2 className="text-base font-medium leading-snug text-foreground/75 group-hover:text-foreground transition-colors">
+                        {memory.title}
+                      </h2>
+                    </div>
+                    {memory.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed pt-0.5">
+                        {memory.description}
+                      </p>
+                    )}
+                  </Link>
+                  {memory.tags?.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap mt-3">
+                      {memory.tags.slice(0, 4).map((t) => (
+                        <Link
+                          key={t}
+                          href={`/tags/${encodeURIComponent(t)}`}
+                          className="inline-flex items-center rounded-full bg-muted hover:bg-muted/70 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          #{t}
+                        </Link>
+                      ))}
+                      {memory.tags.length > 4 && (
+                        <span className="text-xs text-muted-foreground self-center">
+                          +{memory.tags.length - 4}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </li>
+              )
+            }
+
             return (
-              <li key={memory.id}>
+              <li key={memory.id} className="mb-3">
                 <div className="rounded-2xl border bg-card hover:border-foreground/20 transition-all hover:shadow-sm">
                   <Link href={`/memories/${memory.id}`} className="block p-5 space-y-2.5 group">
-                    {memory.end_date ? (
-                      /* ── PERIODO ── */
-                      <>
-                        {catInfo && (
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {catInfo.emoji} {catInfo.label}
-                          </span>
-                        )}
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1.5">
-                            Periodo
-                          </p>
-                          <p className="text-2xl font-bold tracking-tight leading-none text-foreground">
-                            {formatPeriodDisplay(memory.start_date, memory.end_date)}
-                          </p>
-                          <div className="mt-2.5 h-px w-10 bg-foreground/20 rounded-full" />
-                        </div>
-                      </>
-                    ) : (
-                      /* ── EVENTO ── */
-                      <div className="flex items-center justify-between gap-2">
-                        {catInfo ? (
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {catInfo.emoji} {catInfo.label}
-                          </span>
-                        ) : (
-                          <span />
-                        )}
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {formatMemoryDate(memory.start_date, null)}
+                    <div className="flex items-center justify-between gap-2">
+                      {catInfo ? (
+                        <span className="text-xs text-muted-foreground font-medium">
+                          {catInfo.emoji} {catInfo.label}
                         </span>
-                      </div>
-                    )}
-
+                      ) : (
+                        <span />
+                      )}
+                      <span className="text-xs text-muted-foreground shrink-0">
+                        {formatMemoryDate(memory.start_date, null)}
+                      </span>
+                    </div>
                     <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
                       {memory.title}
                     </h2>
-
                     {memory.description && (
                       <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                         {memory.description}
                       </p>
                     )}
                   </Link>
-
-                  {/* Tags — outside card link to avoid nested <a> */}
                   {memory.tags?.length > 0 && (
                     <div className="flex gap-1.5 flex-wrap px-5 pb-4">
                       {memory.tags.slice(0, 4).map((t) => (
