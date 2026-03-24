@@ -10,57 +10,82 @@ function formatDate(dateStr: string) {
   })
 }
 
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 export default async function TagPage({ params }: { params: { tag: string } }) {
   const tag = decodeURIComponent(params.tag)
   const memories = await getUserMemories()
-  const tagged = memories.filter((m) => m.tags.includes(tag))
+  const tagged = memories
+    .filter((m) => m.tags.includes(tag))
+    .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
+
+  const count = tagged.length
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 pb-16">
 
-        {/* Header */}
-        <div className="pt-6 pb-8">
+        {/* Back */}
+        <div className="pt-6 pb-2">
           <Link
             href="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             I tuoi ricordi
           </Link>
-
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-            Connessione
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">
-            #{tag}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {tagged.length === 0
-              ? 'Nessun ricordo con questa connessione.'
-              : `${tagged.length} ricord${tagged.length === 1 ? 'o' : 'i'} collegat${tagged.length === 1 ? 'o' : 'i'}`}
-          </p>
         </div>
 
-        {/* Memory list */}
-        {tagged.length === 0 ? (
-          <div className="text-center py-20 space-y-3">
-            <div className="text-4xl mb-2">○</div>
-            <p className="text-base font-medium">Nessun ricordo trovato</p>
-            <p className="text-sm text-muted-foreground">
-              Non ci sono ricordi con la connessione #{tag}.
+        {/* Header — the "connection space" */}
+        <div className="pt-8 pb-8 border-b border-border/50">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-3">
+            Connessione
+          </p>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">
+            {capitalize(tag)}
+          </h1>
+          <p className="text-sm text-muted-foreground mb-5">
+            {count === 0
+              ? 'Nessun momento legato a questa connessione.'
+              : count === 1
+              ? '1 momento collegato'
+              : `${count} momenti collegati`}
+          </p>
+
+          {/* Active chip — visual anchor "you are here" */}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-foreground text-background px-3 py-1.5 text-xs font-semibold">
+              #{tag}
+            </span>
+            {count > 0 && (
+              <span className="text-xs text-muted-foreground">
+                · tutti i momenti legati a questa connessione
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Memory list or empty state */}
+        {count === 0 ? (
+          <div className="text-center py-24 space-y-3">
+            <div className="text-4xl mb-3">○</div>
+            <p className="text-base font-medium">Nessun ricordo qui.</p>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+              Non hai ancora momenti legati a questa connessione.
             </p>
             <Link
-              href="/dashboard"
-              className="inline-block text-sm text-foreground underline underline-offset-2 mt-2"
+              href="/memories/new"
+              className="inline-block text-sm text-foreground underline underline-offset-2 mt-1"
             >
-              Torna ai ricordi
+              Crea un ricordo
             </Link>
           </div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-3 pt-6">
             {tagged.map((memory) => {
               const catInfo = getCategoryByValue(memory.category)
               const otherTags = memory.tags.filter((t) => t !== tag)
@@ -68,6 +93,7 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
                 <li key={memory.id}>
                   <Link href={`/memories/${memory.id}`} className="block group">
                     <div className="rounded-2xl border bg-card p-5 hover:border-foreground/20 transition-all hover:shadow-sm space-y-2.5">
+
                       {/* Top: category + date */}
                       <div className="flex items-center justify-between gap-2">
                         {catInfo ? (
@@ -82,7 +108,7 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
                         </span>
                       </div>
 
-                      {/* Title */}
+                      {/* Title + location */}
                       <div>
                         <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
                           {memory.title}
@@ -102,16 +128,18 @@ export default async function TagPage({ params }: { params: { tag: string } }) {
                         </p>
                       )}
 
-                      {/* Other tags on this memory */}
+                      {/* Other tags — clickable, explore related connections */}
                       {otherTags.length > 0 && (
                         <div className="flex gap-1.5 flex-wrap pt-0.5">
                           {otherTags.slice(0, 4).map((t) => (
-                            <span
+                            <Link
                               key={t}
-                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                              href={`/tags/${encodeURIComponent(t)}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center rounded-full bg-muted hover:bg-muted/70 px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
                               #{t}
-                            </span>
+                            </Link>
                           ))}
                           {otherTags.length > 4 && (
                             <span className="text-xs text-muted-foreground self-center">
