@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CATEGORIES } from '@/lib/constants/categories'
-import { formatMemoryDate, formatMemoryDateShort } from '@/lib/utils/dates'
+import { formatMemoryDate, formatMemoryDateShort, formatPeriodDisplay } from '@/lib/utils/dates'
 
 interface Memory {
   id: string
@@ -178,25 +178,40 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                         ) : (
                           <span className="text-xs text-muted-foreground/40">—</span>
                         )}
+
+                        {memory.end_date ? (
+                          // Periodo — date prominenti nella card piccola
+                          <div>
+                            <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1">
+                              Periodo
+                            </p>
+                            <p className="text-sm font-bold tracking-tight leading-tight text-foreground">
+                              {formatPeriodDisplay(memory.start_date, memory.end_date)}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            {formatMemoryDateShort(memory.start_date, null)}
+                          </p>
+                        )}
+
                         <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground">
                           {memory.title}
                         </h3>
+
                         <div className="flex items-center justify-between">
-                          <p className="text-xs text-muted-foreground">
-                            {formatMemoryDateShort(memory.start_date, memory.end_date)}
-                          </p>
+                          {memory.location_name ? (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                              <span>📍</span>
+                              <span className="line-clamp-1">{memory.location_name}</span>
+                            </p>
+                          ) : <span />}
                           {contribCount > 0 && (
-                            <span className="text-xs text-muted-foreground/60">
+                            <span className="text-xs text-muted-foreground/60 shrink-0">
                               {contribCount} contribut{contribCount === 1 ? 'o' : 'i'}
                             </span>
                           )}
                         </div>
-                        {memory.location_name && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <span>📍</span>
-                            <span className="line-clamp-1">{memory.location_name}</span>
-                          </p>
-                        )}
                       </div>
                     </Link>
                   )
@@ -373,25 +388,48 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
           <ul className="space-y-3">
             {filteredMemories.map((memory) => {
               const catInfo = getCategoryInfo(memory.category)
+              const isPeriod = Boolean(memory.end_date)
               return (
                 <li key={memory.id}>
                   <Link href={`/memories/${memory.id}`} className="block group">
                     <div className="rounded-2xl border bg-card p-5 hover:border-foreground/20 transition-all hover:shadow-sm space-y-3">
-                      {/* Top row: category + date */}
-                      <div className="flex items-center justify-between gap-2">
-                        {catInfo ? (
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {catInfo.emoji} {catInfo.label}
-                          </span>
-                        ) : (
-                          <span />
-                        )}
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {formatMemoryDate(memory.start_date, memory.end_date)}
-                        </span>
-                      </div>
 
-                      {/* Title */}
+                      {isPeriod ? (
+                        /* ── PERIODO — data dominante ── */
+                        <>
+                          {catInfo && (
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {catInfo.emoji} {catInfo.label}
+                            </span>
+                          )}
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1.5">
+                              Periodo
+                            </p>
+                            <p className="text-2xl font-bold tracking-tight leading-none text-foreground">
+                              {formatPeriodDisplay(memory.start_date, memory.end_date!)}
+                            </p>
+                            <div className="mt-2.5 h-px w-10 bg-foreground/20 rounded-full" />
+                          </div>
+                          {/* Future: nested events within the period go here */}
+                        </>
+                      ) : (
+                        /* ── EVENTO — data piccola in alto ── */
+                        <div className="flex items-center justify-between gap-2">
+                          {catInfo ? (
+                            <span className="text-xs text-muted-foreground font-medium">
+                              {catInfo.emoji} {catInfo.label}
+                            </span>
+                          ) : (
+                            <span />
+                          )}
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatMemoryDate(memory.start_date, null)}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Title — shared */}
                       <div>
                         <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
                           {memory.title}
@@ -404,14 +442,14 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                         )}
                       </div>
 
-                      {/* Description preview */}
+                      {/* Description preview — shared */}
                       {memory.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                           {memory.description}
                         </p>
                       )}
 
-                      {/* Tags */}
+                      {/* Tags — shared */}
                       {memory.tags.length > 0 && (
                         <div className="flex gap-1.5 flex-wrap">
                           {memory.tags.slice(0, 5).map((tag) => (

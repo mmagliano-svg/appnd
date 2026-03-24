@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCategoryByValue } from '@/lib/constants/categories'
-import { formatMemoryDate } from '@/lib/utils/dates'
+import { formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
 
 export default async function PlacePage({ params }: { params: { place: string } }) {
   const place = decodeURIComponent(params.place)
@@ -98,18 +98,39 @@ export default async function PlacePage({ params }: { params: { place: string } 
               <li key={memory.id}>
                 <div className="rounded-2xl border bg-card hover:border-foreground/20 transition-all hover:shadow-sm">
                   <Link href={`/memories/${memory.id}`} className="block p-5 space-y-2.5 group">
-                    <div className="flex items-center justify-between gap-2">
-                      {catInfo ? (
-                        <span className="text-xs text-muted-foreground font-medium">
-                          {catInfo.emoji} {catInfo.label}
+                    {memory.end_date ? (
+                      /* ── PERIODO ── */
+                      <>
+                        {catInfo && (
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {catInfo.emoji} {catInfo.label}
+                          </span>
+                        )}
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1.5">
+                            Periodo
+                          </p>
+                          <p className="text-2xl font-bold tracking-tight leading-none text-foreground">
+                            {formatPeriodDisplay(memory.start_date, memory.end_date)}
+                          </p>
+                          <div className="mt-2.5 h-px w-10 bg-foreground/20 rounded-full" />
+                        </div>
+                      </>
+                    ) : (
+                      /* ── EVENTO ── */
+                      <div className="flex items-center justify-between gap-2">
+                        {catInfo ? (
+                          <span className="text-xs text-muted-foreground font-medium">
+                            {catInfo.emoji} {catInfo.label}
+                          </span>
+                        ) : (
+                          <span />
+                        )}
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatMemoryDate(memory.start_date, null)}
                         </span>
-                      ) : (
-                        <span />
-                      )}
-                      <span className="text-xs text-muted-foreground shrink-0">
-                        {formatMemoryDate(memory.start_date, memory.end_date)}
-                      </span>
-                    </div>
+                      </div>
+                    )}
 
                     <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
                       {memory.title}

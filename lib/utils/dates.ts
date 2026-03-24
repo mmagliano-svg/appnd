@@ -91,3 +91,34 @@ export function formatMemoryDateFull(startDate: string, endDate: string | null):
   }
   return formatMemoryDate(startDate, endDate)
 }
+
+/**
+ * Prominent uppercase display for period memory cards.
+ * "GEN 2004 — LUG 2008"
+ * Same month: "AGO 1998"
+ */
+export function formatPeriodDisplay(startDate: string, endDate: string): string {
+  const [sy, sm, sd] = startDate.split('-').map(Number)
+  const [ey, em, ed] = endDate.split('-').map(Number)
+  const start = new Date(sy, sm - 1, sd)
+  const end = new Date(ey, em - 1, ed)
+
+  const fmt = (date: Date, opts: Intl.DateTimeFormatOptions) =>
+    date
+      .toLocaleDateString('it-IT', opts)
+      .replace(/\./g, '')   // remove dots from abbreviations
+      .toUpperCase()
+
+  // Same month and year → "AGO 1998"
+  if (sy === ey && sm === em) {
+    return fmt(start, { month: 'short', year: 'numeric' })
+  }
+
+  // Same year → "AGO — SET 1998"  (omit year from start)
+  if (sy === ey) {
+    return `${fmt(start, { month: 'short' })} — ${fmt(end, { month: 'short', year: 'numeric' })}`
+  }
+
+  // Different years → "GEN 2004 — LUG 2008"
+  return `${fmt(start, { month: 'short', year: 'numeric' })} — ${fmt(end, { month: 'short', year: 'numeric' })}`
+}
