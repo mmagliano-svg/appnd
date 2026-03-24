@@ -133,18 +133,23 @@ export default async function MemoryPage({ params }: { params: { id: string } })
             )}
           </div>
 
-          {/* Tags — clickable, link to filtered dashboard */}
+          {/* Connections / Tags */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/dashboard?tag=${encodeURIComponent(tag)}`}
-                  className="inline-flex items-center rounded-full bg-muted hover:bg-muted/70 px-3 py-1 text-xs font-medium text-foreground/70 hover:text-foreground transition-colors"
-                >
-                  #{tag}
-                </Link>
-              ))}
+            <div className="mt-5 pt-4 border-t border-border/40">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5">
+                Connessioni
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/tags/${encodeURIComponent(tag)}`}
+                    className="inline-flex items-center rounded-full border border-border bg-background hover:bg-accent hover:border-foreground/20 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
 

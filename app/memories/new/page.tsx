@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createMemory } from '@/actions/memories'
+import { createMemory, getAllUserTags } from '@/actions/memories'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,11 @@ export default function NewMemoryPage() {
   const [error, setError] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [category, setCategory] = useState('')
+  const [allTags, setAllTags] = useState<string[]>([])
+
+  useEffect(() => {
+    getAllUserTags().then(setAllTags).catch(() => {})
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -134,6 +139,7 @@ export default function NewMemoryPage() {
             <TagInput
               value={tags}
               onChange={setTags}
+              suggestions={allTags}
               placeholder="Es. Luca, Sardegna, estate…"
             />
           </div>

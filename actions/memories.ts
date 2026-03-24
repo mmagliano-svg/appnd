@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { generateInviteToken } from '@/lib/utils/invite'
+import { normalizeTags } from '@/lib/utils/tags'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
@@ -38,7 +39,7 @@ export async function createMemory(input: CreateMemoryInput) {
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
-      tags: input.tags ?? [],
+      tags: normalizeTags(input.tags ?? []),
       created_by: user.id,
     })
     .select('id')
@@ -89,7 +90,7 @@ export async function updateMemory(input: UpdateMemoryInput) {
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
-      tags: input.tags ?? [],
+      tags: normalizeTags(input.tags ?? []),
     })
     .eq('id', input.id)
 

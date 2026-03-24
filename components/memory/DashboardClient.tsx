@@ -37,6 +37,11 @@ function getCategoryInfo(value: string | null) {
   return CATEGORIES.find((c) => c.value === value) ?? null
 }
 
+function parseTagsFromParam(param: string | null): string[] {
+  if (!param) return []
+  return param.split(',').map((t) => t.trim()).filter(Boolean)
+}
+
 export function DashboardClient({ memories, allTags }: DashboardClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -46,14 +51,15 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
     searchParams.get('category')
   )
   const [activeTags, setActiveTags] = useState<string[]>(
-    searchParams.get('tag') ? [searchParams.get('tag')!] : []
+    // Support both ?tags=a,b and legacy ?tag=a
+    parseTagsFromParam(searchParams.get('tags') ?? searchParams.get('tag'))
   )
 
-  // Sync URL params
+  // Sync filters to URL
   useEffect(() => {
     const params = new URLSearchParams()
     if (activeCategory) params.set('category', activeCategory)
-    if (activeTags.length === 1) params.set('tag', activeTags[0])
+    if (activeTags.length > 0) params.set('tags', activeTags.join(','))
     const qs = params.toString()
     router.replace(qs ? `?${qs}` : '/dashboard', { scroll: false })
   }, [activeCategory, activeTags])
@@ -63,6 +69,17 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
     return CATEGORIES.filter((c) => used.has(c.value))
   }, [memories])
 
+  // Count how many memories each tag appears in
+  const tagCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const m of memories) {
+      for (const t of m.tags) {
+        counts[t] = (counts[t] ?? 0) + 1
+      }
+    }
+    return counts
+  }, [memories])
+
   const filteredMemories = useMemo(() => {
     return memories.filter((m) => {
       const q = search.toLowerCase()
@@ -70,7 +87,8 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
         !q ||
         m.title.toLowerCase().includes(q) ||
         (m.description ?? '').toLowerCase().includes(q) ||
-        (m.location_name ?? '').toLowerCase().includes(q)
+        (m.location_name ?? '').toLowerCase().includes(q) ||
+        m.tags.some((t) => t.includes(q))
       const matchesCategory = !activeCategory || m.category === activeCategory
       const matchesTags =
         activeTags.length === 0 || activeTags.every((t) => m.tags.includes(t))
@@ -91,8 +109,6 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
   }
 
   const hasFilters = !!(search || activeCategory || activeTags.length > 0)
-  const activeFiltersCount =
-    (search ? 1 : 0) + (activeCategory ? 1 : 0) + activeTags.length
 
   return (
     <main className="min-h-screen bg-background">
@@ -138,7 +154,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
           />
         </div>
 
-        {/* Category filter — only show used categories */}
+        {/* Category filter */}
         {usedCategories.length > 0 && (
           <div className="flex gap-2 flex-wrap mb-3">
             <button
@@ -171,40 +187,58 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
           </div>
         )}
 
-        {/* Tag filter */}
+        {/* Tag filter cloud */}
         {allTags.length > 0 && (
-          <div className="flex gap-1.5 flex-wrap mb-3">
-            {allTags.map((tag) => {
-              const isActive = activeTags.includes(tag)
-              return (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => toggleTag(tag)}
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all border ${
-                    isActive
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-muted/50 text-muted-foreground border-transparent hover:border-border hover:text-foreground'
-                  }`}
-                >
-                  #{tag}
-                </button>
-              )
-            })}
+          <div className="mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              Connessioni
+            </p>
+            <div className="flex gap-1.5 flex-wrap mb-2">
+              {allTags.map((tag) => {
+                const isActive = activeTags.includes(tag)
+                const count = tagCounts[tag] ?? 0
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(tag)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-all border ${
+                      isActive
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'bg-muted/50 text-muted-foreground border-transparent hover:border-border hover:text-foreground'
+                    }`}
+                  >
+                    #{tag}
+                    {count > 1 && (
+                      <span className={`ml-1 ${isActive ? 'text-background/60' : 'text-muted-foreground/60'}`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )}
 
-        {/* Active filters summary */}
+        {/* Active filter banner */}
         {hasFilters && (
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs text-muted-foreground">
-              {filteredMemories.length} risultat{filteredMemories.length === 1 ? 'o' : 'i'}
-            </span>
+          <div className="flex items-center justify-between mb-4 pt-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">
+                {filteredMemories.length} risultat{filteredMemories.length === 1 ? 'o' : 'i'}
+              </span>
+              {activeTags.length > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  · {activeTags.map((t) => `#${t}`).join(' + ')}
+                </span>
+              )}
+            </div>
             <button
               onClick={resetFilters}
-              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors"
+              className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors shrink-0"
             >
-              Azzera filtri
+              Azzera
             </button>
           </div>
         )}
@@ -284,20 +318,26 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                         </p>
                       )}
 
-                      {/* Tags */}
+                      {/* Tags — clickable, navigate to tag page */}
                       {memory.tags.length > 0 && (
                         <div className="flex gap-1.5 flex-wrap">
-                          {memory.tags.slice(0, 4).map((tag) => (
-                            <span
+                          {memory.tags.slice(0, 5).map((tag) => (
+                            <Link
                               key={tag}
-                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground"
+                              href={`/tags/${encodeURIComponent(tag)}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium transition-colors ${
+                                activeTags.includes(tag)
+                                  ? 'bg-foreground text-background'
+                                  : 'bg-muted text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                              }`}
                             >
                               #{tag}
-                            </span>
+                            </Link>
                           ))}
-                          {memory.tags.length > 4 && (
+                          {memory.tags.length > 5 && (
                             <span className="text-xs text-muted-foreground self-center">
-                              +{memory.tags.length - 4}
+                              +{memory.tags.length - 5}
                             </span>
                           )}
                         </div>

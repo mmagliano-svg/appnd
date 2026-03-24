@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
-import { updateMemory } from '@/actions/memories'
+import { updateMemory, getAllUserTags } from '@/actions/memories'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +24,11 @@ export default function EditMemoryPage() {
   const [date, setDate] = useState('')
   const [location, setLocation] = useState('')
   const [description, setDescription] = useState('')
+  const [allTags, setAllTags] = useState<string[]>([])
+
+  useEffect(() => {
+    getAllUserTags().then(setAllTags).catch(() => {})
+  }, [])
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -166,6 +171,7 @@ export default function EditMemoryPage() {
             <TagInput
               value={tags}
               onChange={setTags}
+              suggestions={allTags}
               placeholder="Es. Luca, Sardegna, estate…"
             />
           </div>
