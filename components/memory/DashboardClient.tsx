@@ -32,6 +32,13 @@ function formatDate(dateStr: string) {
   })
 }
 
+function formatDateShort(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'short',
+  })
+}
+
 function getCategoryInfo(value: string | null) {
   if (!value) return null
   return CATEGORIES.find((c) => c.value === value) ?? null
@@ -54,12 +61,13 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
     router.replace(qs ? `?${qs}` : '/dashboard', { scroll: false })
   }, [activeCategory])
 
+  // Categories actually used
   const usedCategories = useMemo(() => {
     const used = new Set(memories.map((m) => m.category).filter(Boolean))
     return CATEGORIES.filter((c) => used.has(c.value))
   }, [memories])
 
-  // Per-tag memory count for the tag cloud
+  // Tag frequency map
   const tagCounts = useMemo(() => {
     const counts: Record<string, number> = {}
     for (const m of memories) {
@@ -68,6 +76,21 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
       }
     }
     return counts
+  }, [memories])
+
+  // Top 6 tags by frequency
+  const topTags = useMemo(() => {
+    return Object.entries(tagCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+      .map(([tag, count]) => ({ tag, count }))
+  }, [tagCounts])
+
+  // 3 most recent memories
+  const recentMemories = useMemo(() => {
+    return [...memories]
+      .sort((a, b) => new Date(b.happened_at).getTime() - new Date(a.happened_at).getTime())
+      .slice(0, 3)
   }, [memories])
 
   const filteredMemories = useMemo(() => {
@@ -90,41 +113,157 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
   }
 
   const hasFilters = !!(search || activeCategory)
+  const showDiscovery = !hasFilters && memories.length > 0
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 pb-16">
-        {/* Header */}
+
+        {/* ── Header ── */}
         <div className="pt-10 pb-6">
           <div className="flex items-center justify-between mb-1">
             <h1 className="text-3xl font-bold tracking-tight">I tuoi ricordi</h1>
             <Link href="/memories/new">
-              <Button size="sm" className="rounded-full px-4">
-                + Nuovo
-              </Button>
+              <Button size="sm" className="rounded-full px-4">+ Nuovo</Button>
             </Link>
           </div>
           <p className="text-sm text-muted-foreground">
             {memories.length === 0
               ? 'Il tuo libro dei momenti ti aspetta.'
-              : `${memories.length} moment${memories.length === 1 ? 'o' : 'i'} conservat${memories.length === 1 ? 'o' : 'i'}`}
+              : `${memories.length} moment${memories.length === 1 ? 'o' : 'i'} custoditi`}
           </p>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-4">
+        {/* ── Empty state ── */}
+        {memories.length === 0 && (
+          <div className="text-center py-20 space-y-4">
+            <div className="text-5xl mb-2">✦</div>
+            <p className="text-lg font-medium">Inizia da un momento.</p>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+              Ogni ricordo costruisce la storia della tua vita. Inizia dal primo.
+            </p>
+            <Link href="/memories/new">
+              <Button className="mt-2 rounded-full px-6">
+                Aggiungi il primo momento
+              </Button>
+            </Link>
+          </div>
+        )}
+
+        {/* ── DISCOVERY SECTIONS (no filters active) ── */}
+        {showDiscovery && (
+          <>
+            {/* 1 — Riprendi da qui */}
+            <div className="mb-8">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                Riprendi da qui
+              </p>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory">
+                {recentMemories.map((memory) => {
+                  const catInfo = getCategoryInfo(memory.category)
+                  const contribCount = memory.memory_contributions.length
+                  return (
+                    <Link
+                      key={memory.id}
+                      href={`/memories/${memory.id}`}
+                      className="flex-none w-52 snap-start"
+                    >
+                      <div className="rounded-2xl border bg-card p-4 h-full min-h-[120px] hover:border-foreground/20 hover:shadow-sm transition-all space-y-2.5">
+                        {catInfo ? (
+                          <span className="text-xs text-muted-foreground">
+                            {catInfo.emoji} {catInfo.label}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground/40">—</span>
+                        )}
+                        <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground">
+                          {memory.title}
+                        </h3>
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateShort(memory.happened_at)}
+                          </p>
+                          {contribCount > 0 && (
+                            <span className="text-xs text-muted-foreground/60">
+                              {contribCount} contribut{contribCount === 1 ? 'o' : 'i'}
+                            </span>
+                          )}
+                        </div>
+                        {memory.location_name && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <span>📍</span>
+                            <span className="line-clamp-1">{memory.location_name}</span>
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* 2 — Connessioni che contano */}
+            {topTags.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Connessioni che contano
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {topTags.map(({ tag, count }) => (
+                    <Link
+                      key={tag}
+                      href={`/tags/${encodeURIComponent(tag)}`}
+                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium border border-border bg-card hover:border-foreground/30 hover:bg-accent/20 transition-all"
+                    >
+                      <span className="text-foreground">#{tag}</span>
+                      <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 leading-none">
+                        {count}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3 — Rivivi per capitoli */}
+            {usedCategories.length > 1 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Rivivi per capitoli
+                </p>
+                <div className="flex gap-2 flex-wrap">
+                  {usedCategories.map((cat) => (
+                    <button
+                      key={cat.value}
+                      onClick={() => setActiveCategory(cat.value)}
+                      className="rounded-full px-4 py-2 text-sm font-medium border border-border bg-card hover:border-foreground/30 hover:bg-accent/20 transition-all"
+                    >
+                      {cat.emoji} {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Divider before full list */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex-1 border-t border-border/50" />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Tutti i ricordi
+              </span>
+              <div className="flex-1 border-t border-border/50" />
+            </div>
+          </>
+        )}
+
+        {/* ── Search (always visible, more prominent when filters active) ── */}
+        <div className={`relative mb-4 ${hasFilters ? '' : 'opacity-70 focus-within:opacity-100 transition-opacity'}`}>
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input
             type="search"
@@ -135,8 +274,8 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
           />
         </div>
 
-        {/* Category filter */}
-        {usedCategories.length > 0 && (
+        {/* Category filter chips (shown when filters active) */}
+        {hasFilters && usedCategories.length > 0 && (
           <div className="flex gap-2 flex-wrap mb-4">
             <button
               onClick={() => setActiveCategory(null)}
@@ -151,9 +290,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
             {usedCategories.map((cat) => (
               <button
                 key={cat.value}
-                onClick={() =>
-                  setActiveCategory(activeCategory === cat.value ? null : cat.value)
-                }
+                onClick={() => setActiveCategory(activeCategory === cat.value ? null : cat.value)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium border transition-all ${
                   activeCategory === cat.value
                     ? 'bg-foreground text-background border-foreground'
@@ -166,37 +303,12 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
           </div>
         )}
 
-        {/* Connections navigation cloud */}
-        {allTags.length > 0 && (
-          <div className="mb-4">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-              Connessioni
-            </p>
-            <div className="flex gap-1.5 flex-wrap">
-              {allTags.map((tag) => {
-                const count = tagCounts[tag] ?? 0
-                return (
-                  <Link
-                    key={tag}
-                    href={`/tags/${encodeURIComponent(tag)}`}
-                    className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border border-transparent bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground hover:border-border transition-all"
-                  >
-                    #{tag}
-                    {count > 1 && (
-                      <span className="ml-1 text-muted-foreground/50">{count}</span>
-                    )}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Active filter summary */}
         {hasFilters && (
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs text-muted-foreground">
               {filteredMemories.length} risultat{filteredMemories.length === 1 ? 'o' : 'i'}
+              {activeCategory && ` in ${getCategoryInfo(activeCategory)?.label}`}
             </span>
             <button
               onClick={resetFilters}
@@ -207,24 +319,10 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
           </div>
         )}
 
-        {/* Memory list */}
+        {/* ── Memory list ── */}
         {filteredMemories.length === 0 ? (
           <div className="text-center py-20 space-y-4">
-            {memories.length === 0 ? (
-              <>
-                <div className="text-5xl mb-2">✦</div>
-                <p className="text-lg font-medium">Nessun ricordo ancora.</p>
-                <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                  Ogni momento vissuto merita di essere custodito.
-                  Inizia dal primo.
-                </p>
-                <Link href="/memories/new">
-                  <Button className="mt-2 rounded-full px-6">
-                    Crea il tuo primo ricordo
-                  </Button>
-                </Link>
-              </>
-            ) : (
+            {memories.length === 0 ? null : (
               <>
                 <div className="text-4xl mb-2">○</div>
                 <p className="text-base font-medium">Nessun risultato</p>
@@ -282,7 +380,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                         </p>
                       )}
 
-                      {/* Tags — navigate to tag page */}
+                      {/* Tags */}
                       {memory.tags.length > 0 && (
                         <div className="flex gap-1.5 flex-wrap">
                           {memory.tags.slice(0, 5).map((tag) => (
