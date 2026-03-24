@@ -39,7 +39,9 @@ export async function createInvite(memoryId: string, email?: string) {
   const token = generateInviteToken()
   const normalizedEmail = email?.toLowerCase().trim() || null
 
-  const { error: inviteError } = await supabase
+  // Use admin client to bypass RLS for invite insert
+  const admin = createAdminClient()
+  const { error: inviteError } = await admin
     .from('memory_participants')
     .insert({
       memory_id: memoryId,
