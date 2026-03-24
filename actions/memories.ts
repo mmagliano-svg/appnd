@@ -25,6 +25,41 @@ export interface UpdateMemoryInput {
   tags?: string[]
 }
 
+// Non-redirecting version — returns memory ID, caller handles navigation
+export async function createMemoryReturnId(input: CreateMemoryInput): Promise<string> {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) redirect('/auth/login')
+
+  const { data: memory, error: memoryError } = await supabase
+    .from('memories')
+    .insert({
+      title: input.title.trim(),
+      happened_at: input.happened_at,
+      location_name: input.location_name?.trim() || null,
+      description: input.description?.trim() || null,
+      category: input.category || null,
+      tags: normalizeTags(input.tags ?? []),
+      created_by: user!.id,
+    })
+    .select('id')
+    .single()
+
+  if (memoryError || !memory) {
+    throw new Error('Impossibile creare il ricordo. Riprova.')
+  }
+
+  await supabase.from('memory_participants').insert({
+    memory_id: memory.id,
+    user_id: user!.id,
+    invite_token: generateInviteToken(),
+    joined_at: new Date().toISOString(),
+  })
+
+  return memory.id
+}
+
 export async function createMemory(input: CreateMemoryInput) {
   const supabase = await createServerClient()
 

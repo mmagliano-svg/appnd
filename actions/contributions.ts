@@ -49,3 +49,24 @@ export async function createContribution(input: CreateContributionInput) {
   revalidatePath(`/memories/${input.memoryId}`)
   redirect(`/memories/${input.memoryId}`)
 }
+
+// Non-redirecting version — used when the caller handles navigation
+export async function addMediaContribution(
+  memoryId: string,
+  mediaUrl: string,
+  caption?: string
+) {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) redirect('/auth/login')
+
+  await supabase.from('memory_contributions').insert({
+    memory_id: memoryId,
+    author_id: user!.id,
+    content_type: 'photo' as ContentType,
+    media_url: mediaUrl,
+    caption: caption?.trim() || null,
+    text_content: null,
+  })
+}
