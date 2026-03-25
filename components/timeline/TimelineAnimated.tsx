@@ -37,7 +37,7 @@ const MONTHS_IT = [
   'Settembre', 'Ottobre', 'Novembre', 'Dicembre',
 ]
 
-const DAYS_SHORT = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab']
+const DAYS_FULL = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato']
 
 // ── Grouping ───────────────────────────────────────────────────────────────
 
@@ -322,18 +322,18 @@ function MonthsView({
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-muted-foreground/10 to-muted" />
                   )}
-                  {/* Gradient so text is legible on any photo */}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
+                  {/* Gradient — slightly stronger for legibility */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/82 via-black/50 to-transparent" />
                 </div>
 
                 {/* Label */}
                 <div className="absolute inset-0 flex items-center px-5 z-10">
                   <div>
-                    <p className="text-white text-2xl font-bold tracking-tight leading-none">
+                    <p className="text-white text-2xl font-extrabold tracking-tight leading-none">
                       {MONTHS_IT[month - 1]}
                     </p>
-                    <p className="text-white/55 text-sm mt-1.5">
-                      {totalCount} {totalCount === 1 ? 'momento' : 'momenti'}
+                    <p className="text-white/60 text-sm mt-2 font-medium">
+                      {totalCount === 1 ? 'Un momento vissuto' : `${totalCount} momenti vissuti`}
                     </p>
                   </div>
                 </div>
@@ -384,22 +384,35 @@ function DaysView({
         />
       )}
 
+      {/* Micro intro */}
+      <div className="mb-8 mt-1">
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/40 mb-1.5">
+          {MONTHS_IT[monthGroup.month - 1]} {year}
+        </p>
+        <p className="text-sm text-muted-foreground/60 leading-snug">
+          I momenti di questo mese
+        </p>
+      </div>
+
       {/* Day groups stagger in */}
       <motion.div
-        className="space-y-10"
+        className="space-y-14"
         variants={staggerContainer}
         initial="hidden"
         animate="show"
       >
         {monthGroup.dayGroups.map(({ day, memories }) => {
-          const date     = new Date(year, monthGroup.month - 1, day)
-          const dayLabel = DAYS_SHORT[date.getDay()]
+          const date        = new Date(year, monthGroup.month - 1, day)
+          const dayOfWeek   = DAYS_FULL[date.getDay()]
+          const monthName   = MONTHS_IT[monthGroup.month - 1].toLowerCase()
 
           return (
             <motion.div key={day} variants={staggerItem}>
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-2xl font-bold tabular-nums">{day}</span>
-                <span className="text-sm text-muted-foreground">{dayLabel}</span>
+              <div className="flex items-baseline gap-2 mb-5">
+                <span className="text-2xl font-bold tabular-nums leading-none">{day}</span>
+                <span className="text-sm text-muted-foreground font-medium">
+                  {monthName} · {dayOfWeek}
+                </span>
               </div>
 
               <div className="space-y-3">
