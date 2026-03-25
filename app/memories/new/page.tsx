@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
 import { addMediaContribution } from '@/actions/contributions'
@@ -12,7 +12,7 @@ import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
 import { formatPeriodDisplay } from '@/lib/utils/dates'
 
-export default function NewMemoryPage() {
+function NewMemoryForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const titleRef = useRef<HTMLInputElement>(null)
@@ -472,5 +472,13 @@ export default function NewMemoryPage() {
         </form>
       </div>
     </main>
+  )
+}
+
+export default function NewMemoryPage() {
+  return (
+    <Suspense>
+      <NewMemoryForm />
+    </Suspense>
   )
 }
