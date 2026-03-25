@@ -11,6 +11,92 @@ interface Props {
   onSelectYear: (year: number) => void
 }
 
+function YearCard({
+  year,
+  totalCount,
+  previewUrls,
+  onClick,
+}: {
+  year: number
+  totalCount: number
+  previewUrls: string[]
+  onClick: () => void
+}) {
+  const mainUrl = previewUrls[0] ?? null
+  const secondaryUrls = previewUrls.slice(1, 3) // max 2
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full rounded-2xl overflow-hidden bg-muted group text-left focus:outline-none active:scale-[0.99] transition-transform"
+    >
+      {/* ── Photo collage ── */}
+      {mainUrl === null ? (
+        /* No photos — neutral with subtle year watermark */
+        <div className="h-52 flex items-center justify-center bg-muted">
+          <span className="text-8xl font-bold tracking-tight tabular-nums text-muted-foreground/12 select-none">
+            {year}
+          </span>
+        </div>
+      ) : secondaryUrls.length === 0 ? (
+        /* Single photo — full width */
+        <div className="h-52 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={mainUrl}
+            alt=""
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          />
+        </div>
+      ) : (
+        /* Main + secondary column */
+        <div className="flex gap-0.5 h-52">
+          {/* Main photo — ~65% width */}
+          <div className="flex-[1.8] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={mainUrl}
+              alt=""
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            />
+          </div>
+          {/* Secondary stack — ~35% width */}
+          <div className="flex-none w-[88px] flex flex-col gap-0.5">
+            {secondaryUrls.map((url, i) => (
+              <div key={i} className="flex-1 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Footer: year + count + chevron ── */}
+      <div className="flex items-center justify-between px-4 py-3.5">
+        <div>
+          <p className="text-2xl font-bold tracking-tight tabular-nums leading-none">
+            {year}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">{plural(totalCount)}</p>
+        </div>
+        <svg
+          className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+    </button>
+  )
+}
+
 export function YearsView({ yearGroups, onSelectYear }: Props) {
   if (yearGroups.length === 0) {
     return (
@@ -23,51 +109,15 @@ export function YearsView({ yearGroups, onSelectYear }: Props) {
   }
 
   return (
-    <div className="divide-y divide-border/40">
+    <div className="space-y-4">
       {yearGroups.map(({ year, totalCount, previewUrls }) => (
-        <button
+        <YearCard
           key={year}
+          year={year}
+          totalCount={totalCount}
+          previewUrls={previewUrls}
           onClick={() => onSelectYear(year)}
-          className="w-full flex items-center gap-4 py-7 -mx-4 px-4 hover:bg-accent/20 active:bg-accent/40 transition-colors group text-left"
-        >
-          {/* Year + count */}
-          <div className="flex-none w-24">
-            <p className="text-5xl font-bold tracking-tight tabular-nums leading-none">
-              {year}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">{plural(totalCount)}</p>
-          </div>
-
-          {/* Photo strip */}
-          <div className="flex-1 flex items-center justify-end gap-1.5 overflow-hidden">
-            {previewUrls.length > 0
-              ? previewUrls.slice(0, 3).map((url, i) => (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    key={i}
-                    src={url}
-                    alt=""
-                    className="w-14 h-14 rounded-xl object-cover shrink-0 opacity-85 group-hover:opacity-100 transition-opacity"
-                  />
-                ))
-              : Array.from({ length: 3 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="w-14 h-14 rounded-xl bg-muted shrink-0"
-                  />
-                ))}
-          </div>
-
-          {/* Chevron */}
-          <svg
-            className="w-4 h-4 text-muted-foreground/35 group-hover:text-muted-foreground shrink-0 transition-colors"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+        />
       ))}
     </div>
   )

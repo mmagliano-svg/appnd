@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { TimelineMemory } from '@/actions/memories'
 import { YearsView } from './YearsView'
 import { MonthsView } from './MonthsView'
@@ -87,6 +87,7 @@ export function TimelineClient({ memories }: Props) {
   const [level, setLevel] = useState<Level>('years')
   const [selectedYear, setSelectedYear] = useState<number | null>(null)
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null)
+  const direction = useRef<'forward' | 'backward'>('forward')
 
   const yearGroups = useMemo(() => groupMemories(memories), [memories])
 
@@ -99,17 +100,20 @@ export function TimelineClient({ memories }: Props) {
   const viewKey = `${level}-${selectedYear}-${selectedMonth}`
 
   function goToYear(year: number) {
+    direction.current = 'forward'
     setSelectedYear(year)
     setSelectedMonth(null)
     setLevel('months')
   }
 
   function goToMonth(month: number) {
+    direction.current = 'forward'
     setSelectedMonth(month)
     setLevel('days')
   }
 
   function goBack() {
+    direction.current = 'backward'
     if (level === 'days') {
       setSelectedMonth(null)
       setLevel('months')
@@ -119,8 +123,11 @@ export function TimelineClient({ memories }: Props) {
     }
   }
 
+  const animClass =
+    direction.current === 'forward' ? 'animate-zoom-forward' : 'animate-zoom-backward'
+
   return (
-    <div key={viewKey} className="animate-timeline-in">
+    <div key={viewKey} className={animClass}>
       {level === 'years' && (
         <YearsView yearGroups={yearGroups} onSelectYear={goToYear} />
       )}
