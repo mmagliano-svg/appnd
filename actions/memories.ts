@@ -375,6 +375,76 @@ export async function getExploreData(): Promise<ExploreData> {
   return { topTags, topPlaces, categories }
 }
 
+// ── Timeline ──────────────────────────────────────────────────────────────
+
+export interface TimelineMemory {
+  id: string
+  title: string
+  start_date: string
+  end_date: string | null
+  location_name: string | null
+  previewUrl: string | null
+}
+
+// Fetches all user memories (flat) with one photo preview per memory.
+// Grouping (year/month/day) is done client-side — no extra API calls needed.
+export async function getTimelineMemories(): Promise<TimelineMemory[]> {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return []
+
+  const { data } = await supabase
+    .from('memory_participants')
+    .select(`memories ( id, title, start_date, end_date, location_name )`)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+
+  if (!data) return []
+
+  type MemRow = {
+    id: string
+    title: string
+    start_date: string
+    end_date: string | null
+    location_name: string | null
+  }
+  const memories = data
+    .map((p) => p.memories as MemRow | null)
+    .filter(Boolean) as MemRow[]
+
+  const memoryIds = memories.map((m) => m.id)
+
+  // Resolve preview photo for each memory
+  const photoMap = new Map<string, string>()
+  if (memoryIds.length > 0) {
+    const { data: photos } = await supabase
+      .from('memory_contributions')
+      .select('memory_id, media_url, created_at')
+      .eq('content_type', 'photo')
+      .in('memory_id', memoryIds)
+      .not('media_url', 'is', null)
+      .order('created_at', { ascending: false })
+
+    for (const p of photos ?? []) {
+      if (!photoMap.has(p.memory_id) && p.media_url) {
+        photoMap.set(p.memory_id, p.media_url as string)
+      }
+    }
+  }
+
+  return memories
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+    .map((m) => ({
+      id: m.id,
+      title: m.title,
+      start_date: m.start_date,
+      end_date: m.end_date,
+      location_name: m.location_name,
+      previewUrl: photoMap.get(m.id) ?? null,
+    }))
+}
+
 // ── On This Day ───────────────────────────────────────────────────────────
 
 export interface OnThisDayMemory {

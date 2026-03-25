@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const SHOW_ON = ['/dashboard', '/explore']
+const SHOW_ON = ['/dashboard', '/explore', '/timeline']
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -23,6 +23,24 @@ function HomeIcon({ active }: { active: boolean }) {
   )
 }
 
+function TimelineIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      className={`w-5 h-5 transition-colors ${active ? 'text-foreground' : 'text-muted-foreground'}`}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={active ? 2.25 : 1.75}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
+    </svg>
+  )
+}
+
 function ExploreIcon({ active }: { active: boolean }) {
   return (
     <svg
@@ -31,19 +49,33 @@ function ExploreIcon({ active }: { active: boolean }) {
       stroke="currentColor"
       viewBox="0 0 24 24"
     >
-      <circle
-        cx="11" cy="11" r="8"
-        strokeWidth={active ? 2.25 : 1.75}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={active ? 2.25 : 1.75}
-        d="M21 21l-4.35-4.35"
-      />
+      <circle cx="11" cy="11" r="8" strokeWidth={active ? 2.25 : 1.75} strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2.25 : 1.75} d="M21 21l-4.35-4.35" />
     </svg>
+  )
+}
+
+interface NavTabProps {
+  href: string
+  label: string
+  active: boolean
+  children: React.ReactNode
+}
+
+function NavTab({ href, label, active, children }: NavTabProps) {
+  return (
+    <Link
+      href={href}
+      className="flex flex-col items-center justify-center gap-1 py-2 group"
+      aria-label={label}
+    >
+      {children}
+      <span className={`text-[10px] font-medium tracking-wide transition-colors ${
+        active ? 'text-foreground' : 'text-muted-foreground'
+      }`}>
+        {label}
+      </span>
+    </Link>
   )
 }
 
@@ -53,52 +85,38 @@ export function BottomNav() {
   if (!SHOW_ON.includes(pathname)) return null
 
   const isHome = pathname === '/dashboard'
+  const isTimeline = pathname === '/timeline'
   const isExplore = pathname === '/explore'
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-sm">
-      <div className="max-w-lg mx-auto flex items-center h-16 px-8">
+      <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-4">
 
         {/* Casa */}
-        <Link
-          href="/dashboard"
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 group"
-          aria-label="I tuoi ricordi"
-        >
+        <NavTab href="/dashboard" label="Casa" active={isHome}>
           <HomeIcon active={isHome} />
-          <span className={`text-[10px] font-medium tracking-wide transition-colors ${
-            isHome ? 'text-foreground' : 'text-muted-foreground'
-          }`}>
-            Casa
-          </span>
-        </Link>
+        </NavTab>
 
-        {/* Nuovo ricordo — centro */}
-        <div className="flex-1 flex items-center justify-center">
-          <Link
-            href="/memories/new"
-            className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center shadow-md hover:opacity-80 active:scale-95 transition-all"
-            aria-label="Nuovo ricordo"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </Link>
-        </div>
+        {/* Timeline */}
+        <NavTab href="/timeline" label="Timeline" active={isTimeline}>
+          <TimelineIcon active={isTimeline} />
+        </NavTab>
+
+        {/* Nuovo ricordo — FAB centrale */}
+        <Link
+          href="/memories/new"
+          className="w-12 h-12 rounded-full bg-foreground text-background flex items-center justify-center shadow-md hover:opacity-80 active:scale-95 transition-all"
+          aria-label="Nuovo ricordo"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </Link>
 
         {/* Esplora */}
-        <Link
-          href="/explore"
-          className="flex-1 flex flex-col items-center justify-center gap-1 py-2 group"
-          aria-label="Esplora"
-        >
+        <NavTab href="/explore" label="Esplora" active={isExplore}>
           <ExploreIcon active={isExplore} />
-          <span className={`text-[10px] font-medium tracking-wide transition-colors ${
-            isExplore ? 'text-foreground' : 'text-muted-foreground'
-          }`}>
-            Esplora
-          </span>
-        </Link>
+        </NavTab>
 
       </div>
     </nav>
