@@ -86,27 +86,28 @@ function groupMemories(memories: TimelineMemory[]): YearGroup[] {
 
 // ── Animation config ───────────────────────────────────────────────────────
 
-// Custom easing: fast start, decelerate — mimics native iOS zoom
-const EASE_ZOOM   = [0.32, 0.72, 0, 1] as const
+// Standard ease-out: smooth deceleration, no overshoot
+const EASE_ZOOM   = [0.25, 0.46, 0.45, 0.94] as const
 const EASE_RETURN = [0.22, 1, 0.36, 1] as const
 
-const VIEW_DURATION  = 0.3
+const VIEW_DURATION  = 0.18
 const PHOTO_SPRING   = { type: 'spring' as const, stiffness: 440, damping: 42 }
 
-// View-level transition: forward = zoom IN (content emerges from depth)
-//                        backward = zoom OUT (content recedes into depth)
+// View-level transition — subtle scale + fade, no hard cut
+// forward  = drill in  (slight zoom in from below)
+// backward = drill out (slight zoom out)
 function viewVariants(dir: 'forward' | 'backward') {
   if (dir === 'forward') {
     return {
-      initial: { opacity: 0, scale: 0.91, y: 16 },
-      animate: { opacity: 1, scale: 1,    y: 0  },
-      exit:    { opacity: 0, scale: 1.06, y: 0  },
+      initial: { opacity: 0, scale: 0.97, y: 6 },
+      animate: { opacity: 1, scale: 1,    y: 0 },
+      exit:    { opacity: 0, scale: 1.02, y: 0 },
     }
   }
   return {
-    initial: { opacity: 0, scale: 1.06, y: 0  },
-    animate: { opacity: 1, scale: 1,    y: 0  },
-    exit:    { opacity: 0, scale: 0.91, y: 16 },
+    initial: { opacity: 0, scale: 1.02, y: 0 },
+    animate: { opacity: 1, scale: 1,    y: 0 },
+    exit:    { opacity: 0, scale: 0.97, y: 6 },
   }
 }
 
@@ -603,6 +604,15 @@ export function TimelineAnimated({ memories }: Props) {
     }
   }, [level, selectedYear])
 
+  // Jump straight to years from any depth (used by breadcrumb)
+  const jumpToYears = useCallback(() => {
+    setDir('backward')
+    pendingScroll.current = scrollStore.current['years'] ?? 0
+    setSelectedYear(null)
+    setSelectedMonth(null)
+    setLevel('years')
+  }, [])
+
   // ── Header text ────────────────────────────────────────────────────────
 
   const title =
@@ -619,68 +629,128 @@ export function TimelineAnimated({ memories }: Props) {
   return (
     <LayoutGroup>
       {/* ── Dynamic header ───────────────────────────────────────────────── */}
-      <div className="pt-10 pb-8 flex items-center gap-3 min-h-[88px]">
-        {/* Back button slides in/out */}
+      <div className="pt-10 pb-6">
+
+        {/* Back button — visible when not at root */}
         <AnimatePresence mode="wait">
           {level !== 'years' && (
             <motion.button
               key="back-btn"
-              initial={{ opacity: 0, x: -10 }}
+              initial={{ opacity: 0, x: -8 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.15 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.14 }}
               onClick={goBack}
-              className="flex-none text-muted-foreground hover:text-foreground transition-colors p-1 -ml-1"
+              className="flex items-center gap-1 mb-3 text-muted-foreground hover:text-foreground transition-colors -ml-0.5"
               aria-label="Indietro"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
               </svg>
+              <span className="text-sm font-medium">
+                {level === 'months' ? 'Tutti gli anni' : String(selectedYear)}
+              </span>
             </motion.button>
           )}
         </AnimatePresence>
 
-        <div className="min-w-0 flex-1">
-          {/* Title slides up (forward) or down (backward) */}
+        {/* Title + subtitle */}
+        <div className="min-w-0">
           <AnimatePresence mode="wait">
             <motion.h1
               key={title}
-              initial={{ opacity: 0, y: dir === 'forward' ? -10 : 10 }}
+              initial={{ opacity: 0, y: dir === 'forward' ? -8 : 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{   opacity: 0, y: dir === 'forward' ?  10 : -10 }}
-              transition={{ duration: 0.16, ease: 'easeInOut' }}
+              exit={{   opacity: 0, y: dir === 'forward' ?  8 : -8 }}
+              transition={{ duration: 0.14, ease: 'easeInOut' }}
               className="text-3xl font-bold tracking-tight leading-none"
             >
               {title}
             </motion.h1>
           </AnimatePresence>
 
-          {/* Static subtitle for year level */}
-          {level === 'years' && (
-            <p className="text-sm text-muted-foreground mt-1.5">
-              {activeCategory
-                ? `${usedCategories.find(c => c.value === activeCategory)?.label ?? activeCategory} · filtrando`
-                : 'La tua storia nel tempo.'}
-            </p>
-          )}
-
-          {/* Year sub-label visible when inside a month */}
           <AnimatePresence mode="wait">
-            {subtitle && (
+            {level === 'years' && (
               <motion.p
-                key={subtitle}
+                key="subtitle-years"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{   opacity: 0 }}
-                transition={{ duration: 0.15 }}
-                className="text-sm text-muted-foreground mt-1"
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.14 }}
+                className="text-sm text-muted-foreground mt-1.5"
               >
-                {subtitle}
+                {activeCategory
+                  ? `${usedCategories.find(c => c.value === activeCategory)?.label ?? activeCategory} · filtrando`
+                  : 'La tua storia nel tempo.'}
+              </motion.p>
+            )}
+            {level === 'months' && (
+              <motion.p
+                key="subtitle-months"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.14 }}
+                className="text-sm text-muted-foreground mt-1.5"
+              >
+                Scegli un mese
+              </motion.p>
+            )}
+            {level === 'days' && selectedYear && (
+              <motion.p
+                key={`subtitle-days-${selectedYear}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.14 }}
+                className="text-sm text-muted-foreground mt-1.5"
+              >
+                {selectedYear}
               </motion.p>
             )}
           </AnimatePresence>
         </div>
       </div>
+
+      {/* ── Breadcrumb — visible when not at root ────────────────────────── */}
+      <AnimatePresence>
+        {level !== 'years' && (
+          <motion.nav
+            key={`breadcrumb-${level}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.14 }}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground/50 mb-5"
+            aria-label="Percorso"
+          >
+            <button
+              onClick={jumpToYears}
+              className="hover:text-muted-foreground transition-colors"
+            >
+              Timeline
+            </button>
+            <span>›</span>
+            {level === 'months' && (
+              <span className="text-foreground/60 font-medium">{selectedYear}</span>
+            )}
+            {level === 'days' && (
+              <>
+                <button
+                  onClick={goBack}
+                  className="hover:text-muted-foreground transition-colors"
+                >
+                  {selectedYear}
+                </button>
+                <span>›</span>
+                <span className="text-foreground/60 font-medium">
+                  {MONTHS_IT[(selectedMonth ?? 1) - 1]}
+                </span>
+              </>
+            )}
+          </motion.nav>
+        )}
+      </AnimatePresence>
 
       {/* ── Category filter chips — years level only ─────────────────────── */}
       <AnimatePresence>
