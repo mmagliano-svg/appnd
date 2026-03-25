@@ -129,7 +129,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="max-w-lg mx-auto px-4 pb-16">
+      <div className="max-w-lg mx-auto px-4 pb-28">
 
         {/* ── Header ── */}
         <div className="pt-10 pb-6">

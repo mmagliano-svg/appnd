@@ -258,6 +258,91 @@ export async function getAllUserTags(): Promise<string[]> {
   return Array.from(new Set(allTags)).sort()
 }
 
+// ── Esplora ───────────────────────────────────────────────────────────────
+
+export interface ExploreTag {
+  tag: string
+  count: number
+}
+
+export interface ExplorePlace {
+  place: string
+  count: number
+  // Reserved for future map integration
+  lat: null
+  lng: null
+}
+
+export interface ExploreCategory {
+  value: string
+  count: number
+}
+
+export interface ExploreData {
+  topTags: ExploreTag[]
+  topPlaces: ExplorePlace[]
+  categories: ExploreCategory[]
+}
+
+export async function getExploreData(): Promise<ExploreData> {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { topTags: [], topPlaces: [], categories: [] }
+
+  const { data } = await supabase
+    .from('memory_participants')
+    .select(`memories ( tags, location_name, category )`)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+
+  if (!data) return { topTags: [], topPlaces: [], categories: [] }
+
+  const memories = data
+    .map((p) => p.memories as { tags: string[]; location_name: string | null; category: string | null } | null)
+    .filter(Boolean) as Array<{ tags: string[]; location_name: string | null; category: string | null }>
+
+  // Top tags by frequency
+  const tagCounts: Record<string, number> = {}
+  for (const m of memories) {
+    for (const t of m.tags ?? []) {
+      tagCounts[t] = (tagCounts[t] ?? 0) + 1
+    }
+  }
+  const topTags = Object.entries(tagCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([tag, count]) => ({ tag, count }))
+
+  // Unique places by frequency
+  const placeCounts: Record<string, number> = {}
+  for (const m of memories) {
+    if (m.location_name?.trim()) {
+      const p = m.location_name.trim()
+      placeCounts[p] = (placeCounts[p] ?? 0) + 1
+    }
+  }
+  const topPlaces = Object.entries(placeCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 8)
+    .map(([place, count]) => ({ place, count, lat: null, lng: null }))
+
+  // Categories with count, sorted by frequency
+  const categoryCounts: Record<string, number> = {}
+  for (const m of memories) {
+    if (m.category) {
+      categoryCounts[m.category] = (categoryCounts[m.category] ?? 0) + 1
+    }
+  }
+  const categories = Object.entries(categoryCounts)
+    .sort(([, a], [, b]) => b - a)
+    .map(([value, count]) => ({ value, count }))
+
+  return { topTags, topPlaces, categories }
+}
+
+// ── Periods ───────────────────────────────────────────────────────────────
+
 export interface PeriodSummary {
   id: string
   title: string
