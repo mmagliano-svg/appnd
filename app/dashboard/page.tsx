@@ -1,11 +1,13 @@
 import { Suspense } from 'react'
 import { getUserMemories, getAllUserTags } from '@/actions/memories'
+import { getSharedPeople } from '@/actions/people'
 import { DashboardClient } from '@/components/memory/DashboardClient'
 
 export default async function DashboardPage() {
-  const [memories, allTags] = await Promise.all([
+  const [memories, allTags, people] = await Promise.all([
     getUserMemories(),
     getAllUserTags(),
+    getSharedPeople(),
   ])
 
   return (
@@ -14,7 +16,7 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm">Caricamento…</p>
       </main>
     }>
-      <DashboardClient memories={memories} allTags={allTags} />
+      <DashboardClient memories={memories} allTags={allTags} people={people} />
     </Suspense>
   )
 }

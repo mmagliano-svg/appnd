@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { formatMemoryDate, formatMemoryDateShort, formatPeriodDisplay } from '@/lib/utils/dates'
 import { getRandomQuote } from '@/lib/memory-quotes'
+import type { PersonSummary } from '@/actions/people'
 
 interface Memory {
   id: string
@@ -28,6 +29,7 @@ interface Memory {
 interface DashboardClientProps {
   memories: Memory[]
   allTags: string[]
+  people: PersonSummary[]
 }
 
 function getCategoryInfo(value: string | null) {
@@ -35,7 +37,7 @@ function getCategoryInfo(value: string | null) {
   return CATEGORIES.find((c) => c.value === value) ?? null
 }
 
-export function DashboardClient({ memories, allTags }: DashboardClientProps) {
+export function DashboardClient({ memories, allTags, people }: DashboardClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -181,6 +183,47 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
         {/* ── DISCOVERY SECTIONS (no filters active) ── */}
         {showDiscovery && (
           <>
+            {/* 0 — Con chi */}
+            {people.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Con chi
+                </p>
+                <div
+                  className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4"
+                  style={{ scrollbarWidth: 'none' }}
+                >
+                  {people.map((person) => {
+                    const parts = person.displayName.trim().split(/\s+/)
+                    const ini = parts.length >= 2
+                      ? (parts[0][0] + parts[1][0]).toUpperCase()
+                      : person.displayName.slice(0, 2).toUpperCase()
+                    const firstName = parts[0]
+
+                    return (
+                      <Link
+                        key={person.userId}
+                        href={`/people/${person.userId}`}
+                        className="flex-none flex flex-col items-center gap-2 group"
+                      >
+                        <div className="w-14 h-14 rounded-full bg-foreground flex items-center justify-center group-hover:opacity-80 transition-opacity">
+                          <span className="text-lg font-bold tracking-tight text-background">
+                            {ini}
+                          </span>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs font-medium leading-none">{firstName}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {person.sharedCount} moment{person.sharedCount === 1 ? 'o' : 'i'}
+                          </p>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* 1 — Riprendi da qui */}
             <div className="mb-8">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
