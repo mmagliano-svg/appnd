@@ -380,6 +380,7 @@ export async function getExploreData(): Promise<ExploreData> {
 export interface TimelineMemory {
   id: string
   title: string
+  description: string | null
   start_date: string
   end_date: string | null
   location_name: string | null
@@ -396,7 +397,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
 
   const { data } = await supabase
     .from('memory_participants')
-    .select(`memories ( id, title, start_date, end_date, location_name )`)
+    .select(`memories ( id, title, description, start_date, end_date, location_name )`)
     .eq('user_id', user.id)
     .not('joined_at', 'is', null)
 
@@ -405,6 +406,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
   type MemRow = {
     id: string
     title: string
+    description: string | null
     start_date: string
     end_date: string | null
     location_name: string | null
@@ -438,6 +440,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
     .map((m) => ({
       id: m.id,
       title: m.title,
+      description: m.description,
       start_date: m.start_date,
       end_date: m.end_date,
       location_name: m.location_name,

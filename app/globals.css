@@ -83,9 +83,9 @@
     }
   }
   .animate-zoom-forward {
-    animation: timeline-zoom-forward 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: timeline-zoom-forward 0.2s ease-in-out both;
   }
   .animate-zoom-backward {
-    animation: timeline-zoom-backward 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: timeline-zoom-backward 0.2s ease-in-out both;
   }
 }

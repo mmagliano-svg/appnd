@@ -6,95 +6,130 @@ function plural(n: number) {
   return `${n} ${n === 1 ? 'momento' : 'momenti'}`
 }
 
-interface Props {
-  yearGroups: YearGroup[]
-  onSelectYear: (year: number) => void
+function ChevronRight({ dim }: { dim?: boolean }) {
+  return (
+    <svg
+      className={`w-4 h-4 shrink-0 transition-colors ${dim ? 'text-muted-foreground/35 group-hover:text-muted-foreground' : 'text-white/50 group-hover:text-white/90'}`}
+      fill="none" stroke="currentColor" viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
+    </svg>
+  )
 }
 
-function YearCard({
-  year,
-  totalCount,
-  previewUrls,
-  onClick,
-}: {
-  year: number
-  totalCount: number
-  previewUrls: string[]
-  onClick: () => void
-}) {
+// ── Hero card (most recent year) ───────────────────────────────────────────
+
+function HeroYearCard({
+  year, totalCount, previewUrls, onClick,
+}: YearGroup & { onClick: () => void }) {
   const mainUrl = previewUrls[0] ?? null
-  const secondaryUrls = previewUrls.slice(1, 3) // max 2
+  const secondaryUrls = previewUrls.slice(1, 3)
 
   return (
     <button
       onClick={onClick}
       className="w-full rounded-2xl overflow-hidden bg-muted group text-left focus:outline-none active:scale-[0.99] transition-transform"
     >
-      {/* ── Photo collage ── */}
+      {/* Collage */}
       {mainUrl === null ? (
-        /* No photos — neutral with subtle year watermark */
-        <div className="h-52 flex items-center justify-center bg-muted">
-          <span className="text-8xl font-bold tracking-tight tabular-nums text-muted-foreground/12 select-none">
+        <div className="h-72 flex items-center justify-center bg-muted">
+          <span className="text-9xl font-bold tracking-tight tabular-nums text-muted-foreground/10 select-none">
             {year}
           </span>
         </div>
       ) : secondaryUrls.length === 0 ? (
-        /* Single photo — full width */
-        <div className="h-52 overflow-hidden">
+        <div className="h-72 overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={mainUrl}
-            alt=""
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-          />
+          <img src={mainUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
         </div>
       ) : (
-        /* Main + secondary column */
-        <div className="flex gap-0.5 h-52">
-          {/* Main photo — ~65% width */}
+        <div className="flex gap-0.5 h-72">
           <div className="flex-[1.8] overflow-hidden">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={mainUrl}
-              alt=""
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            />
+            <img src={mainUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
           </div>
-          {/* Secondary stack — ~35% width */}
-          <div className="flex-none w-[88px] flex flex-col gap-0.5">
+          <div className="flex-none w-[96px] flex flex-col gap-0.5">
             {secondaryUrls.map((url, i) => (
               <div key={i} className="flex-1 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={url}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
+                <img src={url} alt="" className="w-full h-full object-cover" />
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* ── Footer: year + count + chevron ── */}
-      <div className="flex items-center justify-between px-4 py-3.5">
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-4">
         <div>
-          <p className="text-2xl font-bold tracking-tight tabular-nums leading-none">
-            {year}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">{plural(totalCount)}</p>
+          <p className="text-3xl font-bold tracking-tight tabular-nums leading-none">{year}</p>
+          <p className="text-sm text-muted-foreground mt-1.5">{plural(totalCount)}</p>
         </div>
-        <svg
-          className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
-        </svg>
+        <ChevronRight dim />
       </div>
     </button>
   )
+}
+
+// ── Compact card (older years) ─────────────────────────────────────────────
+
+function CompactYearCard({
+  year, totalCount, previewUrls, onClick,
+}: YearGroup & { onClick: () => void }) {
+  const mainUrl = previewUrls[0] ?? null
+  const secondaryUrls = previewUrls.slice(1, 3)
+
+  return (
+    <button
+      onClick={onClick}
+      className="w-full rounded-2xl overflow-hidden bg-muted group text-left focus:outline-none active:scale-[0.99] transition-transform"
+    >
+      {/* Collage */}
+      {mainUrl === null ? (
+        <div className="h-44 flex items-center justify-center bg-muted">
+          <span className="text-7xl font-bold tracking-tight tabular-nums text-muted-foreground/10 select-none">
+            {year}
+          </span>
+        </div>
+      ) : secondaryUrls.length === 0 ? (
+        <div className="h-44 overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={mainUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+        </div>
+      ) : (
+        <div className="flex gap-0.5 h-44">
+          <div className="flex-[1.8] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={mainUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+          </div>
+          <div className="flex-none w-[80px] flex flex-col gap-0.5">
+            {secondaryUrls.map((url, i) => (
+              <div key={i} className="flex-1 overflow-hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt="" className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div>
+          <p className="text-2xl font-bold tracking-tight tabular-nums leading-none">{year}</p>
+          <p className="text-xs text-muted-foreground mt-1">{plural(totalCount)}</p>
+        </div>
+        <ChevronRight dim />
+      </div>
+    </button>
+  )
+}
+
+// ── Main view ─────────────────────────────────────────────────────────────
+
+interface Props {
+  yearGroups: YearGroup[]
+  onSelectYear: (year: number) => void
 }
 
 export function YearsView({ yearGroups, onSelectYear }: Props) {
@@ -109,16 +144,14 @@ export function YearsView({ yearGroups, onSelectYear }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      {yearGroups.map(({ year, totalCount, previewUrls }) => (
-        <YearCard
-          key={year}
-          year={year}
-          totalCount={totalCount}
-          previewUrls={previewUrls}
-          onClick={() => onSelectYear(year)}
-        />
-      ))}
+    <div className="space-y-3">
+      {yearGroups.map((group, index) =>
+        index === 0 ? (
+          <HeroYearCard key={group.year} {...group} onClick={() => onSelectYear(group.year)} />
+        ) : (
+          <CompactYearCard key={group.year} {...group} onClick={() => onSelectYear(group.year)} />
+        )
+      )}
     </div>
   )
 }
