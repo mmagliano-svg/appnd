@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { formatMemoryDate, formatMemoryDateShort, formatPeriodDisplay } from '@/lib/utils/dates'
+import { getRandomQuote } from '@/lib/memory-quotes'
 
 interface Memory {
   id: string
@@ -17,6 +18,8 @@ interface Memory {
   description: string | null
   category: string | null
   tags: string[]
+  is_anniversary: boolean
+  is_first_time: boolean
   created_by: string
   created_at: string
   memory_contributions: { id: string }[]
@@ -40,6 +43,8 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
   const [activeCategory, setActiveCategory] = useState<string | null>(
     searchParams.get('category')
   )
+  // Stable random quote per session — stable because useState initializer runs once
+  const [quote] = useState(() => getRandomQuote())
 
   // Sync category filter to URL
   useEffect(() => {
@@ -148,17 +153,28 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
 
         {/* ── Empty state ── */}
         {memories.length === 0 && (
-          <div className="text-center py-20 space-y-4">
-            <div className="text-5xl mb-2">✦</div>
-            <p className="text-lg font-medium">Inizia da un momento.</p>
-            <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-              Ogni ricordo costruisce la storia della tua vita. Inizia dal primo.
-            </p>
-            <Link href="/memories/new">
-              <Button className="mt-2 rounded-full px-6">
-                Aggiungi il primo momento
-              </Button>
-            </Link>
+          <div className="text-center py-16 space-y-6">
+            {/* Quote */}
+            <div className="max-w-sm mx-auto space-y-3 px-2">
+              <p className="text-3xl leading-none text-muted-foreground/30 font-serif select-none">"</p>
+              <p className="text-base font-medium leading-relaxed text-foreground/80 italic">
+                {quote.text}
+              </p>
+              <p className="text-xs text-muted-foreground tracking-wide">
+                — {quote.author}
+              </p>
+            </div>
+
+            <div className="pt-2 space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Il tuo libro dei momenti ti aspetta.
+              </p>
+              <Link href="/memories/new">
+                <Button className="rounded-full px-6">
+                  Aggiungi il primo momento
+                </Button>
+              </Link>
+            </div>
           </div>
         )}
 
@@ -475,9 +491,23 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                       </div>
 
                       <div>
-                        <h2 className="font-semibold text-base leading-snug group-hover:text-foreground">
-                          {memory.title}
-                        </h2>
+                        <div className="flex items-start gap-2">
+                          <h2 className="font-semibold text-base leading-snug group-hover:text-foreground flex-1">
+                            {memory.title}
+                          </h2>
+                          <div className="flex gap-1 shrink-0 mt-0.5">
+                            {memory.is_first_time && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
+                                ✦ Prima volta
+                              </span>
+                            )}
+                            {memory.is_anniversary && (
+                              <span className="inline-flex items-center gap-0.5 rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-[10px] font-semibold text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
+                                ↺ Ricorrenza
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         {memory.location_name && (
                           <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                             <span>📍</span>

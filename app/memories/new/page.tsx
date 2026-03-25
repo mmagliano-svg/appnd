@@ -29,6 +29,10 @@ function NewMemoryForm() {
 
   // Date type state
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
+
+  // Memory classification
+  const [isAnniversary, setIsAnniversary] = useState(false)
+  const [isFirstTime, setIsFirstTime] = useState(false)
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState('')
 
@@ -113,6 +117,8 @@ function NewMemoryForm() {
         description: form.get('description') as string,
         category: category || undefined,
         tags,
+        is_anniversary: isAnniversary,
+        is_first_time: isFirstTime,
       })
 
       // 2 — Upload media if present
@@ -318,6 +324,45 @@ function NewMemoryForm() {
                     />
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Tipo di momento */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Questo momento è…</Label>
+              <div className="flex gap-2 flex-wrap">
+                {/* Prima volta */}
+                <button
+                  type="button"
+                  onClick={() => setIsFirstTime((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                    isFirstTime
+                      ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700'
+                      : 'border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  <span className="text-base leading-none">✦</span>
+                  Prima volta
+                </button>
+
+                {/* Anniversario */}
+                <button
+                  type="button"
+                  onClick={() => setIsAnniversary((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
+                    isAnniversary
+                      ? 'border-violet-400 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-700'
+                      : 'border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  <span className="text-base leading-none">↺</span>
+                  Ricorrenza
+                </button>
+              </div>
+              {isAnniversary && (
+                <p className="text-xs text-muted-foreground">
+                  Questo ricordo tornerà in evidenza ogni anno nella stessa data.
+                </p>
               )}
             </div>
 

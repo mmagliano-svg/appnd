@@ -51,6 +51,8 @@ export interface Database {
           location_name: string | null
           category: string | null
           tags: string[]
+          is_anniversary: boolean
+          is_first_time: boolean
           created_by: string
           created_at: string
           updated_at: string
@@ -66,6 +68,8 @@ export interface Database {
           location_name?: string | null
           category?: string | null
           tags?: string[]
+          is_anniversary?: boolean
+          is_first_time?: boolean
           created_by: string
           created_at?: string
           updated_at?: string
@@ -81,6 +85,8 @@ export interface Database {
           location_name?: string | null
           category?: string | null
           tags?: string[]
+          is_anniversary?: boolean
+          is_first_time?: boolean
           created_by?: string
           created_at?: string
           updated_at?: string

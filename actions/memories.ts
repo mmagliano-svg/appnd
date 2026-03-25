@@ -15,6 +15,8 @@ export interface CreateMemoryInput {
   description?: string
   category?: string
   tags?: string[]
+  is_anniversary?: boolean
+  is_first_time?: boolean
 }
 
 export interface UpdateMemoryInput {
@@ -27,6 +29,8 @@ export interface UpdateMemoryInput {
   description?: string
   category?: string
   tags?: string[]
+  is_anniversary?: boolean
+  is_first_time?: boolean
 }
 
 // Non-redirecting version — returns memory ID, caller handles navigation
@@ -48,6 +52,8 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
       description: input.description?.trim() || null,
       category: input.category || null,
       tags: normalizeTags(input.tags ?? []),
+      is_anniversary: input.is_anniversary ?? false,
+      is_first_time: input.is_first_time ?? false,
       created_by: user!.id,
     })
     .select('id')
@@ -201,6 +207,8 @@ export async function getUserMemories() {
         description,
         category,
         tags,
+        is_anniversary,
+        is_first_time,
         created_by,
         created_at,
         memory_contributions ( id )
@@ -228,6 +236,8 @@ export async function getUserMemories() {
       description: string | null
       category: string | null
       tags: string[]
+      is_anniversary: boolean
+      is_first_time: boolean
       created_by: string
       created_at: string
       memory_contributions: { id: string }[]
@@ -384,6 +394,8 @@ export interface TimelineMemory {
   start_date: string
   end_date: string | null
   location_name: string | null
+  is_anniversary: boolean
+  is_first_time: boolean
   previewUrl: string | null
 }
 
@@ -397,7 +409,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
 
   const { data } = await supabase
     .from('memory_participants')
-    .select(`memories ( id, title, description, start_date, end_date, location_name )`)
+    .select(`memories ( id, title, description, start_date, end_date, location_name, is_anniversary, is_first_time )`)
     .eq('user_id', user.id)
     .not('joined_at', 'is', null)
 
@@ -410,6 +422,8 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
     start_date: string
     end_date: string | null
     location_name: string | null
+    is_anniversary: boolean
+    is_first_time: boolean
   }
   const memories = data
     .map((p) => p.memories as MemRow | null)
@@ -444,6 +458,8 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
       start_date: m.start_date,
       end_date: m.end_date,
       location_name: m.location_name,
+      is_anniversary: m.is_anniversary,
+      is_first_time: m.is_first_time,
       previewUrl: photoMap.get(m.id) ?? null,
     }))
 }

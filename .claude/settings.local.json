@@ -8,7 +8,13 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(dir /b \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\node_modules\\\\@supabase\")",
-      "Bash(del \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\next.config.ts\")"
+      "Bash(del \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\next.config.ts\")",
+      "Bash(node -e \"require\\(''@supabase/supabase-js''\\); console.log\\(''ok''\\)\")",
+      "Bash(npx next:*)",
+      "Bash(mkdir \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\app\\\\timeline\\\\[year]\")",
+      "Bash(mkdir \"C:\\\\Users\\\\Mattia Magliano\\\\Documents\\\\APPND - Claude\\\\Appnd – Project Brain\\\\app\\\\timeline\\\\[year]\\\\[month]\")",
+      "Bash(python -c \":*)",
+      "Bash(pip install:*)"
     ]
   }
 }
