@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import type { ContentType } from '@/lib/supabase/types'
+import { sendContributionNotification } from '@/lib/email/notifications'
 
 export interface CreateContributionInput {
   memoryId: string
@@ -44,6 +45,55 @@ export async function createContribution(input: CreateContributionInput) {
 
   if (error) {
     throw new Error('Impossibile salvare il contributo. Riprova.')
+  }
+
+  // ── Notify other participants ────────────────────────────────────────────
+  // Fire-and-forget: email failures must never break the contribution flow.
+  try {
+    // Fetch memory title + contributor display name in parallel
+    const [{ data: memory }, { data: contributor }] = await Promise.all([
+      supabase.from('memories').select('title').eq('id', input.memoryId).single(),
+      supabase.from('users').select('display_name, email').eq('id', user.id).single(),
+    ])
+
+    if (memory && contributor) {
+      const contributorName =
+        contributor.display_name ?? contributor.email ?? 'Qualcuno'
+
+      // Get all OTHER joined participants with their email addresses
+      const { data: participants } = await supabase
+        .from('memory_participants')
+        .select('user_id')
+        .eq('memory_id', input.memoryId)
+        .neq('user_id', user.id)           // exclude the contributor
+        .not('joined_at', 'is', null)       // only joined participants
+
+      if (participants && participants.length > 0) {
+        const userIds = participants
+          .map((p) => p.user_id)
+          .filter(Boolean) as string[]
+
+        const { data: recipientUsers } = await supabase
+          .from('users')
+          .select('email')
+          .in('id', userIds)
+
+        // Send one email per recipient — silent on individual failures
+        await Promise.allSettled(
+          (recipientUsers ?? []).map((r) =>
+            sendContributionNotification({
+              recipientEmail: r.email,
+              contributorName,
+              memoryTitle: memory.title,
+              memoryId: input.memoryId,
+              contentType: input.content_type,
+            })
+          )
+        )
+      }
+    }
+  } catch {
+    // Intentionally silent — email is best-effort
   }
 
   revalidatePath(`/memories/${input.memoryId}`)

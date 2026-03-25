@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
 import { formatPeriodDisplay } from '@/lib/utils/dates'
+import { getPromptForCategory } from '@/lib/constants/prompts'
 
 function NewMemoryForm() {
   const router = useRouter()
@@ -414,18 +415,26 @@ function NewMemoryForm() {
               />
             </div>
 
-            {/* Descrizione */}
+            {/* Descrizione con prompt guidato */}
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium">
-                Il racconto
-              </Label>
+              <div className="flex items-baseline justify-between">
+                <Label htmlFor="description" className="text-sm font-medium">
+                  Il racconto
+                </Label>
+                <span className="text-[10px] text-muted-foreground/50 italic">
+                  facoltativo
+                </span>
+              </div>
               <textarea
                 id="description"
                 name="description"
-                placeholder="Cosa è successo? Come ti sei sentito? Cosa vuoi ricordare di questo momento…"
+                placeholder={getPromptForCategory(category || null)}
                 rows={5}
-                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
+                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
               />
+              <p className="text-[11px] text-muted-foreground/50 leading-relaxed px-1">
+                Scrivi in libertà — anche solo due righe. Questo è il tuo spazio.
+              </p>
             </div>
 
             {/* Periodo di appartenenza */}
