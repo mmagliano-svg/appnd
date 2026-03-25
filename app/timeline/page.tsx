@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getTimelineMemories } from '@/actions/memories'
-import { TimelineClient } from '@/components/timeline/TimelineClient'
+import { getTimelineYears } from '@/actions/timeline'
+import { YearsView } from '@/components/timeline/YearsView'
+import { TimelinePageWrapper } from '@/components/timeline/TimelinePageWrapper'
 
 export default async function TimelinePage() {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const memories = await getTimelineMemories()
+  const years = await getTimelineYears()
 
   return (
     <main className="min-h-screen bg-background">
@@ -18,7 +19,9 @@ export default async function TimelinePage() {
           <p className="text-sm text-muted-foreground">La tua storia nel tempo.</p>
         </div>
 
-        <TimelineClient memories={memories} />
+        <TimelinePageWrapper>
+          <YearsView yearGroups={years} />
+        </TimelinePageWrapper>
       </div>
     </main>
   )

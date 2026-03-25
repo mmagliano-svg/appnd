@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const SHOW_ON = ['/dashboard', '/explore', '/timeline']
+const SHOW_ON_EXACT = ['/dashboard', '/explore']
+const SHOW_ON_PREFIX = ['/timeline']
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -82,10 +83,13 @@ function NavTab({ href, label, active, children }: NavTabProps) {
 export function BottomNav() {
   const pathname = usePathname()
 
-  if (!SHOW_ON.includes(pathname)) return null
+  const visible =
+    SHOW_ON_EXACT.includes(pathname) ||
+    SHOW_ON_PREFIX.some((p) => pathname.startsWith(p))
+  if (!visible) return null
 
   const isHome = pathname === '/dashboard'
-  const isTimeline = pathname === '/timeline'
+  const isTimeline = pathname.startsWith('/timeline')
   const isExplore = pathname === '/explore'
 
   return (
