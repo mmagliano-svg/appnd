@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { DeleteButton } from '@/components/memory/DeleteButton'
 import { getCategoryByValue } from '@/lib/constants/categories'
-import { formatMemoryDateFull } from '@/lib/utils/dates'
+import { formatMemoryDateFull, formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
 import InviteForm from './InviteForm'
 
 function formatTime(dateStr: string) {
@@ -58,6 +58,34 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   const tags: string[] = (memory as { tags?: string[] }).tags ?? []
   const category = (memory as { category?: string | null }).category
   const catInfo = getCategoryByValue(category)
+
+  const memoryEndDate = (memory as { end_date?: string | null }).end_date ?? null
+  const memoryStartDate = (memory as { start_date?: string }).start_date ?? memory.happened_at
+  const memoryParentPeriodId = (memory as { parent_period_id?: string | null }).parent_period_id ?? null
+  const isPeriod = Boolean(memoryEndDate)
+
+  // Fetch child events if this is a period (RLS ensures user can only see their own)
+  const { data: childEventsData } = isPeriod
+    ? await supabase
+        .from('memories')
+        .select('id, title, start_date, location_name, category')
+        .eq('parent_period_id', memory.id)
+        .is('end_date', null)
+        .order('start_date', { ascending: true })
+    : { data: [] }
+  const childEvents = (childEventsData ?? []) as Array<{
+    id: string; title: string; start_date: string; location_name: string | null; category: string | null
+  }>
+
+  // Fetch parent period if this is an event with a parent
+  const parentPeriod = !isPeriod && memoryParentPeriodId
+    ? await supabase
+        .from('memories')
+        .select('id, title, start_date, end_date')
+        .eq('id', memoryParentPeriodId)
+        .single()
+        .then(({ data }) => data as { id: string; title: string; start_date: string; end_date: string } | null)
+    : null
 
   return (
     <main className="min-h-screen bg-background">
@@ -154,6 +182,31 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               {memory.description}
             </p>
           )}
+
+          {/* Parent period reference */}
+          {parentPeriod && (
+            <div className="mt-5 pt-4 border-t border-border/40">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                Parte di
+              </p>
+              <Link
+                href={`/memories/${parentPeriod.id}`}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border hover:border-foreground/20 bg-background hover:bg-accent/30 px-4 py-3 transition-all group"
+              >
+                <div>
+                  <p className="text-sm font-medium group-hover:text-foreground transition-colors">
+                    {parentPeriod.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {formatPeriodDisplay(parentPeriod.start_date, parentPeriod.end_date)}
+                  </p>
+                </div>
+                <svg className="w-4 h-4 text-muted-foreground shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Participants */}
@@ -198,6 +251,58 @@ export default async function MemoryPage({ params }: { params: { id: string } })
                 return <div key={p.id}>{chip}</div>
               })}
             </div>
+          </div>
+        )}
+
+        {/* Child events (only for periods) */}
+        {isPeriod && (
+          <div className="py-5 border-b border-border/50">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Momenti di questo periodo · {childEvents.length}
+              </p>
+              <Link href="/memories/new">
+                <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground rounded-full px-3">
+                  + Aggiungi
+                </Button>
+              </Link>
+            </div>
+            {childEvents.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">
+                Nessun momento collegato a questo periodo.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {childEvents.map((ev) => {
+                  const evCat = getCategoryByValue(ev.category)
+                  return (
+                    <li key={ev.id}>
+                      <Link
+                        href={`/memories/${ev.id}`}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-border hover:border-foreground/20 bg-card hover:bg-accent/30 px-4 py-3 transition-all group"
+                      >
+                        <div className="min-w-0">
+                          {evCat && (
+                            <p className="text-xs text-muted-foreground mb-0.5">
+                              {evCat.emoji} {evCat.label}
+                            </p>
+                          )}
+                          <p className="text-sm font-medium truncate group-hover:text-foreground transition-colors">
+                            {ev.title}
+                          </p>
+                          {ev.location_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">📍 {ev.location_name}</p>
+                          )}
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {formatMemoryDate(ev.start_date, null)}
+                        </span>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
         )}
 

@@ -10,6 +10,7 @@ export interface CreateMemoryInput {
   title: string
   start_date: string
   end_date?: string
+  parent_period_id?: string | null
   location_name?: string
   description?: string
   category?: string
@@ -21,6 +22,7 @@ export interface UpdateMemoryInput {
   title: string
   start_date: string
   end_date?: string
+  parent_period_id?: string | null
   location_name?: string
   description?: string
   category?: string
@@ -41,6 +43,7 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
       happened_at: input.start_date,
       start_date: input.start_date,
       end_date: input.end_date || null,
+      parent_period_id: input.parent_period_id ?? null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
@@ -77,6 +80,7 @@ export async function createMemory(input: CreateMemoryInput) {
       happened_at: input.start_date,
       start_date: input.start_date,
       end_date: input.end_date || null,
+      parent_period_id: input.parent_period_id ?? null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
@@ -130,6 +134,7 @@ export async function updateMemory(input: UpdateMemoryInput) {
       happened_at: input.start_date,
       start_date: input.start_date,
       end_date: input.end_date || null,
+      parent_period_id: input.parent_period_id ?? null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
       category: input.category || null,
@@ -249,4 +254,34 @@ export async function getAllUserTags(): Promise<string[]> {
 
   // Return unique tags sorted alphabetically
   return Array.from(new Set(allTags)).sort()
+}
+
+export interface PeriodSummary {
+  id: string
+  title: string
+  start_date: string
+  end_date: string
+}
+
+// Returns all periods the user participates in, sorted by start_date desc
+export async function getUserPeriods(): Promise<PeriodSummary[]> {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return []
+
+  const { data } = await supabase
+    .from('memory_participants')
+    .select(`
+      memories ( id, title, start_date, end_date )
+    `)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+
+  if (!data) return []
+
+  return data
+    .map((p) => p.memories as { id: string; title: string; start_date: string; end_date: string | null } | null)
+    .filter((m): m is PeriodSummary => m !== null && m.end_date !== null)
+    .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 }

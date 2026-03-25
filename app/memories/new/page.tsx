@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { createMemoryReturnId, getAllUserTags } from '@/actions/memories'
+import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
 import { addMediaContribution } from '@/actions/contributions'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
+import { formatPeriodDisplay } from '@/lib/utils/dates'
 
 export default function NewMemoryPage() {
   const router = useRouter()
@@ -22,6 +23,8 @@ export default function NewMemoryPage() {
   const [tags, setTags] = useState<string[]>([])
   const [category, setCategory] = useState('')
   const [allTags, setAllTags] = useState<string[]>([])
+  const [periods, setPeriods] = useState<PeriodSummary[]>([])
+  const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
 
   // Date type state
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
@@ -35,7 +38,31 @@ export default function NewMemoryPage() {
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
+    getUserPeriods().then(setPeriods).catch(() => {})
   }, [])
+
+  // Auto-suggest: find the most specific period containing startDate
+  const suggestedPeriod = useMemo(() => {
+    if (memoryType === 'period' || !startDate || periods.length === 0) return null
+    const matches = periods.filter(
+      (p) => startDate >= p.start_date && startDate <= p.end_date
+    )
+    if (matches.length === 0) return null
+    // Return the shortest (most specific) matching period
+    return matches.sort(
+      (a, b) =>
+        (new Date(a.end_date).getTime() - new Date(a.start_date).getTime()) -
+        (new Date(b.end_date).getTime() - new Date(b.start_date).getTime())
+    )[0]
+  }, [startDate, periods, memoryType])
+
+  // Warning if selected period range doesn't contain startDate
+  const outOfRange = useMemo(() => {
+    if (!parentPeriodId || !startDate) return false
+    const sel = periods.find((p) => p.id === parentPeriodId)
+    if (!sel) return false
+    return startDate < sel.start_date || startDate > sel.end_date
+  }, [parentPeriodId, startDate, periods])
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -73,6 +100,7 @@ export default function NewMemoryPage() {
         title: form.get('title') as string,
         start_date: startDate,
         end_date: memoryType === 'period' ? endDate || undefined : undefined,
+        parent_period_id: memoryType === 'day' ? parentPeriodId : null,
         location_name: form.get('location_name') as string,
         description: form.get('description') as string,
         category: category || undefined,
@@ -346,6 +374,76 @@ export default function NewMemoryPage() {
                 className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
               />
             </div>
+
+            {/* Periodo di appartenenza */}
+            {!isPeriod && periods.length > 0 && (
+              <div className="space-y-3">
+                <div>
+                  <Label className="text-sm font-medium">Fa parte di un periodo?</Label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Collega questo momento a una fase della tua vita.
+                  </p>
+                </div>
+
+                {/* Auto-suggest banner */}
+                {suggestedPeriod && parentPeriodId !== suggestedPeriod.id && (
+                  <button
+                    type="button"
+                    onClick={() => setParentPeriodId(suggestedPeriod.id)}
+                    className="w-full flex items-center justify-between gap-3 rounded-xl border border-foreground/20 bg-muted/30 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                  >
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-0.5">Suggerito</p>
+                      <p className="text-sm font-medium">{suggestedPeriod.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatPeriodDisplay(suggestedPeriod.start_date, suggestedPeriod.end_date)}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">Collega →</span>
+                  </button>
+                )}
+
+                {/* Period list */}
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setParentPeriodId(null)}
+                    className={`w-full flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                      parentPeriodId === null
+                        ? 'border-foreground bg-foreground text-background font-medium'
+                        : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                    }`}
+                  >
+                    <span>Nessun periodo</span>
+                  </button>
+                  {periods.map((period) => (
+                    <button
+                      key={period.id}
+                      type="button"
+                      onClick={() => setParentPeriodId(period.id)}
+                      className={`w-full flex items-center justify-between gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                        parentPeriodId === period.id
+                          ? 'border-foreground bg-foreground text-background font-medium'
+                          : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                      }`}
+                    >
+                      <span className="truncate">{period.title}</span>
+                      <span className={`text-xs shrink-0 ${parentPeriodId === period.id ? 'text-background/70' : 'text-muted-foreground'}`}>
+                        {formatPeriodDisplay(period.start_date, period.end_date)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Out-of-range warning */}
+                {outOfRange && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                    <span>⚠</span>
+                    La data dell'evento è fuori dal range di questo periodo.
+                  </p>
+                )}
+              </div>
+            )}
 
           </div>
 

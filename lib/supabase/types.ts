@@ -47,6 +47,7 @@ export interface Database {
           happened_at: string
           start_date: string
           end_date: string | null
+          parent_period_id: string | null
           location_name: string | null
           category: string | null
           tags: string[]
@@ -61,6 +62,7 @@ export interface Database {
           happened_at?: string
           start_date: string
           end_date?: string | null
+          parent_period_id?: string | null
           location_name?: string | null
           category?: string | null
           tags?: string[]
@@ -75,6 +77,7 @@ export interface Database {
           happened_at?: string
           start_date?: string
           end_date?: string | null
+          parent_period_id?: string | null
           location_name?: string | null
           category?: string | null
           tags?: string[]
