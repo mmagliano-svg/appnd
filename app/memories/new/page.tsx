@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
 import { addMediaContribution } from '@/actions/contributions'
 import { createClient } from '@/lib/supabase/client'
@@ -14,6 +14,7 @@ import { formatPeriodDisplay } from '@/lib/utils/dates'
 
 export default function NewMemoryPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const titleRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -36,10 +37,17 @@ export default function NewMemoryPage() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
 
+  const periodFromUrl = searchParams.get('period')
+
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
-    getUserPeriods().then(setPeriods).catch(() => {})
-  }, [])
+    getUserPeriods().then((loaded) => {
+      setPeriods(loaded)
+      if (periodFromUrl && loaded.some((p) => p.id === periodFromUrl)) {
+        setParentPeriodId(periodFromUrl)
+      }
+    }).catch(() => {})
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-suggest: find the most specific period containing startDate
   const suggestedPeriod = useMemo(() => {

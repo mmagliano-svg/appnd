@@ -261,7 +261,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Momenti di questo periodo · {childEvents.length}
               </p>
-              <Link href="/memories/new">
+              <Link href={`/memories/new?period=${memory.id}`}>
                 <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground rounded-full px-3">
                   + Aggiungi
                 </Button>

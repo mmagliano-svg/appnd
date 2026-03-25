@@ -12,6 +12,7 @@ interface Memory {
   title: string
   start_date: string
   end_date: string | null
+  parent_period_id: string | null
   location_name: string | null
   description: string | null
   category: string | null
@@ -86,6 +87,15 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
       .sort(([, a], [, b]) => b - a)
       .slice(0, 6)
       .map(([place, count]) => ({ place, count }))
+  }, [memories])
+
+  // Period lookup map: id → { title, start_date, end_date }
+  const periodMap = useMemo(() => {
+    const map = new Map<string, { id: string; title: string; start_date: string; end_date: string }>()
+    for (const m of memories) {
+      if (m.end_date) map.set(m.id, { id: m.id, title: m.title, start_date: m.start_date, end_date: m.end_date })
+    }
+    return map
   }, [memories])
 
   // 3 most recent memories
@@ -446,6 +456,7 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
               }
 
               /* ── EVENTO — card classica ── */
+              const parentPeriod = memory.parent_period_id ? periodMap.get(memory.parent_period_id) : null
               return (
                 <li key={memory.id} className="mb-3">
                   <Link href={`/memories/${memory.id}`} className="block group">
@@ -474,6 +485,15 @@ export function DashboardClient({ memories, allTags }: DashboardClientProps) {
                           </p>
                         )}
                       </div>
+
+                      {parentPeriod && (
+                        <p className="text-xs text-muted-foreground/60 flex items-center gap-1">
+                          <span>↳</span>
+                          <span>{parentPeriod.title}</span>
+                          <span className="text-muted-foreground/40 mx-0.5">·</span>
+                          <span>{formatPeriodDisplay(parentPeriod.start_date, parentPeriod.end_date)}</span>
+                        </p>
+                      )}
 
                       {memory.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">

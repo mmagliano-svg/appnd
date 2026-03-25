@@ -33,7 +33,7 @@ export default function EditMemoryPage() {
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
-    getUserPeriods().then(setPeriods).catch(() => {})
+    getUserPeriods().then((p) => setPeriods(p.filter((period) => period.id !== id))).catch(() => {})
   }, [])
 
   const today = new Date().toISOString().split('T')[0]

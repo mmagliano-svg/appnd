@@ -196,6 +196,7 @@ export async function getUserMemories() {
         title,
         start_date,
         end_date,
+        parent_period_id,
         location_name,
         description,
         category,
@@ -222,6 +223,7 @@ export async function getUserMemories() {
       title: string
       start_date: string
       end_date: string | null
+      parent_period_id: string | null
       location_name: string | null
       description: string | null
       category: string | null
