@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getExploreData } from '@/actions/memories'
+import { getExploreData, getOnThisDayMemories } from '@/actions/memories'
 import { getCategoryByValue } from '@/lib/constants/categories'
+import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
 
 function plural(n: number) {
   return `${n} ${n === 1 ? 'momento' : 'momenti'}`
@@ -34,7 +35,16 @@ export default async function ExplorePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { topTags, topPlaces, categories } = await getExploreData()
+  const [{ topTags, topPlaces, categories }, onThisDay] = await Promise.all([
+    getExploreData(),
+    getOnThisDayMemories(),
+  ])
+
+  // Subtitle: "25 marzo, negli anni"
+  const todayLabel = new Date().toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'long',
+  })
 
   const isEmpty = topTags.length === 0 && topPlaces.length === 0 && categories.length === 0
 
@@ -47,6 +57,16 @@ export default async function ExplorePage() {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Esplora</h1>
           <p className="text-sm text-muted-foreground">La tua storia, da tutti i punti di vista.</p>
         </div>
+
+        {/* ── RIVIVI OGGI (se ci sono ricordi in questa data) ── */}
+        {onThisDay.length > 0 && (
+          <div className="mb-14">
+            <OnThisDayCarousel
+              memories={onThisDay}
+              subtitle={`${todayLabel}, negli anni`}
+            />
+          </div>
+        )}
 
         {isEmpty ? (
           <div className="text-center py-20 space-y-3">

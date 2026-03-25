@@ -375,6 +375,77 @@ export async function getExploreData(): Promise<ExploreData> {
   return { topTags, topPlaces, categories }
 }
 
+// ── On This Day ───────────────────────────────────────────────────────────
+
+export interface OnThisDayMemory {
+  id: string
+  title: string
+  start_date: string
+  end_date: string | null
+  previewUrl: string | null
+}
+
+// Returns memories whose start_date day+month matches today, across all years
+export async function getOnThisDayMemories(): Promise<OnThisDayMemory[]> {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return []
+
+  const today = new Date()
+  const todayMonth = today.getMonth() + 1 // 1–12
+  const todayDay = today.getDate()
+
+  const { data } = await supabase
+    .from('memory_participants')
+    .select(`memories ( id, title, start_date, end_date )`)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+
+  if (!data) return []
+
+  type MemRow = { id: string; title: string; start_date: string; end_date: string | null }
+  const memories = data
+    .map((p) => p.memories as MemRow | null)
+    .filter(Boolean) as MemRow[]
+
+  // Filter by same day + month regardless of year
+  const matched = memories.filter((m) => {
+    const [, mm, dd] = m.start_date.split('-').map(Number)
+    return mm === todayMonth && dd === todayDay
+  })
+
+  if (matched.length === 0) return []
+
+  // Fetch preview photos
+  const ids = matched.map((m) => m.id)
+  const { data: photos } = await supabase
+    .from('memory_contributions')
+    .select('memory_id, media_url, created_at')
+    .eq('content_type', 'photo')
+    .in('memory_id', ids)
+    .not('media_url', 'is', null)
+    .order('created_at', { ascending: false })
+
+  const photoMap = new Map<string, string>()
+  for (const p of photos ?? []) {
+    if (!photoMap.has(p.memory_id) && p.media_url) {
+      photoMap.set(p.memory_id, p.media_url as string)
+    }
+  }
+
+  // Sort newest year first
+  return matched
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+    .map((m) => ({
+      id: m.id,
+      title: m.title,
+      start_date: m.start_date,
+      end_date: m.end_date,
+      previewUrl: photoMap.get(m.id) ?? null,
+    }))
+}
+
 // ── Periods ───────────────────────────────────────────────────────────────
 
 export interface PeriodSummary {
