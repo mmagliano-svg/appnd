@@ -23,7 +23,7 @@ function NewMemoryForm() {
   const [uploadStep, setUploadStep] = useState('')
   const [error, setError] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [category, setCategory] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [periods, setPeriods] = useState<PeriodSummary[]>([])
   const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
@@ -116,7 +116,7 @@ function NewMemoryForm() {
         parent_period_id: memoryType === 'day' ? parentPeriodId : null,
         location_name: form.get('location_name') as string,
         description: form.get('description') as string,
-        category: category || undefined,
+        categories,
         tags,
         is_anniversary: isAnniversary,
         is_first_time: isFirstTime,
@@ -379,25 +379,37 @@ function NewMemoryForm() {
               />
             </div>
 
-            {/* Categoria */}
+            {/* Categorie — multi-select */}
             <div className="space-y-3">
-              <Label className="text-sm font-medium">Capitolo della vita</Label>
+              <div>
+                <Label className="text-sm font-medium">Capitoli della vita</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">Puoi selezionarne più di uno.</p>
+              </div>
               <div className="grid grid-cols-2 gap-2">
-                {CATEGORIES.map((cat) => (
-                  <button
-                    key={cat.value}
-                    type="button"
-                    onClick={() => setCategory(cat.value === category ? '' : cat.value)}
-                    className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
-                      category === cat.value
-                        ? 'border-foreground bg-foreground text-background font-medium'
-                        : 'border-border hover:border-foreground/30 hover:bg-accent/50'
-                    }`}
-                  >
-                    <span className="text-base">{cat.emoji}</span>
-                    <span>{cat.label}</span>
-                  </button>
-                ))}
+                {CATEGORIES.map((cat) => {
+                  const active = categories.includes(cat.value)
+                  return (
+                    <button
+                      key={cat.value}
+                      type="button"
+                      onClick={() =>
+                        setCategories((prev) =>
+                          prev.includes(cat.value)
+                            ? prev.filter((c) => c !== cat.value)
+                            : [...prev, cat.value],
+                        )
+                      }
+                      className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                        active
+                          ? 'border-foreground bg-foreground text-background font-medium'
+                          : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                      }`}
+                    >
+                      <span className="text-base">{cat.emoji}</span>
+                      <span>{cat.label}</span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
@@ -428,7 +440,7 @@ function NewMemoryForm() {
               <textarea
                 id="description"
                 name="description"
-                placeholder={getPromptForCategory(category || null)}
+                placeholder={getPromptForCategory(categories[0] || null)}
                 rows={5}
                 className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
               />

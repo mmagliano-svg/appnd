@@ -64,7 +64,12 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   const participants = memory.memory_participants.filter((p) => p.joined_at)
   const tags: string[] = (memory as { tags?: string[] }).tags ?? []
   const category = (memory as { category?: string | null }).category
-  const catInfo = getCategoryByValue(category)
+  const memoryCats: string[] = (() => {
+    const cats = (memory as { categories?: string[] }).categories
+    if (cats?.length) return cats
+    return category ? [category] : []
+  })()
+  const catInfo = getCategoryByValue(memoryCats[0] ?? null)
   const isFirstTime = (memory as { is_first_time?: boolean }).is_first_time ?? false
   const isAnniversary = (memory as { is_anniversary?: boolean }).is_anniversary ?? false
 
@@ -161,10 +166,17 @@ export default async function MemoryPage({ params }: { params: { id: string } })
         {/* Hero caption — bottom of hero when photo exists */}
         {heroPhoto && (
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
-            {catInfo && (
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/60 mb-1.5">
-                {catInfo.emoji} {catInfo.label}
-              </p>
+            {memoryCats.length > 0 && (
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1.5">
+                {memoryCats.map((cv) => {
+                  const ci = getCategoryByValue(cv)
+                  return ci ? (
+                    <p key={cv} className="text-xs font-semibold uppercase tracking-widest text-white/60">
+                      {ci.emoji} {ci.label}
+                    </p>
+                  ) : null
+                })}
+              </div>
             )}
             <h1 className="text-2xl font-bold tracking-tight leading-tight text-white drop-shadow-sm">
               {memory.title}
@@ -205,14 +217,22 @@ export default async function MemoryPage({ params }: { params: { id: string } })
         {/* Title block — only when no hero photo */}
         {!heroPhoto && (
           <div className="pt-6 pb-6 border-b border-border/50">
-            {catInfo && (
-              <Link
-                href={`/dashboard?category=${catInfo.value}`}
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
-              >
-                <span>{catInfo.emoji}</span>
-                <span className="uppercase tracking-wider">{catInfo.label}</span>
-              </Link>
+            {memoryCats.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 mb-3">
+                {memoryCats.map((cv) => {
+                  const ci = getCategoryByValue(cv)
+                  return ci ? (
+                    <Link
+                      key={cv}
+                      href={`/dashboard?category=${ci.value}`}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span>{ci.emoji}</span>
+                      <span className="uppercase tracking-wider">{ci.label}</span>
+                    </Link>
+                  ) : null
+                })}
+              </div>
             )}
             <div className="flex items-start gap-3">
               <h1 className="text-3xl font-bold tracking-tight leading-tight flex-1">

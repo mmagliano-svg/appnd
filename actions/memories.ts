@@ -13,7 +13,8 @@ export interface CreateMemoryInput {
   parent_period_id?: string | null
   location_name?: string
   description?: string
-  category?: string
+  category?: string        // kept for backward compat — prefer categories[]
+  categories?: string[]
   tags?: string[]
   is_anniversary?: boolean
   is_first_time?: boolean
@@ -27,7 +28,8 @@ export interface UpdateMemoryInput {
   parent_period_id?: string | null
   location_name?: string
   description?: string
-  category?: string
+  category?: string        // kept for backward compat — prefer categories[]
+  categories?: string[]
   tags?: string[]
   is_anniversary?: boolean
   is_first_time?: boolean
@@ -50,7 +52,8 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
       parent_period_id: input.parent_period_id ?? null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
-      category: input.category || null,
+      categories: input.categories ?? (input.category ? [input.category] : []),
+      category: (input.categories ?? [])[0] ?? input.category ?? null,
       tags: normalizeTags(input.tags ?? []),
       is_anniversary: input.is_anniversary ?? false,
       is_first_time: input.is_first_time ?? false,
@@ -89,7 +92,8 @@ export async function createMemory(input: CreateMemoryInput) {
       parent_period_id: input.parent_period_id ?? null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
-      category: input.category || null,
+      categories: input.categories ?? (input.category ? [input.category] : []),
+      category: (input.categories ?? [])[0] ?? input.category ?? null,
       tags: normalizeTags(input.tags ?? []),
       created_by: user.id,
     })
@@ -143,7 +147,8 @@ export async function updateMemory(input: UpdateMemoryInput) {
       parent_period_id: input.parent_period_id ?? null,
       location_name: input.location_name?.trim() || null,
       description: input.description?.trim() || null,
-      category: input.category || null,
+      categories: input.categories ?? (input.category ? [input.category] : []),
+      category: (input.categories ?? [])[0] ?? input.category ?? null,
       tags: normalizeTags(input.tags ?? []),
     })
     .eq('id', input.id)
@@ -206,6 +211,7 @@ export async function getUserMemories() {
         location_name,
         description,
         category,
+        categories,
         tags,
         is_anniversary,
         is_first_time,
@@ -235,6 +241,7 @@ export async function getUserMemories() {
       location_name: string | null
       description: string | null
       category: string | null
+      categories: string[]
       tags: string[]
       is_anniversary: boolean
       is_first_time: boolean
@@ -305,13 +312,13 @@ export async function getExploreData(): Promise<ExploreData> {
   // Fetch memories with id so we can cross-reference photos
   const { data } = await supabase
     .from('memory_participants')
-    .select(`memories ( id, tags, location_name, category )`)
+    .select(`memories ( id, tags, location_name, category, categories )`)
     .eq('user_id', user.id)
     .not('joined_at', 'is', null)
 
   if (!data) return { topTags: [], topPlaces: [], categories: [] }
 
-  type MemoryRow = { id: string; tags: string[]; location_name: string | null; category: string | null }
+  type MemoryRow = { id: string; tags: string[]; location_name: string | null; category: string | null; categories: string[] }
   const memories = data
     .map((p) => p.memories as MemoryRow | null)
     .filter(Boolean) as MemoryRow[]
@@ -371,11 +378,12 @@ export async function getExploreData(): Promise<ExploreData> {
     .slice(0, 8)
     .map(([place, { count, previewUrl }]) => ({ place, count, previewUrl, lat: null, lng: null }))
 
-  // Categories with count, sorted by frequency
+  // Categories with count — use the multi-category array, fall back to legacy single field
   const categoryCounts: Record<string, number> = {}
   for (const m of memories) {
-    if (m.category) {
-      categoryCounts[m.category] = (categoryCounts[m.category] ?? 0) + 1
+    const cats = m.categories?.length ? m.categories : (m.category ? [m.category] : [])
+    for (const cat of cats) {
+      categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1
     }
   }
   const categories = Object.entries(categoryCounts)
@@ -394,7 +402,8 @@ export interface TimelineMemory {
   start_date: string
   end_date: string | null
   location_name: string | null
-  category: string | null
+  category: string | null   // legacy — use categories[]
+  categories: string[]
   is_anniversary: boolean
   is_first_time: boolean
   previewUrl: string | null
@@ -410,7 +419,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
 
   const { data } = await supabase
     .from('memory_participants')
-    .select(`memories ( id, title, description, start_date, end_date, location_name, category, is_anniversary, is_first_time )`)
+    .select(`memories ( id, title, description, start_date, end_date, location_name, category, categories, is_anniversary, is_first_time )`)
     .eq('user_id', user.id)
     .not('joined_at', 'is', null)
 
@@ -424,6 +433,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
     end_date: string | null
     location_name: string | null
     category: string | null
+    categories: string[]
     is_anniversary: boolean
     is_first_time: boolean
   }
@@ -461,6 +471,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
       end_date: m.end_date,
       location_name: m.location_name,
       category: m.category,
+      categories: m.categories?.length ? m.categories : (m.category ? [m.category] : []),
       is_anniversary: m.is_anniversary,
       is_first_time: m.is_first_time,
       previewUrl: photoMap.get(m.id) ?? null,

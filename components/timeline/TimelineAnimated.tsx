@@ -566,14 +566,17 @@ export function TimelineAnimated({ memories }: Props) {
 
   // Categories actually present in the dataset
   const usedCategories = useMemo(() => {
-    const used = new Set(memories.map((m) => m.category).filter(Boolean))
+    const used = new Set(memories.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])))
     return CATEGORIES.filter((c) => used.has(c.value))
   }, [memories])
 
   // Apply category filter before grouping (only on years view)
   const filteredMemories = useMemo(() => {
     if (!activeCategory) return memories
-    return memories.filter((m) => m.category === activeCategory)
+    return memories.filter((m) => {
+      const cats = m.categories.length ? m.categories : (m.category ? [m.category] : [])
+      return cats.includes(activeCategory)
+    })
   }, [memories, activeCategory])
 
   const yearGroups   = useMemo(() => groupMemories(filteredMemories), [filteredMemories])

@@ -18,6 +18,7 @@ interface Memory {
   location_name: string | null
   description: string | null
   category: string | null
+  categories: string[]
   tags: string[]
   is_anniversary: boolean
   is_first_time: boolean
@@ -59,7 +60,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
 
   // Categories actually used
   const usedCategories = useMemo(() => {
-    const used = new Set(memories.map((m) => m.category).filter(Boolean))
+    const used = new Set(memories.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])))
     return CATEGORIES.filter((c) => used.has(c.value))
   }, [memories])
 
@@ -135,7 +136,8 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
         (m.description ?? '').toLowerCase().includes(q) ||
         (m.location_name ?? '').toLowerCase().includes(q) ||
         m.tags.some((t) => t.includes(q))
-      const matchesCategory = !activeCategory || m.category === activeCategory
+      const memCats = m.categories.length ? m.categories : (m.category ? [m.category] : [])
+      const matchesCategory = !activeCategory || memCats.includes(activeCategory)
       return matchesSearch && matchesCategory
     })
   }, [memories, search, activeCategory])
@@ -626,15 +628,26 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
 
               /* ── EVENTO — card classica ── */
               const parentPeriod = memory.parent_period_id ? periodMap.get(memory.parent_period_id) : null
+              const memCatsDisplay = memory.categories.length ? memory.categories : (memory.category ? [memory.category] : [])
               return (
                 <li key={memory.id} className="mb-3">
                   <Link href={`/memories/${memory.id}`} className="block group">
                     <div className="rounded-2xl border bg-card p-5 hover:border-foreground/20 transition-all hover:shadow-sm space-y-3">
                       <div className="flex items-center justify-between gap-2">
-                        {catInfo ? (
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {catInfo.emoji} {catInfo.label}
-                          </span>
+                        {memCatsDisplay.length > 0 ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {memCatsDisplay.slice(0, 2).map((cv) => {
+                              const ci = getCategoryInfo(cv)
+                              return ci ? (
+                                <span key={cv} className="text-xs text-muted-foreground font-medium">
+                                  {ci.emoji} {ci.label}
+                                </span>
+                              ) : null
+                            })}
+                            {memCatsDisplay.length > 2 && (
+                              <span className="text-xs text-muted-foreground/50">+{memCatsDisplay.length - 2}</span>
+                            )}
+                          </div>
                         ) : (
                           <span />
                         )}

@@ -215,11 +215,14 @@ export default async function PersonPage({
                           <div className="flex-1 py-3.5 pr-4 min-w-0">
                             {/* Category + badges */}
                             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                              {catInfo && (
-                                <span className="text-xs text-muted-foreground">
-                                  {catInfo.emoji} {catInfo.label}
-                                </span>
-                              )}
+                              {(memory.categories.length ? memory.categories : (memory.category ? [memory.category] : [])).slice(0, 2).map((cv) => {
+                                const ci = getCategoryByValue(cv)
+                                return ci ? (
+                                  <span key={cv} className="text-xs text-muted-foreground">
+                                    {ci.emoji} {ci.label}
+                                  </span>
+                                ) : null
+                              })}
                               {memory.is_first_time && (
                                 <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
                                   ✦ Prima volta

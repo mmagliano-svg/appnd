@@ -18,6 +18,7 @@ export interface SharedMemory {
   end_date: string | null
   location_name: string | null
   category: string | null
+  categories: string[]
   description: string | null
   is_first_time: boolean
   is_anniversary: boolean
@@ -138,7 +139,7 @@ export async function getSharedMemoriesWithUser(
   const { data: mems } = await supabase
     .from('memories')
     .select(
-      'id, title, start_date, end_date, location_name, category, description, is_first_time, is_anniversary',
+      'id, title, start_date, end_date, location_name, category, categories, description, is_first_time, is_anniversary',
     )
     .in('id', sharedIds)
     .order('start_date', { ascending: true })
@@ -177,6 +178,7 @@ export async function getSharedMemoriesWithUser(
       end_date: m.end_date,
       location_name: m.location_name,
       category: m.category,
+      categories: (m.categories as string[] | null)?.length ? (m.categories as string[]) : (m.category ? [m.category] : []),
       description: m.description,
       is_first_time: m.is_first_time,
       is_anniversary: m.is_anniversary,

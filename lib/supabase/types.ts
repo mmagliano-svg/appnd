@@ -50,6 +50,7 @@ export interface Database {
           parent_period_id: string | null
           location_name: string | null
           category: string | null
+          categories: string[]
           tags: string[]
           is_anniversary: boolean
           is_first_time: boolean
@@ -67,6 +68,7 @@ export interface Database {
           parent_period_id?: string | null
           location_name?: string | null
           category?: string | null
+          categories?: string[]
           tags?: string[]
           is_anniversary?: boolean
           is_first_time?: boolean
@@ -84,6 +86,7 @@ export interface Database {
           parent_period_id?: string | null
           location_name?: string | null
           category?: string | null
+          categories?: string[]
           tags?: string[]
           is_anniversary?: boolean
           is_first_time?: boolean

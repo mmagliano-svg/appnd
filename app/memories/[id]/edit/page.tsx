@@ -20,7 +20,7 @@ export default function EditMemoryPage() {
   const [fetching, setFetching] = useState(true)
   const [error, setError] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [category, setCategory] = useState('')
+  const [categories, setCategories] = useState<string[]>([])
   const [title, setTitle] = useState('')
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
   const [startDate, setStartDate] = useState('')
@@ -54,7 +54,13 @@ export default function EditMemoryPage() {
         setMemoryType(data.end_date ? 'period' : 'day')
         setLocation(data.location_name ?? '')
         setDescription(data.description ?? '')
-        setCategory(data.category ?? '')
+        setCategories(
+          (data.categories as string[] | null)?.length
+            ? (data.categories as string[])
+            : data.category
+              ? [data.category]
+              : [],
+        )
         setTags(data.tags ?? [])
         setParentPeriodId(data.parent_period_id ?? null)
       }
@@ -100,7 +106,7 @@ export default function EditMemoryPage() {
         parent_period_id: isPeriod ? null : parentPeriodId,
         location_name: location,
         description,
-        category: category || undefined,
+        categories,
         tags,
       })
     } catch (err) {
@@ -231,23 +237,35 @@ export default function EditMemoryPage() {
           </div>
 
           <div className="space-y-3">
-            <Label className="text-sm font-medium">Capitolo della vita</Label>
+            <div>
+              <Label className="text-sm font-medium">Capitoli della vita</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">Puoi selezionarne più di uno.</p>
+            </div>
             <div className="grid grid-cols-2 gap-2">
-              {CATEGORIES.map((cat) => (
-                <button
-                  key={cat.value}
-                  type="button"
-                  onClick={() => setCategory(cat.value === category ? '' : cat.value)}
-                  className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
-                    category === cat.value
-                      ? 'border-foreground bg-foreground text-background font-medium'
-                      : 'border-border hover:border-foreground/30 hover:bg-accent/50'
-                  }`}
-                >
-                  <span className="text-base">{cat.emoji}</span>
-                  <span>{cat.label}</span>
-                </button>
-              ))}
+              {CATEGORIES.map((cat) => {
+                const active = categories.includes(cat.value)
+                return (
+                  <button
+                    key={cat.value}
+                    type="button"
+                    onClick={() =>
+                      setCategories((prev) =>
+                        prev.includes(cat.value)
+                          ? prev.filter((c) => c !== cat.value)
+                          : [...prev, cat.value],
+                      )
+                    }
+                    className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                      active
+                        ? 'border-foreground bg-foreground text-background font-medium'
+                        : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                    }`}
+                  >
+                    <span className="text-base">{cat.emoji}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 
