@@ -30,6 +30,7 @@ interface DashboardClientProps {
   memories: Memory[]
   allTags: string[]
   people: PersonSummary[]
+  currentUser: { displayName: string }
 }
 
 function getCategoryInfo(value: string | null) {
@@ -37,7 +38,7 @@ function getCategoryInfo(value: string | null) {
   return CATEGORIES.find((c) => c.value === value) ?? null
 }
 
-export function DashboardClient({ memories, allTags, people }: DashboardClientProps) {
+export function DashboardClient({ memories, allTags, people, currentUser }: DashboardClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -155,9 +156,26 @@ export function DashboardClient({ memories, allTags, people }: DashboardClientPr
         <div className="pt-10 pb-6">
           <div className="flex items-center justify-between mb-1">
             <h1 className="text-3xl font-bold tracking-tight">I tuoi ricordi</h1>
-            <Link href="/memories/new">
-              <Button size="sm" className="rounded-full px-4">+ Nuovo</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link href="/memories/new">
+                <Button size="sm" className="rounded-full px-4">+ Nuovo</Button>
+              </Link>
+              {/* Avatar — links to profile */}
+              <Link
+                href="/profile"
+                className="w-8 h-8 rounded-full bg-foreground flex items-center justify-center hover:opacity-75 transition-opacity shrink-0"
+                aria-label="Profilo"
+              >
+                <span className="text-[11px] font-bold tracking-tight text-background">
+                  {(() => {
+                    const n = currentUser.displayName.trim()
+                    const parts = n.split(/\s+/)
+                    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+                    return n.slice(0, 2).toUpperCase() || '?'
+                  })()}
+                </span>
+              </Link>
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             {memories.length === 0
