@@ -4,15 +4,28 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getExploreData } from '@/actions/memories'
 import { getCategoryByValue } from '@/lib/constants/categories'
 
-function plural(n: number, singular: string, plural: string) {
-  return `${n} ${n === 1 ? singular : plural}`
+function plural(n: number) {
+  return `${n} ${n === 1 ? 'momento' : 'momenti'}`
 }
 
 function ChevronRight() {
   return (
-    <svg className="w-4 h-4 text-muted-foreground/50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
     </svg>
+  )
+}
+
+function SectionHeader({ title, count, unit }: { title: string; count: number; unit: string }) {
+  return (
+    <div className="flex items-baseline justify-between mb-5">
+      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      {count > 0 && (
+        <span className="text-xs text-muted-foreground">
+          {count} {unit}
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -32,54 +45,60 @@ export default async function ExplorePage() {
         {/* Header */}
         <div className="pt-10 pb-8">
           <h1 className="text-3xl font-bold tracking-tight mb-1">Esplora</h1>
-          <p className="text-sm text-muted-foreground">
-            La tua storia, da tutti i punti di vista.
-          </p>
+          <p className="text-sm text-muted-foreground">La tua storia, da tutti i punti di vista.</p>
         </div>
 
         {isEmpty ? (
           <div className="text-center py-20 space-y-3">
-            <div className="text-4xl mb-3">○</div>
-            <p className="text-base font-medium">Ancora nessun dato da esplorare.</p>
+            <p className="text-base font-medium">Ancora niente da esplorare.</p>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-              Aggiungi qualche ricordo con luoghi, tag e categorie per vederli qui.
+              Aggiungi ricordi con luoghi, tag e categorie per vederli qui.
             </p>
-            <Link
-              href="/memories/new"
-              className="inline-block text-sm text-foreground underline underline-offset-2 mt-2"
-            >
+            <Link href="/memories/new" className="inline-block text-sm underline underline-offset-2 mt-2">
               Crea il primo ricordo
             </Link>
           </div>
         ) : (
-          <div className="space-y-12">
+          <div className="space-y-14">
 
             {/* ── CONNESSIONI ── */}
             {topTags.length > 0 && (
               <section>
-                <div className="flex items-baseline justify-between mb-4">
-                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                    Connessioni
-                  </h2>
-                  <span className="text-xs text-muted-foreground/50">
-                    {topTags.length} {topTags.length === 1 ? 'tag' : 'tag'}
-                  </span>
-                </div>
-                <div className="divide-y divide-border/50">
-                  {topTags.map(({ tag, count }) => (
+                <SectionHeader
+                  title="Connessioni"
+                  count={topTags.length}
+                  unit={topTags.length === 1 ? 'tag' : 'tag'}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  {topTags.map(({ tag, count, previewUrl }) => (
                     <Link
                       key={tag}
                       href={`/tags/${encodeURIComponent(tag)}`}
-                      className="flex items-center justify-between py-3.5 -mx-4 px-4 hover:bg-accent/30 transition-colors group"
+                      className="relative rounded-2xl overflow-hidden aspect-[4/5] bg-muted group"
                     >
-                      <span className="text-sm font-medium text-foreground group-hover:text-foreground transition-colors">
-                        #{tag}
-                      </span>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-xs text-muted-foreground">
-                          {plural(count, 'momento', 'momenti')}
-                        </span>
-                        <ChevronRight />
+                      {/* Photo or fallback */}
+                      {previewUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={previewUrl}
+                          alt=""
+                          className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-6xl font-bold text-muted-foreground/15 uppercase select-none">
+                            {tag[0]}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Gradient overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
+
+                      {/* Label */}
+                      <div className="absolute bottom-0 left-0 right-0 p-3.5">
+                        <p className="text-white text-sm font-semibold leading-tight">#{tag}</p>
+                        <p className="text-white/60 text-xs mt-0.5">{plural(count)}</p>
                       </div>
                     </Link>
                   ))}
@@ -90,41 +109,51 @@ export default async function ExplorePage() {
             {/* ── LUOGHI ── */}
             {topPlaces.length > 0 && (
               <section>
-                <div className="flex items-baseline justify-between mb-4">
-                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                    Luoghi
-                  </h2>
-                  <span className="text-xs text-muted-foreground/50">
-                    {topPlaces.length} {topPlaces.length === 1 ? 'luogo' : 'luoghi'}
-                  </span>
-                </div>
-                <div className="divide-y divide-border/50">
-                  {topPlaces.map(({ place, count }) => (
+                <SectionHeader
+                  title="Luoghi"
+                  count={topPlaces.length}
+                  unit={topPlaces.length === 1 ? 'luogo' : 'luoghi'}
+                />
+                <div className="space-y-2.5">
+                  {topPlaces.map(({ place, count, previewUrl }) => (
                     <Link
                       key={place}
                       href={`/places/${encodeURIComponent(place)}`}
-                      className="flex items-center justify-between py-3.5 -mx-4 px-4 hover:bg-accent/30 transition-colors group"
+                      className="flex items-center gap-3.5 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 active:scale-[0.99] transition-all group"
                     >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <svg
-                          className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0"
-                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        <span className="text-sm font-medium text-foreground truncate">
-                          {place}
-                        </span>
+                      {/* Thumbnail */}
+                      <div className="w-[68px] h-[68px] rounded-xl overflow-hidden bg-muted shrink-0">
+                        {previewUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={previewUrl}
+                            alt=""
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-muted-foreground/35"
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                          </div>
+                        )}
                       </div>
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <span className="text-xs text-muted-foreground">
-                          {plural(count, 'momento', 'momenti')}
-                        </span>
+
+                      {/* Text */}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold truncate leading-tight">{place}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{plural(count)}</p>
+                      </div>
+
+                      <span className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors">
                         <ChevronRight />
-                      </div>
+                      </span>
                     </Link>
                   ))}
                 </div>
@@ -134,15 +163,12 @@ export default async function ExplorePage() {
             {/* ── CAPITOLI ── */}
             {categories.length > 0 && (
               <section>
-                <div className="flex items-baseline justify-between mb-4">
-                  <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                    Capitoli
-                  </h2>
-                  <span className="text-xs text-muted-foreground/50">
-                    {categories.length} {categories.length === 1 ? 'capitolo' : 'capitoli'}
-                  </span>
-                </div>
-                <div className="divide-y divide-border/50">
+                <SectionHeader
+                  title="Capitoli"
+                  count={categories.length}
+                  unit={categories.length === 1 ? 'capitolo' : 'capitoli'}
+                />
+                <div className="space-y-2.5">
                   {categories.map(({ value, count }) => {
                     const cat = getCategoryByValue(value)
                     if (!cat) return null
@@ -150,20 +176,22 @@ export default async function ExplorePage() {
                       <Link
                         key={value}
                         href={`/dashboard?category=${value}`}
-                        className="flex items-center justify-between py-3.5 -mx-4 px-4 hover:bg-accent/30 transition-colors group"
+                        className="flex items-center gap-3.5 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 active:scale-[0.99] transition-all group"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg leading-none">{cat.emoji}</span>
-                          <span className="text-sm font-medium text-foreground">
-                            {cat.label}
-                          </span>
+                        {/* Emoji bubble */}
+                        <div className="w-11 h-11 rounded-xl bg-background flex items-center justify-center shrink-0 shadow-sm text-xl">
+                          {cat.emoji}
                         </div>
-                        <div className="flex items-center gap-2.5">
-                          <span className="text-xs text-muted-foreground">
-                            {plural(count, 'momento', 'momenti')}
-                          </span>
+
+                        {/* Text */}
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold">{cat.label}</p>
+                          <p className="text-xs text-muted-foreground">{plural(count)}</p>
+                        </div>
+
+                        <span className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors">
                           <ChevronRight />
-                        </div>
+                        </span>
                       </Link>
                     )
                   })}
