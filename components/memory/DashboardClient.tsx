@@ -105,6 +105,19 @@ export function DashboardClient({ memories, allTags, people }: DashboardClientPr
     return map
   }, [memories])
 
+  // Anniversaries that fall on today (same day + month, any year)
+  const todayAnniversaries = useMemo(() => {
+    const today = new Date()
+    const todayMonth = today.getMonth()
+    const todayDay = today.getDate()
+    return memories.filter((m) => {
+      if (!m.is_anniversary) return false
+      // Force noon to avoid UTC offset edge cases
+      const d = new Date(m.start_date + 'T12:00:00')
+      return d.getMonth() === todayMonth && d.getDate() === todayDay
+    })
+  }, [memories])
+
   // 3 most recent memories
   const recentMemories = useMemo(() => {
     return [...memories]
@@ -153,30 +166,109 @@ export function DashboardClient({ memories, allTags, people }: DashboardClientPr
           </p>
         </div>
 
-        {/* ── Empty state ── */}
-        {memories.length === 0 && (
-          <div className="text-center py-16 space-y-6">
-            {/* Quote */}
-            <div className="max-w-sm mx-auto space-y-3 px-2">
-              <p className="text-3xl leading-none text-muted-foreground/30 font-serif select-none">"</p>
-              <p className="text-base font-medium leading-relaxed text-foreground/80 italic">
-                {quote.text}
-              </p>
-              <p className="text-xs text-muted-foreground tracking-wide">
-                — {quote.author}
+        {/* ── Rivivi oggi — anniversari che cadono oggi ── */}
+        {todayAnniversaries.length > 0 && (
+          <div className="mb-8 rounded-2xl border border-violet-200 bg-violet-50/40 dark:border-violet-800/50 dark:bg-violet-950/20 p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-sm">↺</span>
+              <p className="text-xs font-semibold uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                Rivivi oggi
               </p>
             </div>
+            <div className="space-y-2">
+              {todayAnniversaries.map((memory) => {
+                const yearsAgo = new Date().getFullYear() - new Date(memory.start_date + 'T12:00:00').getFullYear()
+                return (
+                  <Link
+                    key={memory.id}
+                    href={`/memories/${memory.id}`}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-background/70 border border-violet-100 dark:border-violet-800/30 px-4 py-3 hover:border-violet-300 dark:hover:border-violet-600 transition-all group"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold leading-snug group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors truncate">
+                        {memory.title}
+                      </p>
+                      {yearsAgo > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {yearsAgo} ann{yearsAgo === 1 ? 'o' : 'i'} fa
+                          {memory.location_name && ` · ${memory.location_name}`}
+                        </p>
+                      )}
+                    </div>
+                    <svg className="w-4 h-4 text-violet-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
-            <div className="pt-2 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Il tuo libro dei momenti ti aspetta.
+        {/* ── Onboarding / Empty state ── */}
+        {memories.length === 0 && (
+          <div className="py-12 space-y-10">
+
+            {/* Quote del giorno */}
+            <div className="max-w-sm mx-auto text-center space-y-2 px-2">
+              <p className="text-4xl leading-none text-muted-foreground/20 font-serif select-none">"</p>
+              <p className="text-sm font-medium leading-relaxed text-foreground/75 italic">
+                {quote.text}
               </p>
+              <p className="text-xs text-muted-foreground/60">— {quote.author}</p>
+            </div>
+
+            {/* Divisore */}
+            <div className="flex items-center gap-4">
+              <div className="flex-1 border-t border-border/40" />
+              <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/40">
+                Come funziona
+              </span>
+              <div className="flex-1 border-t border-border/40" />
+            </div>
+
+            {/* 3 step */}
+            <div className="space-y-5">
+              {[
+                {
+                  icon: '✦',
+                  title: 'Crea un ricordo',
+                  desc: 'Titolo, data, foto, luogo. Anche solo un titolo basta per iniziare.',
+                },
+                {
+                  icon: '↗',
+                  title: 'Invita chi c\'era',
+                  desc: 'Manda un link via email. Non serve che abbiano già un account.',
+                },
+                {
+                  icon: '◎',
+                  title: 'Co-costruitelo insieme',
+                  desc: 'Ognuno aggiunge la propria prospettiva. Il ricordo si arricchisce.',
+                },
+              ].map((step, i) => (
+                <div key={i} className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-base shrink-0 mt-0.5">
+                    {step.icon}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold leading-snug">{step.title}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed mt-0.5">
+                      {step.desc}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div className="text-center pt-2">
               <Link href="/memories/new">
-                <Button className="rounded-full px-6">
-                  Aggiungi il primo momento
+                <Button className="rounded-full px-8 py-5 text-base">
+                  Crea il tuo primo ricordo
                 </Button>
               </Link>
             </div>
+
           </div>
         )}
 

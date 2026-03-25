@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { TimelineMemory } from '@/actions/memories'
+import { CATEGORIES } from '@/lib/constants/categories'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -527,22 +528,20 @@ interface Props {
 }
 
 export function TimelineAnimated({ memories }: Props) {
-  const [level,         setLevel]         = useState<Level>('years')
-  const [selectedYear,  setSelectedYear]  = useState<number | null>(null)
-  const [selectedMonth, setSelectedMonth] = useState<number | null>(null)
-  const [dir,           setDir]           = useState<'forward' | 'backward'>('forward')
+  const [level,           setLevel]           = useState<Level>('years')
+  const [selectedYear,    setSelectedYear]    = useState<number | null>(null)
+  const [selectedMonth,   setSelectedMonth]   = useState<number | null>(null)
+  const [dir,             setDir]             = useState<'forward' | 'backward'>('forward')
+  const [activeCategory,  setActiveCategory]  = useState<string | null>(null)
 
   // ── Scroll position store ──────────────────────────────────────────────
-  // Save the scroll offset before navigating forward; restore it when going back.
   const scrollStore   = useRef<Record<string, number>>({})
   const pendingScroll = useRef<number | null>(null)
 
-  // Runs after every level change — restores the saved scroll position.
   useEffect(() => {
     if (pendingScroll.current !== null) {
       const target = pendingScroll.current
       pendingScroll.current = null
-      // rAF: wait for the DOM to paint the new level before scrolling
       requestAnimationFrame(() => {
         window.scrollTo({ top: target, behavior: 'instant' })
       })
@@ -550,7 +549,20 @@ export function TimelineAnimated({ memories }: Props) {
   }, [level])
 
   // ── Data ───────────────────────────────────────────────────────────────
-  const yearGroups   = useMemo(() => groupMemories(memories), [memories])
+
+  // Categories actually present in the dataset
+  const usedCategories = useMemo(() => {
+    const used = new Set(memories.map((m) => m.category).filter(Boolean))
+    return CATEGORIES.filter((c) => used.has(c.value))
+  }, [memories])
+
+  // Apply category filter before grouping (only on years view)
+  const filteredMemories = useMemo(() => {
+    if (!activeCategory) return memories
+    return memories.filter((m) => m.category === activeCategory)
+  }, [memories, activeCategory])
+
+  const yearGroups   = useMemo(() => groupMemories(filteredMemories), [filteredMemories])
   const currentYear  = yearGroups.find((y) => y.year === selectedYear) ?? null
   const currentMonth = currentYear?.monthGroups.find((m) => m.month === selectedMonth) ?? null
 
@@ -646,7 +658,9 @@ export function TimelineAnimated({ memories }: Props) {
           {/* Static subtitle for year level */}
           {level === 'years' && (
             <p className="text-sm text-muted-foreground mt-1.5">
-              La tua storia nel tempo.
+              {activeCategory
+                ? `${usedCategories.find(c => c.value === activeCategory)?.label ?? activeCategory} · filtrando`
+                : 'La tua storia nel tempo.'}
             </p>
           )}
 
@@ -667,6 +681,45 @@ export function TimelineAnimated({ memories }: Props) {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* ── Category filter chips — years level only ─────────────────────── */}
+      <AnimatePresence>
+        {level === 'years' && usedCategories.length >= 2 && (
+          <motion.div
+            key="cat-filters"
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            className="flex gap-2 overflow-x-auto pb-5 -mx-4 px-4"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            <button
+              onClick={() => setActiveCategory(null)}
+              className={`flex-none rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all ${
+                !activeCategory
+                  ? 'bg-foreground text-background border-foreground'
+                  : 'bg-background border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+              }`}
+            >
+              Tutti
+            </button>
+            {usedCategories.map((cat) => (
+              <button
+                key={cat.value}
+                onClick={() => setActiveCategory(activeCategory === cat.value ? null : cat.value)}
+                className={`flex-none rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all ${
+                  activeCategory === cat.value
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-background border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                }`}
+              >
+                {cat.emoji} {cat.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Level views — shared-element zoom ───────────────────────────── */}
       {/*

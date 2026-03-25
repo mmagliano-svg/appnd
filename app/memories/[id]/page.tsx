@@ -1,17 +1,24 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
 import { DeleteButton } from '@/components/memory/DeleteButton'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { formatMemoryDateFull, formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
 import InviteForm from './InviteForm'
 
-function formatTime(dateStr: string) {
-  return new Date(dateStr).toLocaleTimeString('it-IT', {
+function formatDateTime(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('it-IT', {
+    day: 'numeric',
+    month: 'long',
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return name.slice(0, 2).toUpperCase()
 }
 
 export default async function MemoryPage({ params }: { params: { id: string } }) {
@@ -58,13 +65,20 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   const tags: string[] = (memory as { tags?: string[] }).tags ?? []
   const category = (memory as { category?: string | null }).category
   const catInfo = getCategoryByValue(category)
+  const isFirstTime = (memory as { is_first_time?: boolean }).is_first_time ?? false
+  const isAnniversary = (memory as { is_anniversary?: boolean }).is_anniversary ?? false
 
   const memoryEndDate = (memory as { end_date?: string | null }).end_date ?? null
   const memoryStartDate = (memory as { start_date?: string }).start_date ?? memory.happened_at
   const memoryParentPeriodId = (memory as { parent_period_id?: string | null }).parent_period_id ?? null
   const isPeriod = Boolean(memoryEndDate)
 
-  // Fetch child events if this is a period (RLS ensures user can only see their own)
+  // Hero photo — first photo contribution chronologically
+  const heroPhoto = contributions.find(
+    (c) => c.content_type === 'photo' && c.media_url
+  )?.media_url ?? null
+
+  // Fetch child events if this is a period
   const { data: childEventsData } = isPeriod
     ? await supabase
         .from('memories')
@@ -89,162 +103,233 @@ export default async function MemoryPage({ params }: { params: { id: string } })
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="max-w-lg mx-auto px-4 pb-16">
 
-        {/* Top navigation */}
-        <div className="flex items-center justify-between pt-6 pb-2">
+      {/* ── Hero block ── */}
+      <div className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'pt-14'} bg-muted overflow-hidden`}>
+        {heroPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={heroPhoto}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
+          />
+        ) : null}
+
+        {/* Gradient overlay (always — stronger when no photo) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: heroPhoto
+              ? 'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.72) 100%)'
+              : 'none',
+          }}
+        />
+
+        {/* Top bar — overlaid on hero */}
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-6 z-10">
           <Link
             href="/dashboard"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className={`inline-flex items-center gap-1.5 text-sm transition-colors ${
+              heroPhoto
+                ? 'text-white/80 hover:text-white drop-shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
             </svg>
             I tuoi ricordi
           </Link>
           {isCreator && (
-            <div className="flex items-center gap-2">
-              <Link href={`/memories/${params.id}/edit`}>
-                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                  Modifica
-                </Button>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/memories/${params.id}/edit`}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                  heroPhoto
+                    ? 'text-white/80 hover:text-white hover:bg-white/10'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                Modifica
               </Link>
               <DeleteButton memoryId={params.id} />
             </div>
           )}
         </div>
 
-        {/* Memory hero section */}
-        <div className="pt-6 pb-8 border-b border-border/50">
-          {/* Category label */}
-          {catInfo && (
-            <Link
-              href={`/dashboard?category=${catInfo.value}`}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-3 group"
-            >
-              <span>{catInfo.emoji}</span>
-              <span className="uppercase tracking-wider group-hover:underline underline-offset-2">
-                {catInfo.label}
+        {/* Hero caption — bottom of hero when photo exists */}
+        {heroPhoto && (
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
+            {catInfo && (
+              <p className="text-xs font-semibold uppercase tracking-widest text-white/60 mb-1.5">
+                {catInfo.emoji} {catInfo.label}
+              </p>
+            )}
+            <h1 className="text-2xl font-bold tracking-tight leading-tight text-white drop-shadow-sm">
+              {memory.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5">
+              <span className="text-xs text-white/65">
+                {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
               </span>
-            </Link>
-          )}
-
-          {/* Title */}
-          <h1 className="text-3xl font-bold tracking-tight leading-tight mb-3">
-            {memory.title}
-          </h1>
-
-          {/* Meta: date + location */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mb-4">
-            <span className="flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              {formatMemoryDateFull(
-                (memory as { start_date?: string }).start_date ?? memory.happened_at,
-                (memory as { end_date?: string | null }).end_date ?? null
+              {memory.location_name && (
+                <>
+                  <span className="text-white/30">·</span>
+                  <span className="text-xs text-white/65">{memory.location_name}</span>
+                </>
               )}
-            </span>
-            {memory.location_name && (
-              <span className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                {memory.location_name}
-              </span>
+            </div>
+            {/* Badges */}
+            {(isFirstTime || isAnniversary) && (
+              <div className="flex gap-1.5 mt-2">
+                {isFirstTime && (
+                  <span className="text-[9px] font-semibold rounded-full bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 text-amber-200">
+                    ✦ Prima volta
+                  </span>
+                )}
+                {isAnniversary && (
+                  <span className="text-[9px] font-semibold rounded-full bg-violet-400/20 border border-violet-300/40 px-2 py-0.5 text-violet-200">
+                    ↺ Ricorrenza
+                  </span>
+                )}
+              </div>
             )}
           </div>
+        )}
+      </div>
 
-          {/* Connections / Tags */}
-          {tags.length > 0 && (
-            <div className="mt-5 pt-4 border-t border-border/40">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5">
-                Connessioni
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag) => (
-                  <Link
-                    key={tag}
-                    href={`/tags/${encodeURIComponent(tag)}`}
-                    className="inline-flex items-center rounded-full border border-border bg-background hover:bg-accent hover:border-foreground/20 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all"
-                  >
-                    #{tag}
-                  </Link>
-                ))}
-              </div>
+      {/* ── Body ── */}
+      <div className="max-w-lg mx-auto px-4 pb-32">
+
+        {/* Title block — only when no hero photo */}
+        {!heroPhoto && (
+          <div className="pt-6 pb-6 border-b border-border/50">
+            {catInfo && (
+              <Link
+                href={`/dashboard?category=${catInfo.value}`}
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors mb-3"
+              >
+                <span>{catInfo.emoji}</span>
+                <span className="uppercase tracking-wider">{catInfo.label}</span>
+              </Link>
+            )}
+            <div className="flex items-start gap-3">
+              <h1 className="text-3xl font-bold tracking-tight leading-tight flex-1">
+                {memory.title}
+              </h1>
+              {(isFirstTime || isAnniversary) && (
+                <div className="flex flex-col gap-1 mt-1 shrink-0">
+                  {isFirstTime && (
+                    <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
+                      ✦ Prima volta
+                    </span>
+                  )}
+                  {isAnniversary && (
+                    <span className="text-[9px] font-semibold rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
+                      ↺ Ricorrenza
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-          )}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-3">
+              <span className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
+              </span>
+              {memory.location_name && (
+                <span className="flex items-center gap-1.5">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  {memory.location_name}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
-          {/* Description */}
-          {memory.description && (
+        {/* ── Description ── */}
+        {memory.description && (
+          <div className={`${heroPhoto ? 'pt-6' : 'pt-5'} pb-5 border-b border-border/50`}>
             <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">
               {memory.description}
             </p>
-          )}
+          </div>
+        )}
 
-          {/* Parent period reference */}
-          {parentPeriod && (
-            <div className="mt-5 pt-4 border-t border-border/40">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                Parte di
-              </p>
-              <Link
-                href={`/memories/${parentPeriod.id}`}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border hover:border-foreground/20 bg-background hover:bg-accent/30 px-4 py-3 transition-all group"
-              >
-                <div>
-                  <p className="text-sm font-medium group-hover:text-foreground transition-colors">
-                    {parentPeriod.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {formatPeriodDisplay(parentPeriod.start_date, parentPeriod.end_date)}
-                  </p>
-                </div>
-                <svg className="w-4 h-4 text-muted-foreground shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </Link>
-            </div>
-          )}
-        </div>
-
-        {/* Participants */}
-        {participants.length > 0 && (
-          <div className="py-5 border-b border-border/50">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2.5">
-              Partecipanti
-            </p>
+        {/* ── Tags ── */}
+        {tags.length > 0 && (
+          <div className="py-4 border-b border-border/50">
             <div className="flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <Link
+                  key={tag}
+                  href={`/tags/${encodeURIComponent(tag)}`}
+                  className="inline-flex items-center rounded-full border border-border bg-background hover:bg-accent hover:border-foreground/20 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all"
+                >
+                  #{tag}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Parent period ── */}
+        {parentPeriod && (
+          <div className="py-4 border-b border-border/50">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+              Parte di
+            </p>
+            <Link
+              href={`/memories/${parentPeriod.id}`}
+              className="flex items-center justify-between gap-3 rounded-xl border border-border hover:border-foreground/20 bg-background hover:bg-accent/30 px-4 py-3 transition-all group"
+            >
+              <div>
+                <p className="text-sm font-medium">{parentPeriod.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {formatPeriodDisplay(parentPeriod.start_date, parentPeriod.end_date)}
+                </p>
+              </div>
+              <svg className="w-4 h-4 text-muted-foreground shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        )}
+
+        {/* ── Participants ── */}
+        {participants.length > 0 && (
+          <div className="py-4 border-b border-border/50">
+            <div className="flex items-center gap-2 flex-wrap">
               {participants.map((p) => {
-                const name =
-                  p.users?.display_name ?? p.users?.email ?? p.invited_email ?? '?'
-                const initials = name.slice(0, 2).toUpperCase()
+                const name = p.users?.display_name ?? p.users?.email ?? p.invited_email ?? '?'
+                const ini = initials(name)
                 const isMe = p.user_id === user?.id
                 const chip = (
                   <div
                     key={p.id}
-                    className={`flex items-center gap-2 rounded-full px-3 py-1.5 transition-colors ${
-                      isMe
-                        ? 'bg-secondary'
-                        : 'bg-secondary hover:bg-accent cursor-pointer'
-                    }`}
+                    className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-secondary"
                   >
-                    <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
-                      {initials}
+                    <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[10px] font-bold text-background">
+                      {ini}
                     </div>
-                    <span className="text-xs font-medium">{name}</span>
-                    {!isMe && (
-                      <svg className="w-3 h-3 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    )}
+                    <span className="text-xs font-medium">{isMe ? 'Tu' : name}</span>
                   </div>
                 )
                 if (!isMe && p.user_id) {
                   return (
                     <Link key={p.id} href={`/people/${p.user_id}`}>
-                      {chip}
+                      <div className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-secondary hover:bg-accent transition-colors cursor-pointer">
+                        <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[10px] font-bold text-background">
+                          {ini}
+                        </div>
+                        <span className="text-xs font-medium">{name}</span>
+                      </div>
                     </Link>
                   )
                 }
@@ -254,17 +339,18 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           </div>
         )}
 
-        {/* Child events (only for periods) */}
+        {/* ── Child events (periods only) ── */}
         {isPeriod && (
           <div className="py-5 border-b border-border/50">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Momenti di questo periodo · {childEvents.length}
+                Momenti · {childEvents.length}
               </p>
-              <Link href={`/memories/new?period=${memory.id}`}>
-                <Button size="sm" variant="ghost" className="text-xs text-muted-foreground hover:text-foreground rounded-full px-3">
-                  + Aggiungi
-                </Button>
+              <Link
+                href={`/memories/new?period=${memory.id}`}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                + Aggiungi
               </Link>
             </div>
             {childEvents.length === 0 ? (
@@ -287,9 +373,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
                               {evCat.emoji} {evCat.label}
                             </p>
                           )}
-                          <p className="text-sm font-medium truncate group-hover:text-foreground transition-colors">
-                            {ev.title}
-                          </p>
+                          <p className="text-sm font-medium truncate">{ev.title}</p>
                           {ev.location_name && (
                             <p className="text-xs text-muted-foreground mt-0.5 truncate">📍 {ev.location_name}</p>
                           )}
@@ -306,83 +390,139 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           </div>
         )}
 
-        {/* Contributions */}
-        <div className="pt-6">
-          <div className="flex items-center justify-between mb-5">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              Contributi · {contributions.length}
-            </p>
-            <Link href={`/memories/${params.id}/contribute`}>
-              <Button size="sm" className="rounded-full px-4 text-xs">
-                + Aggiungi
-              </Button>
-            </Link>
-          </div>
+        {/* ── Contributions — narrative ── */}
+        <div className="pt-8">
 
           {contributions.length === 0 ? (
-            <div className="text-center py-12 space-y-2">
-              <div className="text-3xl mb-3">✦</div>
+            <div className="text-center py-16 space-y-3">
+              <p className="text-3xl">✦</p>
               <p className="text-sm font-medium">Ancora nessun contributo.</p>
               <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                Aggiungi i tuoi pensieri, ricordi o note su questo momento.
+                Aggiungi i tuoi pensieri, foto o note su questo momento.
               </p>
             </div>
           ) : (
-            <ul className="space-y-4">
+            <div className="space-y-10">
               {contributions.map((c) => {
-                const authorName =
-                  (c as { users?: { display_name?: string | null; email?: string | null } }).users
-                    ?.display_name ??
-                  (c as { users?: { display_name?: string | null; email?: string | null } }).users
-                    ?.email ??
-                  'Anonimo'
+                const authorData = (c as {
+                  users?: { display_name?: string | null; email?: string | null }
+                }).users
+                const authorName = authorData?.display_name ?? authorData?.email ?? 'Anonimo'
                 const isOwn = c.author_id === user?.id
-                return (
-                  <li
-                    key={c.id}
-                    className={`rounded-2xl p-4 space-y-2 ${
-                      isOwn
-                        ? 'bg-foreground/5 border border-foreground/10'
-                        : 'bg-card border border-border'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold">
-                        {isOwn ? 'Tu' : authorName}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatTime(c.created_at)}
-                      </span>
-                    </div>
-                    {c.text_content && (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/85">
-                        {c.text_content}
-                      </p>
-                    )}
-                    {c.media_url && (
+                const ini = initials(authorName)
+
+                /* ── Photo contribution ── */
+                if (c.content_type === 'photo' && c.media_url) {
+                  return (
+                    <div key={c.id} className="-mx-4">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={c.media_url}
                         alt={c.caption ?? ''}
-                        className="w-full rounded-xl object-cover max-h-64"
+                        className="w-full object-cover"
+                        style={{ maxHeight: '480px' }}
+                        loading="lazy"
+                        draggable={false}
                       />
-                    )}
-                    {c.caption && c.content_type === 'photo' && (
-                      <p className="text-xs text-muted-foreground italic">
-                        {c.caption}
+                      <div className="px-4 pt-3 flex items-start justify-between gap-3">
+                        <div>
+                          {c.caption && (
+                            <p className="text-sm text-foreground/80 italic leading-relaxed">
+                              {c.caption}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
+                              {ini}
+                            </div>
+                            <span className="text-xs text-muted-foreground">
+                              {isOwn ? 'Tu' : authorName}
+                            </span>
+                            <span className="text-muted-foreground/30">·</span>
+                            <span className="text-xs text-muted-foreground/50">
+                              {formatDateTime(c.created_at)}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+
+                /* ── Text contribution — journal style ── */
+                if (c.content_type === 'text' && c.text_content) {
+                  return (
+                    <div key={c.id} className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center text-xs font-bold text-background shrink-0">
+                          {ini}
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold leading-none">
+                            {isOwn ? 'Tu' : authorName}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {formatDateTime(c.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-base leading-relaxed text-foreground/85 whitespace-pre-wrap pl-9">
+                        {c.text_content}
                       </p>
-                    )}
-                  </li>
-                )
+                    </div>
+                  )
+                }
+
+                /* ── Note contribution — distinct bg ── */
+                if (c.content_type === 'note' && c.text_content) {
+                  return (
+                    <div key={c.id} className="rounded-2xl bg-muted/50 border border-border/40 px-5 py-4 space-y-2.5">
+                      <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap italic">
+                        {c.text_content}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
+                          {ini}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {isOwn ? 'Tu' : authorName}
+                        </span>
+                        <span className="text-muted-foreground/30">·</span>
+                        <span className="text-xs text-muted-foreground/50">
+                          {formatDateTime(c.created_at)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                }
+
+                /* ── Fallback ── */
+                return null
               })}
-            </ul>
+            </div>
           )}
         </div>
 
-        {/* Invite section */}
-        <div className="mt-8 pt-6 border-t border-border/50">
+        {/* ── Invite section ── */}
+        <div className="mt-12 pt-6 border-t border-border/50">
           <InviteForm memoryId={params.id} />
         </div>
+
       </div>
+
+      {/* ── FAB — floating contribute button ── */}
+      <div className="fixed bottom-6 right-4 z-50 max-w-lg" style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}>
+        <Link
+          href={`/memories/${params.id}/contribute`}
+          className="flex items-center gap-2.5 rounded-full bg-foreground text-background pl-5 pr-6 py-3.5 text-sm font-semibold shadow-xl hover:bg-foreground/90 active:scale-95 transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Contribuisci
+        </Link>
+      </div>
+
     </main>
   )
 }

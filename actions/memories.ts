@@ -394,6 +394,7 @@ export interface TimelineMemory {
   start_date: string
   end_date: string | null
   location_name: string | null
+  category: string | null
   is_anniversary: boolean
   is_first_time: boolean
   previewUrl: string | null
@@ -409,7 +410,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
 
   const { data } = await supabase
     .from('memory_participants')
-    .select(`memories ( id, title, description, start_date, end_date, location_name, is_anniversary, is_first_time )`)
+    .select(`memories ( id, title, description, start_date, end_date, location_name, category, is_anniversary, is_first_time )`)
     .eq('user_id', user.id)
     .not('joined_at', 'is', null)
 
@@ -422,6 +423,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
     start_date: string
     end_date: string | null
     location_name: string | null
+    category: string | null
     is_anniversary: boolean
     is_first_time: boolean
   }
@@ -458,6 +460,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
       start_date: m.start_date,
       end_date: m.end_date,
       location_name: m.location_name,
+      category: m.category,
       is_anniversary: m.is_anniversary,
       is_first_time: m.is_first_time,
       previewUrl: photoMap.get(m.id) ?? null,
