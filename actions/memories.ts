@@ -404,6 +404,7 @@ export interface TimelineMemory {
   location_name: string | null
   category: string | null   // legacy — use categories[]
   categories: string[]
+  tags: string[]
   is_anniversary: boolean
   is_first_time: boolean
   parent_period_id: string | null
@@ -438,6 +439,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
     location_name: string | null
     category: string | null
     categories: string[]
+    tags: string[]
     is_anniversary: boolean
     is_first_time: boolean
     parent_period_id: string | null
@@ -445,7 +447,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
 
   const { data: memoriesData } = await supabase
     .from('memories')
-    .select('id, title, description, start_date, end_date, location_name, category, categories, is_anniversary, is_first_time, parent_period_id')
+    .select('id, title, description, start_date, end_date, location_name, category, categories, tags, is_anniversary, is_first_time, parent_period_id')
     .in('id', memoryIds)
 
   const memories = (memoriesData ?? []) as MemRow[]
@@ -485,6 +487,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
       location_name: m.location_name,
       category: m.category,
       categories: m.categories?.length ? m.categories : (m.category ? [m.category] : []),
+      tags: m.tags ?? [],
       is_anniversary: m.is_anniversary,
       is_first_time: m.is_first_time,
       parent_period_id: m.parent_period_id ?? null,

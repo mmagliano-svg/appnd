@@ -62,16 +62,49 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
   const periods = useMemo(() => memories.filter((m) => Boolean(m.end_date)), [memories])
   const events  = useMemo(() => memories.filter((m) => !m.end_date), [memories])
 
-  // Child event counts per period
-  const periodChildCounts = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const e of events) {
-      if (e.parent_period_id) {
-        counts[e.parent_period_id] = (counts[e.parent_period_id] ?? 0) + 1
+  // Insights per period (computed from events in date range)
+  const periodInsightsMap = useMemo(() => {
+    const map: Record<string, { total: number; mostActiveYear: number | null; connections: string[] }> = {}
+
+    for (const period of periods) {
+      const effectiveEnd =
+        period.end_date && period.end_date >= '9999-01-01'
+          ? new Date().toISOString().split('T')[0]
+          : period.end_date ?? new Date().toISOString().split('T')[0]
+
+      const matched = events.filter(
+        (e) => e.start_date >= period.start_date && e.start_date <= effectiveEnd
+      )
+
+      // Most active year
+      let mostActiveYear: number | null = null
+      if (matched.length > 0) {
+        const yearCounts: Record<number, number> = {}
+        for (const e of matched) {
+          const y = parseInt(e.start_date.split('-')[0])
+          yearCounts[y] = (yearCounts[y] ?? 0) + 1
+        }
+        mostActiveYear = parseInt(Object.entries(yearCounts).sort(([, a], [, b]) => b - a)[0][0])
       }
+
+      // Top connections: tags + places
+      const tagCounts: Record<string, number> = {}
+      const placeCounts: Record<string, number> = {}
+      for (const e of matched) {
+        for (const t of e.tags) tagCounts[t] = (tagCounts[t] ?? 0) + 1
+        if (e.location_name?.trim()) {
+          const loc = e.location_name.trim()
+          placeCounts[loc] = (placeCounts[loc] ?? 0) + 1
+        }
+      }
+      const topTags = Object.entries(tagCounts).sort(([, a], [, b]) => b - a).slice(0, 2).map(([t]) => t)
+      const topPlaces = Object.entries(placeCounts).sort(([, a], [, b]) => b - a).slice(0, 1).map(([p]) => p)
+      const connections = [...topTags, ...topPlaces].slice(0, 3)
+
+      map[period.id] = { total: matched.length, mostActiveYear, connections }
     }
-    return counts
-  }, [events])
+    return map
+  }, [periods, events])
 
   // Categories actually used (events only — periods have their own section)
   const usedCategories = useMemo(() => {
@@ -320,7 +353,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                   {[...periods]
                     .sort((a, b) => b.start_date.localeCompare(a.start_date))
                     .map((period) => {
-                      const count = periodChildCounts[period.id] ?? 0
+                      const ins = periodInsightsMap[period.id] ?? { total: 0, mostActiveYear: null, connections: [] }
                       return (
                         <Link
                           key={period.id}
@@ -341,10 +374,22 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                           <p className="text-sm font-semibold text-muted-foreground tabular-nums mt-2">
                             {formatPeriodDisplay(period.start_date, period.end_date!)}
                           </p>
-                          {count > 0 && (
-                            <p className="text-xs text-muted-foreground/50 mt-1.5">
-                              {count} {count === 1 ? 'momento' : 'momenti'}
-                            </p>
+                          {ins.total > 0 && (
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/25">
+                              <span className="text-xs font-semibold text-foreground/60">
+                                {ins.total} {ins.total === 1 ? 'momento' : 'momenti'}
+                              </span>
+                              {ins.mostActiveYear !== null && ins.total > 2 && (
+                                <span className="text-xs text-muted-foreground/50">
+                                  Più attivo: {ins.mostActiveYear}
+                                </span>
+                              )}
+                              {ins.connections.length > 0 && (
+                                <span className="text-xs text-muted-foreground/50">
+                                  Con: {ins.connections.join(', ')}
+                                </span>
+                              )}
+                            </div>
                           )}
                         </Link>
                       )

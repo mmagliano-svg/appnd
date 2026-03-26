@@ -40,6 +40,67 @@ const MONTHS_IT = [
 
 const DAYS_FULL = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato']
 
+// ── Period insights ────────────────────────────────────────────────────────
+
+interface PeriodInsights {
+  totalMoments: number
+  mostActiveYear: number | null
+  topTags: string[]
+  topPlaces: string[]
+}
+
+function computePeriodInsights(period: TimelineMemory, events: TimelineMemory[]): PeriodInsights {
+  const effectiveEnd =
+    period.end_date && period.end_date >= '9999-01-01'
+      ? new Date().toISOString().split('T')[0]
+      : period.end_date ?? new Date().toISOString().split('T')[0]
+
+  const matched = events.filter(
+    (e) => e.start_date >= period.start_date && e.start_date <= effectiveEnd
+  )
+
+  if (matched.length === 0) {
+    return { totalMoments: 0, mostActiveYear: null, topTags: [], topPlaces: [] }
+  }
+
+  // Most active year
+  const yearCounts: Record<number, number> = {}
+  for (const e of matched) {
+    const y = parseInt(e.start_date.split('-')[0])
+    yearCounts[y] = (yearCounts[y] ?? 0) + 1
+  }
+  const mostActiveYear = parseInt(
+    Object.entries(yearCounts).sort(([, a], [, b]) => b - a)[0][0]
+  )
+
+  // Top tags (max 3)
+  const tagCounts: Record<string, number> = {}
+  for (const e of matched) {
+    for (const t of e.tags) {
+      tagCounts[t] = (tagCounts[t] ?? 0) + 1
+    }
+  }
+  const topTags = Object.entries(tagCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 3)
+    .map(([t]) => t)
+
+  // Top places (max 2)
+  const placeCounts: Record<string, number> = {}
+  for (const e of matched) {
+    if (e.location_name?.trim()) {
+      const loc = e.location_name.trim()
+      placeCounts[loc] = (placeCounts[loc] ?? 0) + 1
+    }
+  }
+  const topPlaces = Object.entries(placeCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 2)
+    .map(([p]) => p)
+
+  return { totalMoments: matched.length, mostActiveYear, topTags, topPlaces }
+}
+
 // ── Grouping ───────────────────────────────────────────────────────────────
 
 function groupMemories(memories: TimelineMemory[]): YearGroup[] {
@@ -168,12 +229,13 @@ function PhotoTile({
 
 function PeriodCard({
   period,
-  childCount,
+  insights,
 }: {
   period: TimelineMemory
-  childCount: number
+  insights: PeriodInsights
 }) {
   const dateRange = formatPeriodDisplay(period.start_date, period.end_date!)
+  const connections = [...insights.topTags, ...insights.topPlaces].slice(0, 3)
 
   return (
     <Link
@@ -197,16 +259,28 @@ function PeriodCard({
         </p>
       )}
 
-      <div className="flex items-baseline gap-2 mt-4">
-        <p className="text-sm font-semibold text-muted-foreground tabular-nums">
-          {dateRange}
-        </p>
-        {childCount > 0 && (
-          <p className="text-xs text-muted-foreground/40">
-            · {childCount} {childCount === 1 ? 'momento' : 'momenti'}
-          </p>
-        )}
-      </div>
+      <p className="text-sm font-semibold text-muted-foreground tabular-nums mt-4">
+        {dateRange}
+      </p>
+
+      {/* Insights */}
+      {insights.totalMoments > 0 && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/25">
+          <span className="text-xs font-semibold text-foreground/60">
+            {insights.totalMoments} {insights.totalMoments === 1 ? 'momento' : 'momenti'}
+          </span>
+          {insights.mostActiveYear !== null && insights.totalMoments > 2 && (
+            <span className="text-xs text-muted-foreground/50">
+              Più attivo: {insights.mostActiveYear}
+            </span>
+          )}
+          {connections.length > 0 && (
+            <span className="text-xs text-muted-foreground/50">
+              Con: {connections.join(', ')}
+            </span>
+          )}
+        </div>
+      )}
     </Link>
   )
 }
@@ -216,12 +290,12 @@ function PeriodCard({
 function YearsView({
   groups,
   periods,
-  childCounts,
+  allEvents,
   onSelect,
 }: {
   groups: YearGroup[]
   periods: TimelineMemory[]
-  childCounts: Record<string, number>
+  allEvents: TimelineMemory[]
   onSelect: (year: number) => void
 }) {
   // Build interleaved list of year cards and period cards, sorted newest first.
@@ -263,11 +337,12 @@ function YearsView({
     >
       {mixed.map((item) => {
         if (item.kind === 'period') {
+          const insights = computePeriodInsights(item.period, allEvents)
           return (
             <motion.div key={`period-${item.period.id}`} variants={staggerItem}>
               <PeriodCard
                 period={item.period}
-                childCount={childCounts[item.period.id] ?? 0}
+                insights={insights}
               />
             </motion.div>
           )
@@ -926,7 +1001,7 @@ export function TimelineAnimated({ memories }: Props) {
             <YearsView
               groups={yearGroups}
               periods={allPeriods}
-              childCounts={childCounts}
+              allEvents={allEvents}
               onSelect={goToYear}
             />
           </motion.div>
