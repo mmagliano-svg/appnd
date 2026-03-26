@@ -4,16 +4,18 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { generateInviteToken } from '@/lib/utils/invite'
 import { redirect } from 'next/navigation'
 
-// All types and constants live in lib/constants/groups — safe for client import.
-// Server actions re-export them so server code has one import source.
-export {
-  GROUP_TYPES,
-  type GroupType,
-  type GroupSummary,
-  type GroupMember,
-  type GroupMemory,
-  type GroupDetail,
-  type PublicGroupPreview,
+// All types live in lib/constants/groups — safe for client import.
+// Type-only re-exports so server code has one import source.
+// NOTE: GROUP_TYPES (a value) must NOT be re-exported here — 'use server' files
+//       only allow async function exports. Import GROUP_TYPES directly from
+//       '@/lib/constants/groups' wherever you need it.
+export type {
+  GroupType,
+  GroupSummary,
+  GroupMember,
+  GroupMemory,
+  GroupDetail,
+  PublicGroupPreview,
 } from '@/lib/constants/groups'
 
 // Local alias used in this file only
