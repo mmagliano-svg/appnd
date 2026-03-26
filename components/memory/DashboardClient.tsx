@@ -621,7 +621,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
             {topTags.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Le persone e i momenti che tornano
+                  Connessioni
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   {topTags.slice(0, 5).map(({ tag, count }) => (
@@ -797,7 +797,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
 
                       <div>
                         <div className="flex items-start gap-2">
-                          <h2 className="font-semibold text-base leading-snug group-hover:text-foreground flex-1">
+                          <h2 className="font-bold text-base leading-snug group-hover:text-foreground flex-1">
                             {memory.title}
                           </h2>
                           <div className="flex gap-1 shrink-0 mt-0.5">
@@ -831,7 +831,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                       )}
 
                       {memory.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                        <p className="text-sm text-muted-foreground/60 line-clamp-2 leading-relaxed">
                           {memory.description}
                         </p>
                       )}
