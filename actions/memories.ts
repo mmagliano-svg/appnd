@@ -569,10 +569,12 @@ export interface PeriodSummary {
   id: string
   title: string
   start_date: string
-  end_date: string
+  end_date: string   // '9999-12-31' = still ongoing
 }
 
-// Returns all periods the user participates in, sorted by start_date desc
+// Returns all periods the user participates in, sorted by start_date desc.
+// Periods are identified by having end_date set (non-null).
+// Ongoing periods use the sentinel value '9999-12-31'.
 export async function getUserPeriods(): Promise<PeriodSummary[]> {
   const supabase = await createServerClient()
 

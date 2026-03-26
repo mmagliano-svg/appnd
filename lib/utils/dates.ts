@@ -97,11 +97,12 @@ export function formatMemoryDateFull(startDate: string, endDate: string | null):
  * "GEN 2004 — LUG 2008"
  * Same month: "AGO 1998"
  */
+// Sentinel value used for ongoing (no end date) periods
+export const ONGOING_SENTINEL = '9999-12-31'
+
 export function formatPeriodDisplay(startDate: string, endDate: string): string {
   const [sy, sm, sd] = startDate.split('-').map(Number)
-  const [ey, em, ed] = endDate.split('-').map(Number)
   const start = new Date(sy, sm - 1, sd)
-  const end = new Date(ey, em - 1, ed)
 
   const fmt = (date: Date, opts: Intl.DateTimeFormatOptions) =>
     date
@@ -109,10 +110,16 @@ export function formatPeriodDisplay(startDate: string, endDate: string): string 
       .replace(/\./g, '')   // remove dots from abbreviations
       .toUpperCase()
 
+  const startFmt = fmt(start, { month: 'short', year: 'numeric' })
+
+  // Sentinel = ongoing period
+  if (endDate >= '9999-01-01') return `${startFmt} — oggi`
+
+  const [ey, em, ed] = endDate.split('-').map(Number)
+  const end = new Date(ey, em - 1, ed)
+
   // Same month and year → "AGO 1998"
-  if (sy === ey && sm === em) {
-    return fmt(start, { month: 'short', year: 'numeric' })
-  }
+  if (sy === ey && sm === em) return startFmt
 
   // Same year → "AGO — SET 1998"  (omit year from start)
   if (sy === ey) {
@@ -120,5 +127,5 @@ export function formatPeriodDisplay(startDate: string, endDate: string): string 
   }
 
   // Different years → "GEN 2004 — LUG 2008"
-  return `${fmt(start, { month: 'short', year: 'numeric' })} — ${fmt(end, { month: 'short', year: 'numeric' })}`
+  return `${startFmt} — ${fmt(end, { month: 'short', year: 'numeric' })}`
 }

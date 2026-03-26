@@ -30,6 +30,7 @@ function NewMemoryForm() {
 
   // Date type state
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
+  const [isOngoing, setIsOngoing] = useState(false)
 
   // Memory classification
   const [isAnniversary, setIsAnniversary] = useState(false)
@@ -112,7 +113,9 @@ function NewMemoryForm() {
       const memoryId = await createMemoryReturnId({
         title: form.get('title') as string,
         start_date: startDate,
-        end_date: memoryType === 'period' ? endDate || undefined : undefined,
+        end_date: memoryType === 'period'
+          ? (isOngoing ? '9999-12-31' : endDate || undefined)
+          : undefined,
         parent_period_id: memoryType === 'day' ? parentPeriodId : null,
         location_name: form.get('location_name') as string,
         description: form.get('description') as string,
@@ -302,28 +305,56 @@ function NewMemoryForm() {
                   required
                 />
               ) : (
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">Dal</p>
-                    <Input
-                      type="date"
-                      value={startDate}
-                      onChange={(e) => setStartDate(e.target.value)}
-                      max={today}
-                      required
-                    />
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Dal</p>
+                      <Input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        max={today}
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Al</p>
+                      {isOngoing ? (
+                        <div className="flex items-center h-10 rounded-xl border border-foreground bg-foreground px-3">
+                          <span className="text-sm font-medium text-background">ancora in corso</span>
+                        </div>
+                      ) : (
+                        <Input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          min={startDate}
+                          max={today}
+                        />
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-muted-foreground">Al</p>
-                    <Input
-                      type="date"
-                      value={endDate}
-                      onChange={(e) => setEndDate(e.target.value)}
-                      min={startDate}
-                      max={today}
-                      required
-                    />
-                  </div>
+                  {/* Ongoing toggle */}
+                  <button
+                    type="button"
+                    onClick={() => { setIsOngoing((v) => !v); setEndDate('') }}
+                    className={`flex items-center gap-2 text-sm transition-colors ${
+                      isOngoing
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                      isOngoing ? 'bg-foreground border-foreground' : 'border-border'
+                    }`}>
+                      {isOngoing && (
+                        <svg className="w-2.5 h-2.5 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </span>
+                    Ancora in corso (nessuna data di fine)
+                  </button>
                 </div>
               )}
             </div>
