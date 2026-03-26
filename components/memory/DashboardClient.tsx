@@ -1,13 +1,21 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { formatMemoryDate, formatMemoryDateShort, formatPeriodDisplay } from '@/lib/utils/dates'
 import { getRandomQuote } from '@/lib/memory-quotes'
+import { getOrCreateStoryToken } from '@/actions/stories'
 import type { PersonSummary } from '@/actions/people'
+import type { GroupSummary } from '@/lib/constants/groups'
+import { GroupCard } from '@/components/group/GroupCard'
+
+const MONTHS_IT = [
+  'Gennaio','Febbraio','Marzo','Aprile','Maggio',
+  'Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre',
+]
 
 interface Memory {
   id: string
@@ -31,6 +39,7 @@ interface DashboardClientProps {
   memories: Memory[]
   allTags: string[]
   people: PersonSummary[]
+  groups: GroupSummary[]
   currentUser: { displayName: string }
 }
 
@@ -39,7 +48,7 @@ function getCategoryInfo(value: string | null) {
   return CATEGORIES.find((c) => c.value === value) ?? null
 }
 
-export function DashboardClient({ memories, allTags, people, currentUser }: DashboardClientProps) {
+export function DashboardClient({ memories, allTags, people, groups, currentUser }: DashboardClientProps) {
   const searchParams = useSearchParams()
   const router = useRouter()
 
@@ -181,6 +190,21 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
       .slice(0, 2)
   }, [events])
 
+  // Months with ≥3 events → story candidates (most recent 3)
+  const storyMonths = useMemo(() => {
+    const groups: Record<string, { year: number; month: number; memories: Memory[] }> = {}
+    for (const m of events) {
+      const [year, month] = m.start_date.split('-').map(Number)
+      const key = `${year}-${String(month).padStart(2, '0')}`
+      if (!groups[key]) groups[key] = { year, month, memories: [] }
+      groups[key].memories.push(m)
+    }
+    return Object.values(groups)
+      .filter((g) => g.memories.length >= 3)
+      .sort((a, b) => b.year - a.year || b.month - a.month)
+      .slice(0, 3)
+  }, [events])
+
   // Hero: most recent event with a photo; fallback to most recent event
   const heroMemory = useMemo(() => {
     const sorted = [...events].sort(
@@ -239,6 +263,29 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
     }
     return map
   }, [periods, periodInsightsMap])
+
+  // Share a monthly story — creates token and copies URL
+  const [sharingKey, setSharingKey] = useState<string | null>(null)
+  const [copiedKey, setCopiedKey]   = useState<string | null>(null)
+
+  const shareStory = useCallback(async (
+    year: number,
+    month: number,
+    memories: Memory[],
+  ) => {
+    const key = `${year}-${month}`
+    setSharingKey(key)
+    const monthName = MONTHS_IT[month - 1]
+    const title = `${monthName} ${year}`
+    const memoryIds = memories.map((m) => m.id)
+    const result = await getOrCreateStoryToken(year, month, memoryIds, title)
+    setSharingKey(null)
+    if ('error' in result) return
+    const url = `${window.location.origin}/storia/${result.token}`
+    await navigator.clipboard.writeText(url).catch(() => {})
+    setCopiedKey(key)
+    setTimeout(() => setCopiedKey(null), 2500)
+  }, [])
 
   const filteredMemories = useMemo(() => {
     return events.filter((m) => {
@@ -586,6 +633,71 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
               </div>
             )}
 
+            {/* ── 2b. STORIE DA CONDIVIDERE ── */}
+            {storyMonths.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Storie da condividere
+                </p>
+                <div className="space-y-3">
+                  {storyMonths.map(({ year, month, memories }) => {
+                    const key = `${year}-${month}`
+                    const monthName = MONTHS_IT[month - 1]
+                    const cover = memories
+                      .flatMap((m) => m.memory_contributions)
+                      .find((c) => c.content_type === 'photo' && c.media_url)
+                    const isCopied  = copiedKey === key
+                    const isSharing = sharingKey === key
+
+                    return (
+                      <div
+                        key={key}
+                        className="rounded-2xl border border-border/40 overflow-hidden"
+                      >
+                        {/* Cover strip */}
+                        {cover?.media_url && (
+                          <div className="relative h-24 w-full overflow-hidden">
+                            <img
+                              src={cover.media_url}
+                              alt={monthName}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+                            <p className="absolute left-4 bottom-3 font-bold text-white text-lg leading-none">
+                              {monthName} {year}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Info + CTA */}
+                        <div className={`px-4 py-3 flex items-center justify-between gap-3 ${!cover?.media_url ? 'pt-4' : ''}`}>
+                          <div>
+                            {!cover?.media_url && (
+                              <p className="font-semibold text-sm mb-0.5">{monthName} {year}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              {memories.length} moment{memories.length === 1 ? 'o' : 'i'}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => shareStory(year, month, memories)}
+                            disabled={isSharing}
+                            className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-all shrink-0 ${
+                              isCopied
+                                ? 'bg-green-600 text-white'
+                                : 'bg-foreground text-background hover:opacity-80'
+                            } disabled:opacity-50`}
+                          >
+                            {isCopied ? '✓ Copiato' : isSharing ? '…' : 'Condividi'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* ── 3. CON CHI ── */}
             {people.length > 0 && (
               <div className="mb-8">
@@ -614,6 +726,49 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                     )
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* ── 3b. GRUPPI ── */}
+            {groups.length > 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Gruppi
+                  </p>
+                  <Link
+                    href="/groups/new"
+                    className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    + Nuovo
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {groups.map((g) => (
+                    <GroupCard key={g.id} group={g} />
+                  ))}
+                </div>
+              </div>
+            )}
+            {groups.length === 0 && (
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Gruppi
+                  </p>
+                </div>
+                <Link
+                  href="/groups/new"
+                  className="flex items-center gap-3 rounded-2xl border border-dashed border-border/60 px-4 py-4 hover:border-foreground/30 hover:bg-accent/20 transition-all group"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-foreground/5 border border-border flex items-center justify-center text-lg shrink-0">
+                    🫂
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Crea un gruppo</p>
+                    <p className="text-xs text-muted-foreground">Amici, famiglia, viaggi…</p>
+                  </div>
+                </Link>
               </div>
             )}
 

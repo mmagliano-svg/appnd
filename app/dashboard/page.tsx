@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories, getAllUserTags } from '@/actions/memories'
 import { getSharedPeople } from '@/actions/people'
+import { getUserGroups } from '@/actions/groups'
 import { DashboardClient } from '@/components/memory/DashboardClient'
 
 export default async function DashboardPage() {
@@ -16,10 +17,11 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const [memories, allTags, people] = await Promise.all([
+  const [memories, allTags, people, groups] = await Promise.all([
     getUserMemories(),
     getAllUserTags(),
     getSharedPeople(),
+    getUserGroups(),
   ])
 
   // New user with no memories → onboarding
@@ -37,6 +39,7 @@ export default async function DashboardPage() {
         memories={memories}
         allTags={allTags}
         people={people}
+        groups={groups}
         currentUser={{ displayName }}
       />
     </Suspense>

@@ -4,7 +4,12 @@ import { createServerClient } from '@/lib/supabase/server'
 import { DeleteButton } from '@/components/memory/DeleteButton'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { formatMemoryDateFull, formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
+import { getMessages } from '@/actions/messages'
+import { getLikeState } from '@/actions/likes'
+import { MemoryChat } from '@/components/memory/MemoryChat'
+import { MemoryActions } from '@/components/memory/MemoryActions'
 import InviteForm from './InviteForm'
+import { RemoveParticipantButton } from '@/components/memory/RemoveParticipantButton'
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -58,6 +63,10 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   if (!isParticipant) notFound()
 
   const isCreator = memory.created_by === user?.id
+  const [initialMessages, initialLikes] = await Promise.all([
+    getMessages(params.id),
+    getLikeState(params.id),
+  ])
   const contributions = [...memory.memory_contributions].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
@@ -469,9 +478,16 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           </div>
         )}
 
+        {/* ── Actions bar (like · chat · people) ── */}
+        <MemoryActions
+          memoryId={params.id}
+          initialLikes={initialLikes}
+          participantCount={participants.length}
+        />
+
         {/* ── Description ── */}
         {memory.description && (
-          <div className={`${heroPhoto ? 'pt-6' : 'pt-5'} pb-5 border-b border-border/50`}>
+          <div className={`${heroPhoto ? 'pt-4' : 'pt-5'} pb-5 border-b border-border/50`}>
             <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">
               {memory.description}
             </p>
@@ -520,36 +536,56 @@ export default async function MemoryPage({ params }: { params: { id: string } })
 
         {/* ── Participants ── */}
         {participants.length > 0 && (
-          <div className="py-4 border-b border-border/50">
+          <div id="memory-participants" className="py-4 border-b border-border/50">
             <div className="flex items-center gap-2 flex-wrap">
               {participants.map((p) => {
                 const name = p.users?.display_name ?? p.users?.email ?? p.invited_email ?? '?'
                 const ini = initials(name)
                 const isMe = p.user_id === user?.id
-                const chip = (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-secondary"
-                  >
+                const canRemove = isCreator && !isMe
+
+                // Shared chip interior
+                const chipInner = (
+                  <>
                     <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[10px] font-bold text-background">
                       {ini}
                     </div>
                     <span className="text-xs font-medium">{isMe ? 'Tu' : name}</span>
-                  </div>
+                    {canRemove && (
+                      <RemoveParticipantButton
+                        memoryId={params.id}
+                        participantId={p.id}
+                        participantName={name}
+                      />
+                    )}
+                  </>
                 )
+
                 if (!isMe && p.user_id) {
                   return (
-                    <Link key={p.id} href={`/people/${p.user_id}`}>
-                      <div className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-secondary hover:bg-accent transition-colors cursor-pointer">
+                    <div key={p.id} className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-secondary hover:bg-accent transition-colors">
+                      <Link href={`/people/${p.user_id}`} className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[10px] font-bold text-background">
                           {ini}
                         </div>
                         <span className="text-xs font-medium">{name}</span>
-                      </div>
-                    </Link>
+                      </Link>
+                      {canRemove && (
+                        <RemoveParticipantButton
+                          memoryId={params.id}
+                          participantId={p.id}
+                          participantName={name}
+                        />
+                      )}
+                    </div>
                   )
                 }
-                return <div key={p.id}>{chip}</div>
+
+                return (
+                  <div key={p.id} className="flex items-center gap-2 rounded-full px-3 py-1.5 bg-secondary">
+                    {chipInner}
+                  </div>
+                )
               })}
             </div>
           </div>
@@ -719,8 +755,17 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           )}
         </div>
 
+        {/* ── Chat ── */}
+        <div className="mt-8">
+          <MemoryChat
+            memoryId={params.id}
+            currentUserId={user!.id}
+            initialMessages={initialMessages}
+          />
+        </div>
+
         {/* ── Invite section ── */}
-        <div className="mt-12 pt-6 border-t border-border/50">
+        <div className="mt-8 pt-6 border-t border-border/50">
           <InviteForm memoryId={params.id} />
         </div>
 

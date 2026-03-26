@@ -39,6 +39,150 @@ export interface Database {
         }
         Relationships: []
       }
+      memory_likes: {
+        Row: {
+          memory_id: string
+          user_id: string
+          created_at: string
+        }
+        Insert: {
+          memory_id: string
+          user_id: string
+          created_at?: string
+        }
+        Update: Record<string, never>
+        Relationships: []
+      }
+      memory_messages: {
+        Row: {
+          id: string
+          memory_id: string
+          author_id: string
+          content: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          memory_id: string
+          author_id: string
+          content: string
+          created_at?: string
+        }
+        Update: {
+          content?: string
+        }
+        Relationships: []
+      }
+      shared_stories: {
+        Row: {
+          id: string
+          token: string
+          user_id: string
+          year: number
+          month: number
+          memory_ids: string[]
+          title: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          token?: string
+          user_id: string
+          year: number
+          month: number
+          memory_ids: string[]
+          title: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          token?: string
+          user_id?: string
+          year?: number
+          month?: number
+          memory_ids?: string[]
+          title?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      groups: {
+        Row: {
+          id: string
+          name: string
+          type: string
+          created_by: string
+          invite_token: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          type?: string
+          created_by: string
+          invite_token?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          type?: string
+          created_by?: string
+          invite_token?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'groups_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
+      group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string | null
+          invited_email: string | null
+          joined_at: string | null
+          role: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          user_id?: string | null
+          invited_email?: string | null
+          joined_at?: string | null
+          role?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          user_id?: string | null
+          invited_email?: string | null
+          joined_at?: string | null
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'group_members_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'group_members_user_id_fkey'
+            columns: ['user_id']
+            isOneToOne: false
+            referencedRelation: 'users'
+            referencedColumns: ['id']
+          }
+        ]
+      }
       memories: {
         Row: {
           id: string
@@ -57,6 +201,7 @@ export interface Database {
           created_by: string
           created_at: string
           updated_at: string
+          group_id: string | null
         }
         Insert: {
           id?: string
@@ -75,6 +220,7 @@ export interface Database {
           created_by: string
           created_at?: string
           updated_at?: string
+          group_id?: string | null
         }
         Update: {
           id?: string
@@ -93,6 +239,7 @@ export interface Database {
           created_by?: string
           created_at?: string
           updated_at?: string
+          group_id?: string | null
         }
         Relationships: [
           {
@@ -100,6 +247,13 @@ export interface Database {
             columns: ['created_by']
             isOneToOne: false
             referencedRelation: 'users'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'memories_group_id_fkey'
+            columns: ['group_id']
+            isOneToOne: false
+            referencedRelation: 'groups'
             referencedColumns: ['id']
           }
         ]

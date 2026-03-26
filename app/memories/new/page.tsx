@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
+import { getUserGroups, type GroupSummary } from '@/actions/groups'
 import { addMediaContribution } from '@/actions/contributions'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,8 @@ function NewMemoryForm() {
   const [allTags, setAllTags] = useState<string[]>([])
   const [periods, setPeriods] = useState<PeriodSummary[]>([])
   const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
+  const [groups, setGroups] = useState<GroupSummary[]>([])
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   // Date type state
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
@@ -44,6 +47,7 @@ function NewMemoryForm() {
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
 
   const periodFromUrl = searchParams.get('period')
+  const groupFromUrl  = searchParams.get('group')
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
@@ -51,6 +55,12 @@ function NewMemoryForm() {
       setPeriods(loaded)
       if (periodFromUrl && loaded.some((p) => p.id === periodFromUrl)) {
         setParentPeriodId(periodFromUrl)
+      }
+    }).catch(() => {})
+    getUserGroups().then((loaded) => {
+      setGroups(loaded)
+      if (groupFromUrl && loaded.some((g) => g.id === groupFromUrl)) {
+        setSelectedGroupId(groupFromUrl)
       }
     }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -123,6 +133,7 @@ function NewMemoryForm() {
         tags,
         is_anniversary: isAnniversary,
         is_first_time: isFirstTime,
+        group_id: memoryType === 'day' ? selectedGroupId : null,
       })
 
       // 2 — Upload media if present
@@ -151,7 +162,12 @@ function NewMemoryForm() {
         await addMediaContribution(memoryId, publicUrl)
       }
 
-      router.push(`/memories/${memoryId}`)
+      // After creating a moment (not a period), go to share flow
+      if (memoryType === 'day') {
+        router.push(`/memories/${memoryId}/share?new=1`)
+      } else {
+        router.push(`/memories/${memoryId}`)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
       setLoading(false)
@@ -551,6 +567,51 @@ function NewMemoryForm() {
             )}
 
           </div>
+
+          {/* ── Gruppo ── */}
+          {memoryType === 'day' && groups.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium">Gruppo</label>
+                <span className="text-xs text-muted-foreground">(opzionale)</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupId(null)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium border transition-all ${
+                    selectedGroupId === null
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'border-border hover:border-foreground/30 hover:bg-accent/30'
+                  }`}
+                >
+                  Nessun gruppo
+                </button>
+                {groups.map((g) => (
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setSelectedGroupId(g.id)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium border transition-all ${
+                      selectedGroupId === g.id
+                        ? 'bg-foreground text-background border-foreground'
+                        : 'border-border hover:border-foreground/30 hover:bg-accent/30'
+                    }`}
+                  >
+                    {g.name}
+                  </button>
+                ))}
+              </div>
+              {selectedGroupId && (() => {
+                const sg = groups.find((g) => g.id === selectedGroupId)
+                return sg ? (
+                  <p className="text-xs text-muted-foreground px-1">
+                    Tutti i {sg.memberCount} membri di "{sg.name}" avranno accesso automatico.
+                  </p>
+                ) : null
+              })()}
+            </div>
+          )}
 
           {error && (
             <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">

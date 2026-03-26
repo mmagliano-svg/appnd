@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { generateInviteToken } from '@/lib/utils/invite'
 import { normalizeTags } from '@/lib/utils/tags'
 import { redirect } from 'next/navigation'
@@ -18,6 +18,7 @@ export interface CreateMemoryInput {
   tags?: string[]
   is_anniversary?: boolean
   is_first_time?: boolean
+  group_id?: string | null
 }
 
 export interface UpdateMemoryInput {
@@ -58,6 +59,7 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
       is_anniversary: input.is_anniversary ?? false,
       is_first_time: input.is_first_time ?? false,
       created_by: user!.id,
+      group_id: input.group_id ?? null,
     })
     .select('id')
     .single()
@@ -66,12 +68,36 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
     throw new Error('Impossibile creare il ricordo. Riprova.')
   }
 
+  // Add creator as participant
   await supabase.from('memory_participants').insert({
     memory_id: memory.id,
     user_id: user!.id,
     invite_token: generateInviteToken(),
     joined_at: new Date().toISOString(),
   })
+
+  // If memory belongs to a group, auto-add all other joined group members
+  if (input.group_id) {
+    const admin = createAdminClient()
+    const { data: groupMembers } = await admin
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', input.group_id)
+      .not('user_id', 'is', null)
+      .not('joined_at', 'is', null)
+      .neq('user_id', user!.id)
+
+    if (groupMembers && groupMembers.length > 0) {
+      await admin.from('memory_participants').insert(
+        groupMembers.map((m) => ({
+          memory_id: memory.id,
+          user_id: m.user_id!,
+          joined_at: new Date().toISOString(),
+          invite_token: generateInviteToken(),
+        }))
+      )
+    }
+  }
 
   return memory.id
 }

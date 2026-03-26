@@ -4,6 +4,7 @@ import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { generateInviteToken } from '@/lib/utils/invite'
 import { redirect } from 'next/navigation'
 import { Resend } from 'resend'
+import { sendJoinNotification } from '@/lib/email/notifications'
 
 // Generate invite link immediately — email is optional
 export async function createInvite(memoryId: string, email?: string) {
@@ -123,5 +124,73 @@ export async function acceptInvite(token: string) {
     throw new Error('Impossibile accettare l\'invito. Riprova.')
   }
 
+  // ── Notify memory creator (fire-and-forget) ──────────────────────────────
+  try {
+    const [{ data: memory }, { data: joiner }] = await Promise.all([
+      admin.from('memories').select('title, created_by').eq('id', invite.memory_id).single(),
+      admin.from('users').select('display_name, email').eq('id', user!.id).single(),
+    ])
+
+    if (memory && joiner) {
+      const { data: creator } = await admin
+        .from('users')
+        .select('email')
+        .eq('id', memory.created_by)
+        .single()
+
+      if (creator && creator.email !== joiner.email) {
+        await sendJoinNotification({
+          recipientEmail: creator.email,
+          joinerName: joiner.display_name ?? joiner.email ?? 'Qualcuno',
+          memoryTitle: memory.title,
+          memoryId: invite.memory_id,
+        })
+      }
+    }
+  } catch {
+    // Intentionally silent — notification must never break the invite flow
+  }
+
   redirect(`/memories/${invite.memory_id}`)
+}
+
+export async function removeParticipant(
+  memoryId: string,
+  participantId: string,
+): Promise<{ error?: string }> {
+  const supabase = await createServerClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) return { error: 'Non autenticato' }
+
+  // Only the memory creator can remove participants
+  const { data: memory } = await supabase
+    .from('memories')
+    .select('created_by')
+    .eq('id', memoryId)
+    .single()
+
+  if (!memory || memory.created_by !== user.id) {
+    return { error: 'Non autorizzato' }
+  }
+
+  // Fetch the participant row to make sure it's for this memory and not the creator
+  const admin = createAdminClient()
+  const { data: participant } = await admin
+    .from('memory_participants')
+    .select('id, user_id')
+    .eq('id', participantId)
+    .eq('memory_id', memoryId)
+    .single()
+
+  if (!participant) return { error: 'Partecipante non trovato' }
+  if (participant.user_id === user.id) return { error: 'Non puoi rimuovere te stesso' }
+
+  const { error: deleteError } = await admin
+    .from('memory_participants')
+    .delete()
+    .eq('id', participantId)
+
+  if (deleteError) return { error: 'Impossibile rimuovere il partecipante' }
+
+  return {}
 }
