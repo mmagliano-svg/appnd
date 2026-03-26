@@ -58,11 +58,26 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
     router.replace(qs ? `?${qs}` : '/dashboard', { scroll: false })
   }, [activeCategory])
 
-  // Categories actually used
+  // Split memories into periods (have end_date) and events (no end_date)
+  const periods = useMemo(() => memories.filter((m) => Boolean(m.end_date)), [memories])
+  const events  = useMemo(() => memories.filter((m) => !m.end_date), [memories])
+
+  // Child event counts per period
+  const periodChildCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const e of events) {
+      if (e.parent_period_id) {
+        counts[e.parent_period_id] = (counts[e.parent_period_id] ?? 0) + 1
+      }
+    }
+    return counts
+  }, [events])
+
+  // Categories actually used (events only — periods have their own section)
   const usedCategories = useMemo(() => {
-    const used = new Set(memories.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])))
+    const used = new Set(events.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])))
     return CATEGORIES.filter((c) => used.has(c.value))
-  }, [memories])
+  }, [events])
 
   // Tag frequency map
   const tagCounts = useMemo(() => {
@@ -101,11 +116,11 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
   // Period lookup map: id → { title, start_date, end_date }
   const periodMap = useMemo(() => {
     const map = new Map<string, { id: string; title: string; start_date: string; end_date: string }>()
-    for (const m of memories) {
-      if (m.end_date) map.set(m.id, { id: m.id, title: m.title, start_date: m.start_date, end_date: m.end_date })
+    for (const m of periods) {
+      map.set(m.id, { id: m.id, title: m.title, start_date: m.start_date, end_date: m.end_date! })
     }
     return map
-  }, [memories])
+  }, [periods])
 
   // Anniversaries that fall on today (same day + month, any year)
   const todayAnniversaries = useMemo(() => {
@@ -120,15 +135,15 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
     })
   }, [memories])
 
-  // 3 most recent memories
+  // 3 most recent events
   const recentMemories = useMemo(() => {
-    return [...memories]
+    return [...events]
       .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
       .slice(0, 3)
-  }, [memories])
+  }, [events])
 
   const filteredMemories = useMemo(() => {
-    return memories.filter((m) => {
+    return events.filter((m) => {
       const q = search.toLowerCase()
       const matchesSearch =
         !q ||
@@ -140,7 +155,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
       const matchesCategory = !activeCategory || memCats.includes(activeCategory)
       return matchesSearch && matchesCategory
     })
-  }, [memories, search, activeCategory])
+  }, [events, search, activeCategory])
 
   function resetFilters() {
     setSearch('')
@@ -148,7 +163,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
   }
 
   const hasFilters = !!(search || activeCategory)
-  const showDiscovery = !hasFilters && memories.length > 0
+  const showDiscovery = !hasFilters && (events.length > 0 || periods.length > 0)
 
   return (
     <main className="min-h-screen bg-background">
@@ -180,9 +195,9 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
             </div>
           </div>
           <p className="text-sm text-muted-foreground">
-            {memories.length === 0
+            {events.length === 0 && periods.length === 0
               ? 'Il tuo libro dei momenti ti aspetta.'
-              : `${memories.length} moment${memories.length === 1 ? 'o' : 'i'} custoditi`}
+              : `${events.length} moment${events.length === 1 ? 'o' : 'i'} custoditi`}
           </p>
         </div>
 
@@ -295,7 +310,50 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
         {/* ── DISCOVERY SECTIONS (no filters active) ── */}
         {showDiscovery && (
           <>
-            {/* 0 — Con chi */}
+            {/* 0 — Capitoli della tua vita */}
+            {periods.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Capitoli della tua vita
+                </p>
+                <div className="space-y-2">
+                  {[...periods]
+                    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+                    .map((period) => {
+                      const count = periodChildCounts[period.id] ?? 0
+                      return (
+                        <Link
+                          key={period.id}
+                          href={`/memories/${period.id}`}
+                          className="block rounded-2xl border border-border/40 bg-neutral-50 dark:bg-neutral-900/50 hover:border-foreground/20 hover:bg-neutral-100 dark:hover:bg-neutral-900 px-5 py-5 transition-all group"
+                        >
+                          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40 mb-2">
+                            Capitolo
+                          </p>
+                          <p className="font-bold text-xl leading-tight mb-1 line-clamp-2 group-hover:opacity-80 transition-opacity">
+                            {period.title}
+                          </p>
+                          {period.description && (
+                            <p className="text-sm text-muted-foreground/60 leading-snug line-clamp-1 mb-2">
+                              {period.description}
+                            </p>
+                          )}
+                          <p className="text-sm font-semibold text-muted-foreground tabular-nums mt-2">
+                            {formatPeriodDisplay(period.start_date, period.end_date!)}
+                          </p>
+                          {count > 0 && (
+                            <p className="text-xs text-muted-foreground/50 mt-1.5">
+                              {count} {count === 1 ? 'momento' : 'momenti'}
+                            </p>
+                          )}
+                        </Link>
+                      )
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* 1 — Con chi */}
             {people.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -569,62 +627,6 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
           <ul className="space-y-0">
             {filteredMemories.map((memory) => {
               const catInfo = getCategoryInfo(memory.category)
-              const isPeriod = Boolean(memory.end_date)
-
-              /* ── PERIODO — nessuna card, capitolo di vita ── */
-              if (isPeriod) {
-                return (
-                  <li key={memory.id} className="border-t border-border/50 pt-8 pb-7">
-                    <Link href={`/memories/${memory.id}`} className="block group space-y-2">
-                      {catInfo && (
-                        <span className="text-xs font-medium text-muted-foreground tracking-wider">
-                          {catInfo.emoji} {catInfo.label}
-                        </span>
-                      )}
-                      <p className="text-3xl font-bold tracking-tight leading-none text-foreground group-hover:opacity-70 transition-opacity">
-                        {formatPeriodDisplay(memory.start_date, memory.end_date!)}
-                      </p>
-                      <div className="pt-0.5 space-y-0.5">
-                        <h2 className="text-base font-medium leading-snug text-foreground/75 group-hover:text-foreground transition-colors">
-                          {memory.title}
-                        </h2>
-                        {memory.location_name && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <span>📍</span>
-                            <span>{memory.location_name}</span>
-                          </p>
-                        )}
-                      </div>
-                      {memory.description && (
-                        <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed pt-0.5">
-                          {memory.description}
-                        </p>
-                      )}
-                    </Link>
-
-                    {/* Tags — fuori dal Link per evitare <a> annidati */}
-                    {memory.tags.length > 0 && (
-                      <div className="flex gap-1.5 flex-wrap mt-3">
-                        {memory.tags.slice(0, 5).map((tag) => (
-                          <Link
-                            key={tag}
-                            href={`/tags/${encodeURIComponent(tag)}`}
-                            className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
-                          >
-                            #{tag}
-                          </Link>
-                        ))}
-                        {memory.tags.length > 5 && (
-                          <span className="text-xs text-muted-foreground self-center">
-                            +{memory.tags.length - 5}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                    {/* Future: eventi contenuti in questo periodo */}
-                  </li>
-                )
-              }
 
               /* ── EVENTO — card classica ── */
               const parentPeriod = memory.parent_period_id ? periodMap.get(memory.parent_period_id) : null

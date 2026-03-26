@@ -406,6 +406,7 @@ export interface TimelineMemory {
   categories: string[]
   is_anniversary: boolean
   is_first_time: boolean
+  parent_period_id: string | null
   previewUrl: string | null
 }
 
@@ -417,14 +418,17 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) return []
 
-  const { data } = await supabase
+  // Step 1 — get IDs of memories the user has actually joined (deduplicated)
+  const { data: participantRows } = await supabase
     .from('memory_participants')
-    .select(`memories ( id, title, description, start_date, end_date, location_name, category, categories, is_anniversary, is_first_time )`)
+    .select('memory_id')
     .eq('user_id', user.id)
     .not('joined_at', 'is', null)
 
-  if (!data) return []
+  const memoryIds = Array.from(new Set((participantRows ?? []).map((r) => r.memory_id as string)))
+  if (memoryIds.length === 0) return []
 
+  // Step 2 — fetch memories directly (avoids JOIN type coercion issues)
   type MemRow = {
     id: string
     title: string
@@ -436,12 +440,21 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
     categories: string[]
     is_anniversary: boolean
     is_first_time: boolean
+    parent_period_id: string | null
   }
-  const memories = data
-    .map((p) => p.memories as MemRow | null)
-    .filter(Boolean) as MemRow[]
 
-  const memoryIds = memories.map((m) => m.id)
+  const { data: memoriesData } = await supabase
+    .from('memories')
+    .select('id, title, description, start_date, end_date, location_name, category, categories, is_anniversary, is_first_time, parent_period_id')
+    .in('id', memoryIds)
+
+  const memories = (memoriesData ?? []) as MemRow[]
+
+  // DEBUG — remove after fixing period detection
+  console.log('[Timeline] total:', memories.length,
+    '| periods (end_date≠null):', memories.filter(m => Boolean(m.end_date)).length,
+    '| sample end_dates:', memories.slice(0, 5).map(m => `${m.title}→${m.end_date}`).join(', ')
+  )
 
   // Resolve preview photo for each memory
   const photoMap = new Map<string, string>()
@@ -474,6 +487,7 @@ export async function getTimelineMemories(): Promise<TimelineMemory[]> {
       categories: m.categories?.length ? m.categories : (m.category ? [m.category] : []),
       is_anniversary: m.is_anniversary,
       is_first_time: m.is_first_time,
+      parent_period_id: m.parent_period_id ?? null,
       previewUrl: photoMap.get(m.id) ?? null,
     }))
 }

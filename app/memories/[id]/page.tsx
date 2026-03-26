@@ -106,6 +106,202 @@ export default async function MemoryPage({ params }: { params: { id: string } })
         .then(({ data }) => data as { id: string; title: string; start_date: string; end_date: string } | null)
     : null
 
+  // ── Period (chapter) layout ─────────────────────────────────────────────
+  if (isPeriod) {
+    return (
+      <main className="min-h-screen bg-background">
+        {/* Top bar */}
+        <div className="max-w-lg mx-auto px-4 pt-6 pb-2 flex items-center justify-between">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
+            </svg>
+            I tuoi ricordi
+          </Link>
+          {isCreator && (
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/memories/${params.id}/edit`}
+                className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                Modifica
+              </Link>
+              <DeleteButton memoryId={params.id} />
+            </div>
+          )}
+        </div>
+
+        <div className="max-w-lg mx-auto px-4 pb-32">
+
+          {/* ── Chapter header ── */}
+          <div className="pt-8 pb-8 border-b border-border/30">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 mb-4">
+              Capitolo
+            </p>
+            <h1 className="text-4xl font-bold tracking-tight leading-tight mb-4">
+              {memory.title}
+            </h1>
+            <p className="text-xl font-semibold text-muted-foreground tabular-nums">
+              {formatPeriodDisplay(memoryStartDate, memoryEndDate!)}
+            </p>
+
+            {/* Stats row */}
+            <div className="flex items-center gap-6 mt-7">
+              <div>
+                <p className="text-3xl font-bold tabular-nums leading-none">{childEvents.length}</p>
+                <p className="text-xs text-muted-foreground mt-1.5">
+                  moment{childEvents.length !== 1 ? 'i' : 'o'}
+                </p>
+              </div>
+              {memory.location_name && (
+                <>
+                  <div className="w-px h-10 bg-border" />
+                  <div>
+                    <p className="text-sm font-semibold">{memory.location_name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">luogo</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* ── Moments list ── */}
+          <div className="pt-6">
+            <div className="flex items-center justify-between mb-5">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+                I momenti
+              </p>
+              <Link
+                href={`/memories/new?period=${memory.id}`}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                + Aggiungi
+              </Link>
+            </div>
+
+            {childEvents.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <p className="text-3xl">○</p>
+                <p className="text-sm font-medium">Nessun momento ancora.</p>
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                  Aggiungi i momenti vissuti durante questo periodo della tua vita.
+                </p>
+                <Link
+                  href={`/memories/new?period=${memory.id}`}
+                  className="inline-flex items-center gap-2 mt-2 rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:bg-foreground/90 transition-colors"
+                >
+                  + Aggiungi momento
+                </Link>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {childEvents.map((ev) => {
+                  const evCat = getCategoryByValue(ev.category)
+                  return (
+                    <li key={ev.id}>
+                      <Link
+                        href={`/memories/${ev.id}`}
+                        className="flex items-center gap-4 rounded-2xl border border-border/50 bg-card hover:border-foreground/20 hover:bg-accent/20 px-4 py-3.5 transition-all group"
+                      >
+                        <div className="min-w-0 flex-1">
+                          {evCat && (
+                            <p className="text-xs text-muted-foreground mb-0.5">
+                              {evCat.emoji} {evCat.label}
+                            </p>
+                          )}
+                          <p className="text-sm font-semibold leading-snug truncate">{ev.title}</p>
+                          {ev.location_name && (
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                              📍 {ev.location_name}
+                            </p>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground shrink-0">
+                          {formatMemoryDate(ev.start_date, null)}
+                        </p>
+                        <svg
+                          className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground shrink-0 transition-colors"
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Link>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* ── Contributions (photos/notes) — if any ── */}
+          {contributions.length > 0 && (
+            <div className="pt-8 mt-8 border-t border-border/30">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-6">
+                Note e foto
+              </p>
+              <div className="space-y-8">
+                {contributions.map((c) => {
+                  const authorData = (c as {
+                    users?: { display_name?: string | null; email?: string | null }
+                  }).users
+                  const authorName = authorData?.display_name ?? authorData?.email ?? 'Anonimo'
+                  const isOwn = c.author_id === user?.id
+                  const ini = initials(authorName)
+
+                  if (c.content_type === 'photo' && c.media_url) {
+                    return (
+                      <div key={c.id} className="-mx-4">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={c.media_url}
+                          alt={c.caption ?? ''}
+                          className="w-full object-cover"
+                          style={{ maxHeight: '360px' }}
+                          loading="lazy"
+                          draggable={false}
+                        />
+                        {c.caption && (
+                          <p className="px-4 pt-2 text-sm text-foreground/70 italic">{c.caption}</p>
+                        )}
+                        <div className="flex items-center gap-2 px-4 mt-1.5">
+                          <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
+                            {ini}
+                          </div>
+                          <span className="text-xs text-muted-foreground">{isOwn ? 'Tu' : authorName}</span>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if ((c.content_type === 'text' || c.content_type === 'note') && c.text_content) {
+                    return (
+                      <div key={c.id} className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
+                            {ini}
+                          </div>
+                          <span className="text-xs font-medium">{isOwn ? 'Tu' : authorName}</span>
+                        </div>
+                        <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap pl-8">
+                          {c.text_content}
+                        </p>
+                      </div>
+                    )
+                  }
+
+                  return null
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    )
+  }
+
   return (
     <main className="min-h-screen bg-background">
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { TimelineMemory } from '@/actions/memories'
 import { CATEGORIES } from '@/lib/constants/categories'
+import { formatPeriodDisplay } from '@/lib/utils/dates'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -162,16 +163,90 @@ function PhotoTile({
   )
 }
 
+// ── Period card ────────────────────────────────────────────────────────────
+// Displayed in the years view between year cards. Text-dominant, photo on right.
+
+function PeriodCard({
+  period,
+  childCount,
+}: {
+  period: TimelineMemory
+  childCount: number
+}) {
+  const dateRange = formatPeriodDisplay(period.start_date, period.end_date!)
+
+  return (
+    <Link
+      href={`/memories/${period.id}`}
+      className="block rounded-2xl border border-border/30 bg-neutral-50 dark:bg-neutral-900/60 hover:border-foreground/20 active:scale-[0.985] transition-all group px-5 pt-5 pb-6"
+    >
+      {/* Top accent — visual anchor for "chapter" */}
+      <div className="w-8 h-0.5 rounded-full bg-foreground/20 mb-4" />
+
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/35 mb-2">
+        Capitolo
+      </p>
+
+      <p className="font-bold text-3xl leading-tight mb-1 line-clamp-2 group-hover:opacity-70 transition-opacity">
+        {period.title}
+      </p>
+
+      {period.description && (
+        <p className="text-sm text-muted-foreground/55 leading-snug line-clamp-1 mt-1">
+          {period.description}
+        </p>
+      )}
+
+      <div className="flex items-baseline gap-2 mt-4">
+        <p className="text-sm font-semibold text-muted-foreground tabular-nums">
+          {dateRange}
+        </p>
+        {childCount > 0 && (
+          <p className="text-xs text-muted-foreground/40">
+            · {childCount} {childCount === 1 ? 'momento' : 'momenti'}
+          </p>
+        )}
+      </div>
+    </Link>
+  )
+}
+
 // ── View: Years ────────────────────────────────────────────────────────────
 
 function YearsView({
   groups,
+  periods,
+  childCounts,
   onSelect,
 }: {
   groups: YearGroup[]
+  periods: TimelineMemory[]
+  childCounts: Record<string, number>
   onSelect: (year: number) => void
 }) {
-  if (groups.length === 0) {
+  // Build interleaved list of year cards and period cards, sorted newest first.
+  // Periods are keyed by their END date so they appear at the boundary where
+  // they "close". Ongoing periods (no end_date) get sortKey=9999 → always top.
+  type MixedItem =
+    | { kind: 'year'; sortKey: number; group: YearGroup }
+    | { kind: 'period'; sortKey: number; period: TimelineMemory }
+
+  const mixed: MixedItem[] = [
+    ...groups.map((g) => ({ kind: 'year' as const, sortKey: g.year, group: g })),
+    ...periods.map((p) => ({
+      kind: 'period' as const,
+      sortKey: p.end_date ? parseInt(p.end_date.split('-')[0]) : 9999,
+      period: p,
+    })),
+  ].sort((a, b) => {
+    if (b.sortKey !== a.sortKey) return b.sortKey - a.sortKey
+    // Tie: period before year card — chapters are structural, come first
+    if (a.kind === 'period' && b.kind === 'year') return -1
+    if (a.kind === 'year' && b.kind === 'period') return 1
+    return 0
+  })
+
+  if (mixed.length === 0) {
     return (
       <p className="text-muted-foreground text-sm text-center py-16">
         Nessun ricordo ancora.
@@ -186,10 +261,23 @@ function YearsView({
       initial="hidden"
       animate="show"
     >
-      {groups.map(({ year, totalCount, previewUrls }, index) => {
+      {mixed.map((item) => {
+        if (item.kind === 'period') {
+          return (
+            <motion.div key={`period-${item.period.id}`} variants={staggerItem}>
+              <PeriodCard
+                period={item.period}
+                childCount={childCounts[item.period.id] ?? 0}
+              />
+            </motion.div>
+          )
+        }
+
+        const { year, totalCount, previewUrls } = item.group
         const mainUrl        = previewUrls[0] ?? null
         const secondaryUrls  = previewUrls.slice(1, 3)
-        const isHero         = index === 0
+        // Hero = the year card with the highest year number (first in sorted list)
+        const isHero         = groups.length > 0 && year === groups[0].year
         const collageH       = isHero ? 'h-72' : 'h-44'
 
         return (
@@ -564,22 +652,37 @@ export function TimelineAnimated({ memories }: Props) {
 
   // ── Data ───────────────────────────────────────────────────────────────
 
-  // Categories actually present in the dataset
-  const usedCategories = useMemo(() => {
-    const used = new Set(memories.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])))
-    return CATEGORIES.filter((c) => used.has(c.value))
-  }, [memories])
+  // Periods = memories with an end_date; events = all others
+  const allPeriods = useMemo(() => memories.filter((m) => Boolean(m.end_date)), [memories])
+  const allEvents  = useMemo(() => memories.filter((m) => !m.end_date), [memories])
 
-  // Apply category filter before grouping (only on years view)
-  const filteredMemories = useMemo(() => {
-    if (!activeCategory) return memories
-    return memories.filter((m) => {
+  // Count how many events belong to each period
+  const childCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const e of allEvents) {
+      if (e.parent_period_id) {
+        counts[e.parent_period_id] = (counts[e.parent_period_id] ?? 0) + 1
+      }
+    }
+    return counts
+  }, [allEvents])
+
+  // Categories actually present in the dataset (events only, for filter chips)
+  const usedCategories = useMemo(() => {
+    const used = new Set(allEvents.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])))
+    return CATEGORIES.filter((c) => used.has(c.value))
+  }, [allEvents])
+
+  // Apply category filter to events only (periods always shown)
+  const filteredEvents = useMemo(() => {
+    if (!activeCategory) return allEvents
+    return allEvents.filter((m) => {
       const cats = m.categories.length ? m.categories : (m.category ? [m.category] : [])
       return cats.includes(activeCategory)
     })
-  }, [memories, activeCategory])
+  }, [allEvents, activeCategory])
 
-  const yearGroups   = useMemo(() => groupMemories(filteredMemories), [filteredMemories])
+  const yearGroups   = useMemo(() => groupMemories(filteredEvents), [filteredEvents])
   const currentYear  = yearGroups.find((y) => y.year === selectedYear) ?? null
   const currentMonth = currentYear?.monthGroups.find((m) => m.month === selectedMonth) ?? null
 
@@ -820,7 +923,12 @@ export function TimelineAnimated({ memories }: Props) {
             {...vars}
             transition={{ duration: VIEW_DURATION, ease: EASE_ZOOM }}
           >
-            <YearsView groups={yearGroups} onSelect={goToYear} />
+            <YearsView
+              groups={yearGroups}
+              periods={allPeriods}
+              childCounts={childCounts}
+              onSelect={goToYear}
+            />
           </motion.div>
         )}
 
