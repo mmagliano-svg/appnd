@@ -168,12 +168,52 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
     })
   }, [memories])
 
-  // 3 most recent events
+  // 2 most recent events (max)
   const recentMemories = useMemo(() => {
     return [...events]
       .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
-      .slice(0, 3)
+      .slice(0, 2)
   }, [events])
+
+  // Microcopy per period: "Fase ancora aperta" / "Il capitolo più lungo" / "N momenti"
+  const periodMicrocopy = useMemo(() => {
+    const map: Record<string, string> = {}
+    if (periods.length === 0) return map
+
+    // Longest closed period
+    let longestId: string | null = null
+    let longestDays = 0
+    for (const p of periods) {
+      if (!p.end_date || p.end_date >= '9999-01-01') continue
+      const days = (new Date(p.end_date).getTime() - new Date(p.start_date).getTime()) / 86400000
+      if (days > longestDays) { longestDays = days; longestId = p.id }
+    }
+
+    // Period with most moments (only if count > 0)
+    let richestId: string | null = null
+    let maxTotal = 0
+    for (const p of periods) {
+      const total = periodInsightsMap[p.id]?.total ?? 0
+      if (total > maxTotal) { maxTotal = total; richestId = p.id }
+    }
+
+    for (const p of periods) {
+      const isOngoing = !p.end_date || p.end_date >= '9999-01-01'
+      const total = periodInsightsMap[p.id]?.total ?? 0
+      if (isOngoing) {
+        map[p.id] = 'Fase ancora aperta'
+      } else if (periods.length > 1 && p.id === longestId) {
+        map[p.id] = 'Il tuo capitolo più lungo'
+      } else if (periods.length > 1 && p.id === richestId && maxTotal > 0) {
+        map[p.id] = 'Il più ricco di momenti'
+      } else if (total > 0) {
+        map[p.id] = `${total} moment${total === 1 ? 'o' : 'i'} in questo capitolo`
+      } else {
+        map[p.id] = 'Nessun momento ancora'
+      }
+    }
+    return map
+  }, [periods, periodInsightsMap])
 
   const filteredMemories = useMemo(() => {
     return events.filter((m) => {
@@ -230,7 +270,10 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
           <p className="text-sm text-muted-foreground">
             {events.length === 0 && periods.length === 0
               ? 'Il tuo libro dei momenti ti aspetta.'
-              : `${events.length} moment${events.length === 1 ? 'o' : 'i'} custoditi`}
+              : [
+                  `${events.length} moment${events.length === 1 ? 'o' : 'i'} custoditi`,
+                  periods.length > 0 ? `${periods.length} capitol${periods.length === 1 ? 'o' : 'i'}` : null,
+                ].filter(Boolean).join(' · ')}
           </p>
         </div>
 
@@ -343,10 +386,10 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
         {/* ── DISCOVERY SECTIONS (no filters active) ── */}
         {showDiscovery && (
           <>
-            {/* 0 — Capitoli della tua vita */}
+            {/* ── 1. CAPITOLI DELLA TUA VITA ── */}
             {periods.length > 0 && (
-              <div className="mb-8">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              <div className="mb-10">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                   Capitoli della tua vita
                 </p>
                 <div className="space-y-2">
@@ -354,6 +397,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                     .sort((a, b) => b.start_date.localeCompare(a.start_date))
                     .map((period) => {
                       const ins = periodInsightsMap[period.id] ?? { total: 0, mostActiveYear: null, connections: [] }
+                      const micro = periodMicrocopy[period.id] ?? ''
                       return (
                         <Link
                           key={period.id}
@@ -363,34 +407,24 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40 mb-2">
                             Capitolo
                           </p>
-                          <p className="font-bold text-xl leading-tight mb-1 line-clamp-2 group-hover:opacity-80 transition-opacity">
+                          <p className="font-bold text-xl leading-tight line-clamp-2 group-hover:opacity-80 transition-opacity">
                             {period.title}
                           </p>
-                          {period.description && (
-                            <p className="text-sm text-muted-foreground/60 leading-snug line-clamp-1 mb-2">
-                              {period.description}
-                            </p>
-                          )}
                           <p className="text-sm font-semibold text-muted-foreground tabular-nums mt-2">
                             {formatPeriodDisplay(period.start_date, period.end_date!)}
                           </p>
-                          {ins.total > 0 && (
-                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/25">
-                              <span className="text-xs font-semibold text-foreground/60">
-                                {ins.total} {ins.total === 1 ? 'momento' : 'momenti'}
-                              </span>
-                              {ins.mostActiveYear !== null && ins.total > 2 && (
-                                <span className="text-xs text-muted-foreground/50">
-                                  Più attivo: {ins.mostActiveYear}
-                                </span>
-                              )}
-                              {ins.connections.length > 0 && (
-                                <span className="text-xs text-muted-foreground/50">
+                          {/* Microcopy + insights in un'unica riga */}
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-2">
+                            <span className="text-xs text-muted-foreground/55">{micro}</span>
+                            {ins.total > 0 && ins.connections.length > 0 && (
+                              <>
+                                <span className="text-muted-foreground/30 text-xs">·</span>
+                                <span className="text-xs text-muted-foreground/45">
                                   Con: {ins.connections.join(', ')}
                                 </span>
-                              )}
-                            </div>
-                          )}
+                              </>
+                            )}
+                          </div>
                         </Link>
                       )
                     })}
@@ -398,33 +432,72 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
               </div>
             )}
 
-            {/* 1 — Con chi */}
+            {/* ── 2. RIPRENDI DA QUI ── */}
+            {recentMemories.length > 0 && (
+              <div className="mb-8">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Riprendi da qui
+                </p>
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
+                  {recentMemories.map((memory) => {
+                    const catInfo = getCategoryInfo(memory.category)
+                    const contribCount = memory.memory_contributions.length
+                    return (
+                      <Link
+                        key={memory.id}
+                        href={`/memories/${memory.id}`}
+                        className="flex-none w-52 snap-start"
+                      >
+                        <div className="rounded-2xl border bg-card p-4 h-full min-h-[120px] hover:border-foreground/20 hover:shadow-sm transition-all space-y-2.5">
+                          {catInfo ? (
+                            <span className="text-xs text-muted-foreground">{catInfo.emoji} {catInfo.label}</span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40">—</span>
+                          )}
+                          <p className="text-xs text-muted-foreground">
+                            {formatMemoryDateShort(memory.start_date, null)}
+                          </p>
+                          <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground">
+                            {memory.title}
+                          </h3>
+                          <div className="flex items-center justify-between">
+                            {memory.location_name ? (
+                              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                <span>📍</span>
+                                <span className="line-clamp-1">{memory.location_name}</span>
+                              </p>
+                            ) : <span />}
+                            {contribCount > 0 && (
+                              <span className="text-xs text-muted-foreground/60 shrink-0">
+                                {contribCount} contribut{contribCount === 1 ? 'o' : 'i'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── 3. CON CHI ── */}
             {people.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Con chi
                 </p>
-                <div
-                  className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4"
-                  style={{ scrollbarWidth: 'none' }}
-                >
+                <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
                   {people.map((person) => {
                     const parts = person.displayName.trim().split(/\s+/)
                     const ini = parts.length >= 2
                       ? (parts[0][0] + parts[1][0]).toUpperCase()
                       : person.displayName.slice(0, 2).toUpperCase()
                     const firstName = parts[0]
-
                     return (
-                      <Link
-                        key={person.userId}
-                        href={`/people/${person.userId}`}
-                        className="flex-none flex flex-col items-center gap-2 group"
-                      >
-                        <div className="w-14 h-14 rounded-full bg-foreground flex items-center justify-center group-hover:opacity-80 transition-opacity">
-                          <span className="text-lg font-bold tracking-tight text-background">
-                            {ini}
-                          </span>
+                      <Link key={person.userId} href={`/people/${person.userId}`} className="flex-none flex flex-col items-center gap-2 group">
+                        <div className="w-12 h-12 rounded-full bg-foreground flex items-center justify-center group-hover:opacity-80 transition-opacity">
+                          <span className="text-sm font-bold tracking-tight text-background">{ini}</span>
                         </div>
                         <div className="text-center">
                           <p className="text-xs font-medium leading-none">{firstName}</p>
@@ -439,114 +512,48 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
               </div>
             )}
 
-            {/* 1 — Riprendi da qui */}
-            <div className="mb-8">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                Riprendi da qui
-              </p>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory">
-                {recentMemories.map((memory) => {
-                  const catInfo = getCategoryInfo(memory.category)
-                  const contribCount = memory.memory_contributions.length
-                  return (
-                    <Link
-                      key={memory.id}
-                      href={`/memories/${memory.id}`}
-                      className="flex-none w-52 snap-start"
-                    >
-                      <div className="rounded-2xl border bg-card p-4 h-full min-h-[120px] hover:border-foreground/20 hover:shadow-sm transition-all space-y-2.5">
-                        {catInfo ? (
-                          <span className="text-xs text-muted-foreground">
-                            {catInfo.emoji} {catInfo.label}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/40">—</span>
-                        )}
-
-                        {memory.end_date ? (
-                          // Periodo — date prominenti nella card piccola
-                          <div>
-                            <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1">
-                              Periodo
-                            </p>
-                            <p className="text-sm font-bold tracking-tight leading-tight text-foreground">
-                              {formatPeriodDisplay(memory.start_date, memory.end_date)}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-xs text-muted-foreground">
-                            {formatMemoryDateShort(memory.start_date, null)}
-                          </p>
-                        )}
-
-                        <h3 className="font-semibold text-sm leading-snug line-clamp-2 text-foreground">
-                          {memory.title}
-                        </h3>
-
-                        <div className="flex items-center justify-between">
-                          {memory.location_name ? (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <span>📍</span>
-                              <span className="line-clamp-1">{memory.location_name}</span>
-                            </p>
-                          ) : <span />}
-                          {contribCount > 0 && (
-                            <span className="text-xs text-muted-foreground/60 shrink-0">
-                              {contribCount} contribut{contribCount === 1 ? 'o' : 'i'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* 2 — Connessioni che contano */}
+            {/* ── 4. CONNESSIONI CHE CONTANO ── */}
             {topTags.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Connessioni che contano
                 </p>
                 <div className="flex gap-2 flex-wrap">
-                  {topTags.map(({ tag, count }) => (
+                  {topTags.slice(0, 5).map(({ tag, count }) => (
                     <Link
                       key={tag}
                       href={`/tags/${encodeURIComponent(tag)}`}
-                      className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium border border-border bg-card hover:border-foreground/30 hover:bg-accent/20 transition-all"
+                      className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium border border-border bg-card hover:border-foreground/30 hover:bg-accent/20 transition-all"
                     >
                       <span className="text-foreground">#{tag}</span>
-                      <span className="text-xs text-muted-foreground bg-muted rounded-full px-1.5 py-0.5 leading-none">
-                        {count}
-                      </span>
+                      <span className="text-xs text-muted-foreground/60">{count}</span>
                     </Link>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* 3 — Luoghi che hai vissuto */}
+            {/* ── 5. LUOGHI CHE HAI VISSUTO ── */}
             {topPlaces.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                   Luoghi che hai vissuto
                 </p>
                 <div className="space-y-1.5">
-                  {topPlaces.map(({ place, count }) => (
+                  {topPlaces.slice(0, 4).map(({ place, count }) => (
                     <Link
                       key={place}
                       href={`/places/${encodeURIComponent(place)}`}
-                      className="flex items-center justify-between rounded-xl px-4 py-3 border border-border bg-card hover:border-foreground/20 hover:bg-accent/20 transition-all group"
+                      className="flex items-center justify-between rounded-xl px-4 py-2.5 border border-border bg-card hover:border-foreground/20 hover:bg-accent/20 transition-all group"
                     >
                       <div className="flex items-center gap-2.5">
-                        <svg className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                         <span className="text-sm font-medium">{place}</span>
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-muted-foreground/60">
                         {count} moment{count === 1 ? 'o' : 'i'}
                       </span>
                     </Link>
@@ -555,27 +562,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
               </div>
             )}
 
-            {/* 4 — Rivivi per capitoli */}
-            {usedCategories.length > 1 && (
-              <div className="mb-8">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Rivivi per capitoli
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  {usedCategories.map((cat) => (
-                    <button
-                      key={cat.value}
-                      onClick={() => setActiveCategory(cat.value)}
-                      className="rounded-full px-4 py-2 text-sm font-medium border border-border bg-card hover:border-foreground/30 hover:bg-accent/20 transition-all"
-                    >
-                      {cat.emoji} {cat.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Divider before full list */}
+            {/* ── 6. TUTTI I RICORDI — divider ── */}
             <div className="flex items-center gap-3 mb-5">
               <div className="flex-1 border-t border-border/50" />
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
