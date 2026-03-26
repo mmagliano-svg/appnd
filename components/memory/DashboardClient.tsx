@@ -168,6 +168,12 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
     })
   }, [memories])
 
+  // Count unique places across all events
+  const uniquePlacesCount = useMemo(() => {
+    const places = new Set(events.map((m) => m.location_name?.trim()).filter(Boolean))
+    return places.size
+  }, [events])
+
   // 2 most recent events (max)
   const recentMemories = useMemo(() => {
     return [...events]
@@ -264,7 +270,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
         {/* ── Header ── */}
         <div className="pt-10 pb-6">
           <div className="flex items-center justify-between mb-1">
-            <h1 className="text-3xl font-bold tracking-tight">I tuoi ricordi</h1>
+            <h1 className="text-3xl font-bold tracking-tight">La tua storia</h1>
             <div className="flex items-center gap-2">
               <Link href="/memories/new">
                 <Button size="sm" className="rounded-full px-4">+ Nuovo</Button>
@@ -289,10 +295,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
           <p className="text-sm text-muted-foreground">
             {events.length === 0 && periods.length === 0
               ? 'Il tuo libro dei momenti ti aspetta.'
-              : [
-                  `${events.length} moment${events.length === 1 ? 'o' : 'i'} custoditi`,
-                  periods.length > 0 ? `${periods.length} capitol${periods.length === 1 ? 'o' : 'i'}` : null,
-                ].filter(Boolean).join(' · ')}
+              : 'La tua vita, un momento alla volta.'}
           </p>
         </div>
 
@@ -451,6 +454,27 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
           </div>
         )}
 
+        {/* ── MINI INSIGHT BAR ── */}
+        {!hasFilters && events.length > 0 && (
+          <div className="flex items-center gap-2 mb-8 text-sm text-muted-foreground/70 flex-wrap">
+            <span className="font-medium text-foreground/80">
+              {events.length} moment{events.length === 1 ? 'o' : 'i'}
+            </span>
+            {periods.length > 0 && (
+              <>
+                <span className="text-border">·</span>
+                <span>{periods.length} capitol{periods.length === 1 ? 'o' : 'i'}</span>
+              </>
+            )}
+            {uniquePlacesCount > 0 && (
+              <>
+                <span className="text-border">·</span>
+                <span>{uniquePlacesCount} luogh{uniquePlacesCount === 1 ? 'o' : 'i'}</span>
+              </>
+            )}
+          </div>
+        )}
+
         {/* ── DISCOVERY SECTIONS (no filters active) ── */}
         {showDiscovery && (
           <>
@@ -478,17 +502,30 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
                           <p className="font-bold text-xl leading-tight line-clamp-2 group-hover:opacity-80 transition-opacity">
                             {period.title}
                           </p>
+                          {period.description && (
+                            <p className="text-sm text-muted-foreground/60 leading-snug line-clamp-1 mt-1">
+                              {period.description}
+                            </p>
+                          )}
                           <p className="text-sm font-semibold text-muted-foreground tabular-nums mt-2">
                             {formatPeriodDisplay(period.start_date, period.end_date!)}
                           </p>
-                          {/* Microcopy + insights in un'unica riga */}
+                          {/* Info row: microcopy · momenti · anno · connessioni */}
                           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-2">
                             <span className="text-xs text-muted-foreground/55">{micro}</span>
-                            {ins.total > 0 && ins.connections.length > 0 && (
+                            {ins.total > 0 && ins.mostActiveYear !== null && ins.total > 2 && (
                               <>
                                 <span className="text-muted-foreground/30 text-xs">·</span>
                                 <span className="text-xs text-muted-foreground/45">
-                                  Con: {ins.connections.join(', ')}
+                                  {ins.mostActiveYear}
+                                </span>
+                              </>
+                            )}
+                            {ins.connections.length > 0 && (
+                              <>
+                                <span className="text-muted-foreground/30 text-xs">·</span>
+                                <span className="text-xs text-muted-foreground/45">
+                                  {ins.connections.slice(0, 2).join(', ')}
                                 </span>
                               </>
                             )}
@@ -504,7 +541,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
             {recentMemories.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Riprendi da qui
+                  Riprendi il filo
                 </p>
                 <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
                   {recentMemories.map((memory) => {
@@ -584,7 +621,7 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
             {topTags.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Connessioni che contano
+                  Le persone e i momenti che tornano
                 </p>
                 <div className="flex gap-2 flex-wrap">
                   {topTags.slice(0, 5).map(({ tag, count }) => (
