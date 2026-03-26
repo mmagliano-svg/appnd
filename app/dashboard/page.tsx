@@ -22,6 +22,9 @@ export default async function DashboardPage() {
     getSharedPeople(),
   ])
 
+  // New user with no memories → onboarding
+  if (memories.length === 0) redirect('/onboarding')
+
   const displayName = profile?.display_name ?? profile?.email ?? user.email ?? ''
 
   return (
