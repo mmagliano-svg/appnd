@@ -226,9 +226,9 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
       const isOngoing = !p.end_date || p.end_date >= '9999-01-01'
       const total = periodInsightsMap[p.id]?.total ?? 0
       if (isOngoing) {
-        map[p.id] = 'Fase ancora aperta'
+        map[p.id] = 'Ancora in corso'
       } else if (periods.length > 1 && p.id === longestId) {
-        map[p.id] = 'Il tuo capitolo più lungo'
+        map[p.id] = 'Il periodo più lungo della tua vita'
       } else if (periods.length > 1 && p.id === richestId && maxTotal > 0) {
         map[p.id] = 'Il più ricco di momenti'
       } else if (total > 0) {
