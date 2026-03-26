@@ -24,7 +24,7 @@ interface Memory {
   is_first_time: boolean
   created_by: string
   created_at: string
-  memory_contributions: { id: string }[]
+  memory_contributions: { id: string; media_url: string | null; content_type: string }[]
 }
 
 interface DashboardClientProps {
@@ -174,6 +174,25 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
       .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
       .slice(0, 2)
   }, [events])
+
+  // Hero: most recent event with a photo; fallback to most recent event
+  const heroMemory = useMemo(() => {
+    const sorted = [...events].sort(
+      (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime()
+    )
+    const withPhoto = sorted.find((m) =>
+      m.memory_contributions.some((c) => c.content_type === 'photo' && c.media_url)
+    )
+    return withPhoto ?? sorted[0] ?? null
+  }, [events])
+
+  const heroPhotoUrl = useMemo(() => {
+    if (!heroMemory) return null
+    const photoContrib = heroMemory.memory_contributions.find(
+      (c) => c.content_type === 'photo' && c.media_url
+    )
+    return photoContrib?.media_url ?? null
+  }, [heroMemory])
 
   // Microcopy per period: "Fase ancora aperta" / "Il capitolo più lungo" / "N momenti"
   const periodMicrocopy = useMemo(() => {
@@ -380,6 +399,55 @@ export function DashboardClient({ memories, allTags, people, currentUser }: Dash
               </Link>
             </div>
 
+          </div>
+        )}
+
+        {/* ── HERO MOMENT ── */}
+        {heroMemory && !hasFilters && (
+          <div className="mb-8">
+            <Link href={`/memories/${heroMemory.id}`} className="block group">
+              {heroPhotoUrl ? (
+                /* Con immagine: full-bleed con overlay */
+                <div className="relative rounded-2xl overflow-hidden aspect-[4/3]">
+                  <img
+                    src={heroPhotoUrl}
+                    alt={heroMemory.title}
+                    className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                  />
+                  {/* Gradient overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                  {/* Testo sull'immagine */}
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <p className="font-bold text-2xl leading-tight text-white line-clamp-2 mb-1">
+                      {heroMemory.title}
+                    </p>
+                    <p className="text-sm text-white/70">
+                      {formatMemoryDate(heroMemory.start_date, null)}
+                      {heroMemory.location_name && ` · ${heroMemory.location_name}`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* Fallback senza immagine: card testuale */
+                <div className="rounded-2xl border border-border bg-muted/20 px-5 py-6 hover:border-foreground/20 hover:bg-muted/30 transition-all">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-muted-foreground/40 mb-3">
+                    Ultimo momento
+                  </p>
+                  <p className="font-bold text-2xl leading-tight mb-2 line-clamp-2">
+                    {heroMemory.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {formatMemoryDate(heroMemory.start_date, null)}
+                    {heroMemory.location_name && ` · ${heroMemory.location_name}`}
+                  </p>
+                  {heroMemory.description && (
+                    <p className="text-sm text-muted-foreground/60 mt-2 line-clamp-1 leading-relaxed">
+                      {heroMemory.description}
+                    </p>
+                  )}
+                </div>
+              )}
+            </Link>
           </div>
         )}
 

@@ -217,7 +217,7 @@ export async function getUserMemories() {
         is_first_time,
         created_by,
         created_at,
-        memory_contributions ( id )
+        memory_contributions ( id, media_url, content_type )
       )
     `)
     .eq('user_id', user.id)
@@ -247,7 +247,7 @@ export async function getUserMemories() {
       is_first_time: boolean
       created_by: string
       created_at: string
-      memory_contributions: { id: string }[]
+      memory_contributions: { id: string; media_url: string | null; content_type: string }[]
     }>
 }
 
