@@ -1,28 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
+import { getPersonDetail } from '@/actions/persons'
 import { getSharedMemoriesWithUser } from '@/actions/people'
 import { getCategoryByValue } from '@/lib/constants/categories'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-
-function formatYear(dateStr: string) {
-  return new Date(dateStr).getFullYear()
-}
-
-function formatDayMonth(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'long',
-  })
-}
-
-function formatFirstDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    month: 'long',
-    year: 'numeric',
-  })
-}
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -30,98 +13,173 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-// ── Page ───────────────────────────────────────────────────────────────────
+function formatYear(d: string) { return new Date(d).getFullYear() }
 
-export default async function PersonPage({
-  params,
-}: {
-  params: { userId: string }
+function formatDayMonth(d: string) {
+  return new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })
+}
+
+function formatFirstDate(d: string) {
+  return new Date(d).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
+}
+
+// ── Shared UI ──────────────────────────────────────────────────────────────
+
+function BackButton() {
+  return (
+    <div className="px-4 pt-6 pb-2">
+      <Link
+        href="/people"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
+        </svg>
+        Persone
+      </Link>
+    </div>
+  )
+}
+
+function MemoryRow({ memory }: {
+  memory: { id: string; title: string; start_date: string; location_name: string | null; category: string | null; previewUrl?: string | null }
 }) {
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) notFound()
-  if (params.userId === user.id) notFound()
+  const catInfo = getCategoryByValue(memory.category)
+  return (
+    <Link
+      href={`/memories/${memory.id}`}
+      className="flex gap-3 rounded-2xl bg-muted/30 border border-border/40 hover:border-foreground/15 hover:bg-muted/50 transition-all group active:scale-[0.99] overflow-hidden"
+    >
+      <div className="w-24 shrink-0 self-stretch bg-muted overflow-hidden rounded-l-2xl">
+        {memory.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={memory.previewUrl} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]" loading="lazy" draggable={false} />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+      </div>
+      <div className="flex-1 py-3.5 pr-4 min-w-0">
+        {catInfo && <p className="text-xs text-muted-foreground mb-1">{catInfo.emoji} {catInfo.label}</p>}
+        <p className="font-semibold text-sm leading-snug line-clamp-2 mb-1">{memory.title}</p>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+          <span>{formatDayMonth(memory.start_date)}</span>
+          {memory.location_name && (
+            <><span className="text-border">·</span><span className="truncate">{memory.location_name}</span></>
+          )}
+        </div>
+      </div>
+    </Link>
+  )
+}
 
-  const result = await getSharedMemoriesWithUser(params.userId)
-  if (!result) notFound()
+function TimelineByYear<T extends { id: string; start_date: string }>({
+  items,
+  renderItem,
+  emptyNote,
+}: {
+  items: T[]
+  renderItem: (item: T) => React.ReactNode
+  emptyNote: string
+}) {
+  const byYear: Record<number, T[]> = {}
+  for (const item of items) {
+    const y = formatYear(item.start_date)
+    if (!byYear[y]) byYear[y] = []
+    byYear[y].push(item)
+  }
+  const years = Object.keys(byYear).map(Number).sort((a, b) => a - b)
 
-  const { otherUser, memories, stats } = result
-  const ini = initials(otherUser.displayName)
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-20 space-y-3">
+        <p className="text-4xl">🌱</p>
+        <p className="text-sm text-muted-foreground">{emptyNote}</p>
+        <Link href="/memories/new" className="inline-flex items-center gap-2 mt-2 rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium">
+          Crea un ricordo
+        </Link>
+      </div>
+    )
+  }
 
-  // Group memories by year for the timeline
-  const byYear = memories.reduce<Record<number, typeof memories>>((acc, m) => {
-    const y = formatYear(m.start_date)
-    if (!acc[y]) acc[y] = []
-    acc[y].push(m)
-    return acc
-  }, {})
-  const years = Object.keys(byYear)
-    .map(Number)
-    .sort((a, b) => a - b) // oldest first → read the arc
+  return (
+    <div className="space-y-10">
+      {years.map((year) => (
+        <div key={year}>
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">{year}</span>
+            <div className="flex-1 border-t border-border/40" />
+          </div>
+          <div className="space-y-3">
+            {byYear[year].map((item) => renderItem(item))}
+          </div>
+        </div>
+      ))}
+      <div className="text-center pt-4 pb-2">
+        <p className="text-xs text-muted-foreground/50 italic">
+          {items.length === 1 ? 'Il primo di molti momenti insieme.' : `${items.length} momenti scritti insieme.`}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ── Person entity view (people table) ─────────────────────────────────────
+
+async function PersonEntityView({ id }: { id: string }) {
+  const person = await getPersonDetail(id)
+  if (!person) return null
+
+  const ini = initials(person.name)
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto pb-28">
+        <BackButton />
 
-        {/* ── Top bar ── */}
-        <div className="px-4 pt-6 pb-2">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
-            </svg>
-            Dashboard
-          </Link>
-        </div>
-
-        {/* ── Hero ── */}
+        {/* Hero */}
         <div className="px-4 pt-6 pb-8">
           <div className="flex items-center gap-4 mb-5">
-            {/* Avatar */}
-            <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center shrink-0">
-              <span className="text-xl font-bold tracking-tight text-background">
-                {ini}
-              </span>
+            <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center shrink-0 overflow-hidden">
+              {person.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={person.avatarUrl} alt={person.name} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xl font-bold tracking-tight text-background">{ini}</span>
+              )}
             </div>
-
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
-                Noi &amp;
+                La tua storia con
               </p>
-              <h1 className="text-2xl font-bold tracking-tight leading-none">
-                {otherUser.displayName}
-              </h1>
+              <h1 className="text-2xl font-bold tracking-tight leading-none">{person.name}</h1>
             </div>
           </div>
 
-          {/* Stats row */}
-          {memories.length > 0 && (
+          {person.memories.length > 0 && (
             <div className="flex items-center gap-4 text-sm">
               <div className="text-center">
-                <p className="text-2xl font-bold tabular-nums leading-none">{stats.totalCount}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  moment{stats.totalCount === 1 ? 'o' : 'i'}
-                </p>
+                <p className="text-2xl font-bold tabular-nums leading-none">{person.stats.totalCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">moment{person.stats.totalCount === 1 ? 'o' : 'i'}</p>
               </div>
-              {stats.firstDate && (
+              {person.stats.firstDate && (
                 <>
                   <div className="w-px h-8 bg-border" />
                   <div>
                     <p className="text-xs text-muted-foreground">Insieme dal</p>
-                    <p className="text-sm font-semibold">{formatFirstDate(stats.firstDate)}</p>
+                    <p className="text-sm font-semibold">{formatFirstDate(person.stats.firstDate)}</p>
                   </div>
                 </>
               )}
-              {stats.uniqueLocations > 0 && (
+              {person.stats.uniqueLocations > 0 && (
                 <>
                   <div className="w-px h-8 bg-border" />
                   <div className="text-center">
-                    <p className="text-2xl font-bold tabular-nums leading-none">{stats.uniqueLocations}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      luogh{stats.uniqueLocations === 1 ? 'o' : 'i'}
-                    </p>
+                    <p className="text-2xl font-bold tabular-nums leading-none">{person.stats.uniqueLocations}</p>
+                    <p className="text-xs text-muted-foreground mt-1">luogh{person.stats.uniqueLocations === 1 ? 'o' : 'i'}</p>
                   </div>
                 </>
               )}
@@ -129,148 +187,106 @@ export default async function PersonPage({
           )}
         </div>
 
-        {/* ── Photo strip ── */}
-        {stats.allPhotos.length > 0 && (
-          <div
-            className="flex gap-1.5 overflow-x-auto pb-2 px-4 mb-6"
-            style={{ scrollbarWidth: 'none' }}
-          >
-            {stats.allPhotos.map((url, i) => (
+        {/* Photo strip */}
+        {person.stats.allPhotos.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2 px-4 mb-6" style={{ scrollbarWidth: 'none' }}>
+            {person.stats.allPhotos.map((url, i) => (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={i}
-                src={url}
-                alt=""
-                className="h-24 w-24 shrink-0 rounded-xl object-cover"
-                loading="lazy"
-                draggable={false}
-              />
+              <img key={i} src={url} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover" loading="lazy" draggable={false} />
             ))}
           </div>
         )}
 
-        {/* ── Timeline / Memory list ── */}
+        {/* Timeline */}
         <div className="px-4">
-          {memories.length === 0 ? (
-            /* Empty state */
-            <div className="text-center py-20 space-y-4">
-              <p className="text-4xl">🌱</p>
-              <p className="text-base font-medium">Ancora tutto da scrivere.</p>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                Non avete ancora ricordi condivisi. Crea un ricordo e invita{' '}
-                {otherUser.displayName} a partecipare.
-              </p>
-              <Link
-                href="/memories/new"
-                className="inline-flex items-center gap-2 mt-2 rounded-full bg-foreground text-background px-5 py-2.5 text-sm font-medium hover:bg-foreground/90 transition-colors"
-              >
-                Crea un ricordo
-              </Link>
+          <TimelineByYear
+            items={person.memories}
+            renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
+            emptyNote={`Nessun ricordo con ${person.name} ancora. Crea un momento e aggiungi ${person.name} nella sezione "Con chi eri?".`}
+          />
+        </div>
+      </div>
+    </main>
+  )
+}
+
+// ── Registered user view (NOI — fallback) ─────────────────────────────────
+
+async function RegisteredUserView({ userId, currentUserId }: { userId: string; currentUserId: string }) {
+  if (userId === currentUserId) return null
+  const result = await getSharedMemoriesWithUser(userId)
+  if (!result) return null
+
+  const { otherUser, memories, stats } = result
+  const ini = initials(otherUser.displayName)
+
+  return (
+    <main className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto pb-28">
+        <BackButton />
+
+        <div className="px-4 pt-6 pb-8">
+          <div className="flex items-center gap-4 mb-5">
+            <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center shrink-0">
+              <span className="text-xl font-bold tracking-tight text-background">{ini}</span>
             </div>
-          ) : (
-            /* Timeline by year */
-            <div className="space-y-10">
-              {years.map((year) => (
-                <div key={year}>
-                  {/* Year label */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                      {year}
-                    </span>
-                    <div className="flex-1 border-t border-border/40" />
-                  </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">La tua storia con</p>
+              <h1 className="text-2xl font-bold tracking-tight leading-none">{otherUser.displayName}</h1>
+            </div>
+          </div>
 
-                  {/* Memories in this year */}
-                  <div className="space-y-3">
-                    {byYear[year].map((memory) => {
-                      const catInfo = getCategoryByValue(memory.category)
-                      return (
-                        <Link
-                          key={memory.id}
-                          href={`/memories/${memory.id}`}
-                          className="flex gap-3 rounded-2xl bg-muted/30 border border-border/40 hover:border-foreground/15 hover:bg-muted/50 transition-all group active:scale-[0.99] overflow-hidden"
-                        >
-                          {/* Photo thumbnail */}
-                          <div className="w-24 shrink-0 self-stretch bg-muted overflow-hidden rounded-l-2xl">
-                            {memory.previewUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={memory.previewUrl}
-                                alt=""
-                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
-                                loading="lazy"
-                                draggable={false}
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground/20">
-                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Content */}
-                          <div className="flex-1 py-3.5 pr-4 min-w-0">
-                            {/* Category + badges */}
-                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                              {(memory.categories.length ? memory.categories : (memory.category ? [memory.category] : [])).slice(0, 2).map((cv) => {
-                                const ci = getCategoryByValue(cv)
-                                return ci ? (
-                                  <span key={cv} className="text-xs text-muted-foreground">
-                                    {ci.emoji} {ci.label}
-                                  </span>
-                                ) : null
-                              })}
-                              {memory.is_first_time && (
-                                <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
-                                  ✦ Prima volta
-                                </span>
-                              )}
-                              {memory.is_anniversary && (
-                                <span className="text-[9px] font-semibold rounded-full bg-violet-50 border border-violet-200 px-1.5 py-0.5 text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
-                                  ↺ Ricorrenza
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Title */}
-                            <p className="font-semibold text-sm leading-snug line-clamp-2 mb-1">
-                              {memory.title}
-                            </p>
-
-                            {/* Date + location */}
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                              <span>{formatDayMonth(memory.start_date)}</span>
-                              {memory.location_name && (
-                                <>
-                                  <span className="text-border">·</span>
-                                  <span className="truncate">{memory.location_name}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-
-              {/* Closing note */}
-              <div className="text-center pt-4 pb-2">
-                <p className="text-xs text-muted-foreground/50 italic">
-                  {stats.totalCount === 1
-                    ? 'Il primo di molti momenti insieme.'
-                    : `${stats.totalCount} momenti scritti insieme.`}
-                </p>
+          {memories.length > 0 && (
+            <div className="flex items-center gap-4 text-sm">
+              <div className="text-center">
+                <p className="text-2xl font-bold tabular-nums leading-none">{stats.totalCount}</p>
+                <p className="text-xs text-muted-foreground mt-1">moment{stats.totalCount === 1 ? 'o' : 'i'}</p>
               </div>
+              {stats.firstDate && (
+                <><div className="w-px h-8 bg-border" /><div><p className="text-xs text-muted-foreground">Insieme dal</p><p className="text-sm font-semibold">{formatFirstDate(stats.firstDate)}</p></div></>
+              )}
+              {stats.uniqueLocations > 0 && (
+                <><div className="w-px h-8 bg-border" /><div className="text-center"><p className="text-2xl font-bold tabular-nums leading-none">{stats.uniqueLocations}</p><p className="text-xs text-muted-foreground mt-1">luogh{stats.uniqueLocations === 1 ? 'o' : 'i'}</p></div></>
+              )}
             </div>
           )}
         </div>
 
+        {stats.allPhotos.length > 0 && (
+          <div className="flex gap-1.5 overflow-x-auto pb-2 px-4 mb-6" style={{ scrollbarWidth: 'none' }}>
+            {stats.allPhotos.map((url, i) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img key={i} src={url} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover" loading="lazy" draggable={false} />
+            ))}
+          </div>
+        )}
+
+        <div className="px-4">
+          <TimelineByYear
+            items={memories}
+            renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
+            emptyNote={`Nessun ricordo condiviso ancora con ${otherUser.displayName}.`}
+          />
+        </div>
       </div>
     </main>
   )
+}
+
+// ── Router ─────────────────────────────────────────────────────────────────
+
+export default async function PersonPage({ params }: { params: { userId: string } }) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) notFound()
+
+  // Try people table first (ghost / invited / active entities)
+  const personView = await PersonEntityView({ id: params.userId })
+  if (personView) return personView
+
+  // Fallback: registered user NOI view
+  const userView = await RegisteredUserView({ userId: params.userId, currentUserId: user.id })
+  if (userView) return userView
+
+  notFound()
 }

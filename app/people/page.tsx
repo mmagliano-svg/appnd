@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getSharedPeople } from '@/actions/people'
-import type { PersonSummary } from '@/actions/people'
+import { getAllPersons } from '@/actions/persons'
+import type { Person } from '@/actions/persons'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -12,13 +12,6 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-function formatDateShort(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    month: 'short',
-    year: 'numeric',
-  })
-}
-
 function formatDateFull(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
     month: 'long',
@@ -26,19 +19,25 @@ function formatDateFull(dateStr: string) {
   })
 }
 
+function formatDateShort(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('it-IT', {
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 // ── Person Card ────────────────────────────────────────────────────────────
 
-function PersonCard({ person }: { person: PersonSummary }) {
-  const ini = initials(person.displayName)
-  const firstName = person.displayName.trim().split(/\s+/)[0]
+function PersonCard({ person }: { person: Person }) {
+  const ini = initials(person.name)
 
   return (
     <Link
-      href={`/people/${person.userId}`}
+      href={`/people/${person.id}`}
       className="group flex flex-col rounded-3xl border border-border/50 bg-card overflow-hidden hover:border-foreground/20 hover:shadow-sm transition-all active:scale-[0.98]"
     >
-      {/* Cover / Avatar area */}
-      <div className="relative h-36 bg-muted overflow-hidden">
+      {/* Cover */}
+      <div className="relative h-32 bg-muted overflow-hidden">
         {person.previewPhotoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -52,41 +51,40 @@ function PersonCard({ person }: { person: PersonSummary }) {
           <div className="w-full h-full bg-gradient-to-br from-neutral-100 to-neutral-200 dark:from-neutral-800 dark:to-neutral-900" />
         )}
 
-        {/* Dark gradient overlay */}
         {person.previewPhotoUrl && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
         )}
 
         {/* Avatar bubble */}
-        <div className="absolute bottom-3 left-3">
+        <div className="absolute bottom-2.5 left-3">
           {person.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={person.avatarUrl}
-              alt={person.displayName}
-              className="w-11 h-11 rounded-full object-cover border-2 border-white shadow-md"
+              alt={person.name}
+              className="w-10 h-10 rounded-full object-cover border-2 border-white shadow"
             />
           ) : (
-            <div className="w-11 h-11 rounded-full bg-foreground border-2 border-white shadow-md flex items-center justify-center">
-              <span className="text-sm font-bold tracking-tight text-background">{ini}</span>
+            <div className="w-10 h-10 rounded-full bg-foreground border-2 border-white shadow flex items-center justify-center">
+              <span className="text-xs font-bold tracking-tight text-background">{ini}</span>
             </div>
           )}
         </div>
       </div>
 
       {/* Info */}
-      <div className="px-4 py-3.5">
-        <p className="font-semibold text-sm leading-tight">{firstName}</p>
+      <div className="px-3.5 py-3">
+        <p className="font-semibold text-sm leading-tight truncate">{person.name}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {person.sharedCount} moment{person.sharedCount === 1 ? 'o' : 'i'}
+          {person.memoryCount} moment{person.memoryCount === 1 ? 'o' : 'i'}
         </p>
         {person.firstMemoryDate && (
-          <p className="text-[10px] text-muted-foreground/50 mt-1.5">
-            Insieme dal {formatDateFull(person.firstMemoryDate)}
+          <p className="text-[10px] text-muted-foreground/50 mt-1.5 leading-tight">
+            Dal {formatDateFull(person.firstMemoryDate)}
           </p>
         )}
-        {person.lastMemoryDate && person.firstMemoryDate !== person.lastMemoryDate && (
-          <p className="text-[10px] text-muted-foreground/50">
+        {person.lastMemoryDate && person.lastMemoryDate !== person.firstMemoryDate && (
+          <p className="text-[10px] text-muted-foreground/50 leading-tight">
             Ultima volta {formatDateShort(person.lastMemoryDate)}
           </p>
         )}
@@ -102,7 +100,7 @@ export default async function PeoplePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const people = await getSharedPeople()
+  const people = await getAllPersons()
 
   return (
     <main className="min-h-screen bg-background">
@@ -128,7 +126,7 @@ export default async function PeoplePage() {
           </h1>
           <p className="text-sm text-muted-foreground">
             {people.length === 0
-              ? 'I tuoi ricordi condivisi appariranno qui.'
+              ? 'Le persone che aggiungi ai tuoi ricordi appariranno qui.'
               : `${people.length} person${people.length === 1 ? 'a' : 'e'} nella tua storia.`}
           </p>
         </div>
@@ -137,9 +135,9 @@ export default async function PeoplePage() {
         {people.length === 0 && (
           <div className="text-center py-20 space-y-4">
             <p className="text-5xl">🌱</p>
-            <p className="text-base font-medium">Ancora nessun ricordo condiviso.</p>
+            <p className="text-base font-medium">Ancora nessuna persona.</p>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-              Crea un ricordo e invita qualcuno — apparirà qui non appena si unisce.
+              Crea un ricordo e nella sezione &ldquo;Con chi eri?&rdquo; aggiungi le persone coinvolte.
             </p>
             <Link
               href="/memories/new"
@@ -150,11 +148,11 @@ export default async function PeoplePage() {
           </div>
         )}
 
-        {/* People grid */}
+        {/* Grid */}
         {people.length > 0 && (
           <div className="grid grid-cols-2 gap-3">
             {people.map((person) => (
-              <PersonCard key={person.userId} person={person} />
+              <PersonCard key={person.id} person={person} />
             ))}
           </div>
         )}

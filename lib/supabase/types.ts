@@ -15,6 +15,57 @@ export type MediaType = 'image' | 'video'
 export interface Database {
   public: {
     Tables: {
+      people: {
+        Row: {
+          id: string
+          owner_id: string
+          name: string
+          avatar_url: string | null
+          status: 'ghost' | 'invited' | 'active'
+          linked_user_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          owner_id: string
+          name: string
+          avatar_url?: string | null
+          status?: 'ghost' | 'invited' | 'active'
+          linked_user_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          owner_id?: string
+          name?: string
+          avatar_url?: string | null
+          status?: 'ghost' | 'invited' | 'active'
+          linked_user_id?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      memory_people: {
+        Row: {
+          memory_id: string
+          person_id: string
+          added_by: string
+          created_at: string
+        }
+        Insert: {
+          memory_id: string
+          person_id: string
+          added_by: string
+          created_at?: string
+        }
+        Update: {
+          memory_id?: string
+          person_id?: string
+          added_by?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           id: string

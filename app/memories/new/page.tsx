@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
 import { getUserGroups, type GroupSummary } from '@/actions/groups'
 import { addMediaContribution } from '@/actions/contributions'
+import { setMemoryPeople } from '@/actions/persons'
+import { PeopleSelector } from '@/components/people/PeopleSelector'
+import type { SimplePerson } from '@/actions/persons'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +33,7 @@ function NewMemoryForm() {
   const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
   const [groups, setGroups] = useState<GroupSummary[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [selectedPeople, setSelectedPeople] = useState<SimplePerson[]>([])
 
   // Date type state
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
@@ -136,7 +140,12 @@ function NewMemoryForm() {
         group_id: memoryType === 'day' ? selectedGroupId : null,
       })
 
-      // 2 — Upload media if present
+      // 2 — Tag people (fire-and-forget, non-blocking)
+      if (selectedPeople.length > 0) {
+        setMemoryPeople(memoryId, selectedPeople.map((p) => p.id)).catch(() => {})
+      }
+
+      // 3 — Upload media if present
       if (mediaFile) {
         setUploadStep('Caricamento foto…')
         const supabase = createClient()
@@ -460,17 +469,26 @@ function NewMemoryForm() {
               </div>
             </div>
 
+            {/* ── Con chi eri? ── */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Con chi eri?</Label>
+              <p className="text-xs text-muted-foreground -mt-1">
+                Aggiungi le persone che fanno parte di questo ricordo.
+              </p>
+              <PeopleSelector onChange={setSelectedPeople} />
+            </div>
+
             {/* Tag */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Connessioni</Label>
               <p className="text-xs text-muted-foreground -mt-1">
-                Persone, luoghi, temi — tutto ciò che collega questo momento agli altri.
+                Luoghi, temi — tutto ciò che collega questo momento agli altri.
               </p>
               <TagInput
                 value={tags}
                 onChange={setTags}
                 suggestions={allTags}
-                placeholder="Es. Luca, Sardegna, estate…"
+                placeholder="Es. Sardegna, estate, vacanze…"
               />
             </div>
 

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getExploreData, getOnThisDayMemories } from '@/actions/memories'
-import { getSharedPeople } from '@/actions/people'
+import { getAllPersons } from '@/actions/persons'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
 
@@ -39,7 +39,7 @@ export default async function ExplorePage() {
   const [{ topTags, topPlaces, categories }, onThisDay, people] = await Promise.all([
     getExploreData(),
     getOnThisDayMemories(),
-    getSharedPeople(),
+    getAllPersons(),
   ])
 
   // Subtitle: "25 marzo, negli anni"
@@ -77,31 +77,21 @@ export default async function ExplorePage() {
               style={{ scrollbarWidth: 'none' }}
             >
               {people.slice(0, 8).map((person) => {
-                const parts = person.displayName.trim().split(/\s+/)
-                const ini = parts.length >= 2
-                  ? (parts[0][0] + parts[1][0]).toUpperCase()
-                  : person.displayName.slice(0, 2).toUpperCase()
-                const firstName = parts[0]
+                const ini = person.name.trim().slice(0, 2).toUpperCase()
+                const firstName = person.name.trim().split(/\s+/)[0]
+                const photo = person.avatarUrl ?? person.previewPhotoUrl
                 return (
                   <Link
-                    key={person.userId}
-                    href={`/people/${person.userId}`}
+                    key={person.id}
+                    href={`/people/${person.id}`}
                     className="flex-none flex flex-col items-center gap-2 group"
                   >
                     <div className="relative w-16 h-16 rounded-full overflow-hidden bg-foreground ring-2 ring-transparent group-hover:ring-foreground/20 transition-all">
-                      {person.avatarUrl ? (
+                      {photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
-                          src={person.avatarUrl}
-                          alt={person.displayName}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : person.previewPhotoUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={person.previewPhotoUrl}
-                          alt=""
+                          src={photo}
+                          alt={person.name}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />
@@ -114,7 +104,7 @@ export default async function ExplorePage() {
                     <div className="text-center">
                       <p className="text-xs font-medium leading-none">{firstName}</p>
                       <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {person.sharedCount} moment{person.sharedCount === 1 ? 'o' : 'i'}
+                        {person.memoryCount} moment{person.memoryCount === 1 ? 'o' : 'i'}
                       </p>
                     </div>
                   </Link>
