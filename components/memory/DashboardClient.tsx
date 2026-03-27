@@ -701,9 +701,17 @@ export function DashboardClient({ memories, allTags, people, groups, currentUser
             {/* ── 3. CON CHI ── */}
             {people.length > 0 && (
               <div className="mb-8">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Con chi
-                </p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Con chi
+                  </p>
+                  <Link
+                    href="/people"
+                    className="text-xs text-muted-foreground/60 hover:text-foreground transition-colors"
+                  >
+                    Vedi tutte →
+                  </Link>
+                </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
                   {people.map((person) => {
                     const parts = person.displayName.trim().split(/\s+/)
@@ -711,10 +719,23 @@ export function DashboardClient({ memories, allTags, people, groups, currentUser
                       ? (parts[0][0] + parts[1][0]).toUpperCase()
                       : person.displayName.slice(0, 2).toUpperCase()
                     const firstName = parts[0]
+                    const photo = person.avatarUrl ?? person.previewPhotoUrl
                     return (
                       <Link key={person.userId} href={`/people/${person.userId}`} className="flex-none flex flex-col items-center gap-2 group">
-                        <div className="w-12 h-12 rounded-full bg-foreground flex items-center justify-center group-hover:opacity-80 transition-opacity">
-                          <span className="text-sm font-bold tracking-tight text-background">{ini}</span>
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden bg-foreground group-hover:opacity-80 transition-opacity">
+                          {photo ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={photo}
+                              alt={person.displayName}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <span className="absolute inset-0 flex items-center justify-center text-sm font-bold tracking-tight text-background">
+                              {ini}
+                            </span>
+                          )}
                         </div>
                         <div className="text-center">
                           <p className="text-xs font-medium leading-none">{firstName}</p>

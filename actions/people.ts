@@ -9,6 +9,10 @@ export interface PersonSummary {
   userId: string
   displayName: string
   sharedCount: number
+  avatarUrl: string | null
+  lastMemoryDate: string | null
+  firstMemoryDate: string | null
+  previewPhotoUrl: string | null   // photo from most recent shared memory
 }
 
 export interface SharedMemory {
@@ -54,10 +58,10 @@ export async function getSharedPeople(): Promise<PersonSummary[]> {
   const myIds = (myParts ?? []).map((p) => p.memory_id)
   if (myIds.length === 0) return []
 
-  // All OTHER joined participants in those memories
+  // All OTHER joined participants in those memories (with memory_id for date mapping)
   const { data: others } = await supabase
     .from('memory_participants')
-    .select('user_id')
+    .select('user_id, memory_id')
     .neq('user_id', user.id)
     .not('user_id', 'is', null)
     .not('joined_at', 'is', null)
@@ -65,26 +69,74 @@ export async function getSharedPeople(): Promise<PersonSummary[]> {
 
   if (!others || others.length === 0) return []
 
-  // Count shared memories per person
-  const countMap = new Map<string, number>()
+  // Fetch memory dates for all shared memories
+  const allSharedMemIds = Array.from(new Set(others.map((p) => p.memory_id)))
+  const { data: memDates } = await supabase
+    .from('memories')
+    .select('id, start_date')
+    .in('id', allSharedMemIds)
+
+  const memDateMap = new Map((memDates ?? []).map((m) => [m.id, m.start_date]))
+
+  // Count + first/last dates per person
+  const countMap    = new Map<string, number>()
+  const lastDateMap = new Map<string, string>()
+  const firstDateMap = new Map<string, string>()
+  const lastMemIdMap = new Map<string, string>()   // person → most recent memory id
+
   for (const p of others) {
     if (!p.user_id) continue
+    const date = memDateMap.get(p.memory_id)
     countMap.set(p.user_id, (countMap.get(p.user_id) ?? 0) + 1)
+    if (date) {
+      const lastDate = lastDateMap.get(p.user_id)
+      if (!lastDate || date > lastDate) {
+        lastDateMap.set(p.user_id, date)
+        lastMemIdMap.set(p.user_id, p.memory_id)
+      }
+      const firstDate = firstDateMap.get(p.user_id)
+      if (!firstDate || date < firstDate) firstDateMap.set(p.user_id, date)
+    }
   }
 
-  // Fetch names
+  // Fetch user profiles (avatar included)
   const userIds = Array.from(countMap.keys())
   const { data: users } = await supabase
     .from('users')
-    .select('id, display_name, email')
+    .select('id, display_name, email, avatar_url')
     .in('id', userIds)
 
+  // Fetch one preview photo per person (from their most recent shared memory)
+  const lastMemIds = Array.from(new Set(Array.from(lastMemIdMap.values())))
+  const { data: previewPhotos } = await supabase
+    .from('memory_contributions')
+    .select('memory_id, media_url')
+    .eq('content_type', 'photo')
+    .in('memory_id', lastMemIds)
+    .not('media_url', 'is', null)
+    .order('created_at', { ascending: true })
+
+  // First photo per memory
+  const previewPhotoMap = new Map<string, string>()
+  for (const p of previewPhotos ?? []) {
+    if (p.media_url && !previewPhotoMap.has(p.memory_id)) {
+      previewPhotoMap.set(p.memory_id, p.media_url)
+    }
+  }
+
   return (users ?? [])
-    .map((u) => ({
-      userId: u.id,
-      displayName: u.display_name ?? u.email,
-      sharedCount: countMap.get(u.id) ?? 0,
-    }))
+    .map((u) => {
+      const lastMemId = lastMemIdMap.get(u.id)
+      return {
+        userId: u.id,
+        displayName: u.display_name ?? u.email,
+        sharedCount: countMap.get(u.id) ?? 0,
+        avatarUrl: u.avatar_url ?? null,
+        lastMemoryDate: lastDateMap.get(u.id) ?? null,
+        firstMemoryDate: firstDateMap.get(u.id) ?? null,
+        previewPhotoUrl: lastMemId ? (previewPhotoMap.get(lastMemId) ?? null) : null,
+      }
+    })
     .sort((a, b) => b.sharedCount - a.sharedCount)
 }
 

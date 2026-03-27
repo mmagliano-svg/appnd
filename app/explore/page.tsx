@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getExploreData, getOnThisDayMemories } from '@/actions/memories'
+import { getSharedPeople } from '@/actions/people'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
 
@@ -35,9 +36,10 @@ export default async function ExplorePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [{ topTags, topPlaces, categories }, onThisDay] = await Promise.all([
+  const [{ topTags, topPlaces, categories }, onThisDay, people] = await Promise.all([
     getExploreData(),
     getOnThisDayMemories(),
+    getSharedPeople(),
   ])
 
   // Subtitle: "25 marzo, negli anni"
@@ -57,6 +59,82 @@ export default async function ExplorePage() {
           <h1 className="text-3xl font-bold tracking-tight mb-1">Esplora</h1>
           <p className="text-sm text-muted-foreground">La tua storia, da tutti i punti di vista.</p>
         </div>
+
+        {/* ── PERSONE ── */}
+        {people.length > 0 && (
+          <section className="mb-10">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold tracking-tight">Persone</h2>
+              <Link
+                href="/people"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Vedi tutte →
+              </Link>
+            </div>
+            <div
+              className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {people.slice(0, 8).map((person) => {
+                const parts = person.displayName.trim().split(/\s+/)
+                const ini = parts.length >= 2
+                  ? (parts[0][0] + parts[1][0]).toUpperCase()
+                  : person.displayName.slice(0, 2).toUpperCase()
+                const firstName = parts[0]
+                return (
+                  <Link
+                    key={person.userId}
+                    href={`/people/${person.userId}`}
+                    className="flex-none flex flex-col items-center gap-2 group"
+                  >
+                    <div className="relative w-16 h-16 rounded-full overflow-hidden bg-foreground ring-2 ring-transparent group-hover:ring-foreground/20 transition-all">
+                      {person.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={person.avatarUrl}
+                          alt={person.displayName}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : person.previewPhotoUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={person.previewPhotoUrl}
+                          alt=""
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center text-base font-bold tracking-tight text-background">
+                          {ini}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-medium leading-none">{firstName}</p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {person.sharedCount} moment{person.sharedCount === 1 ? 'o' : 'i'}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+              {/* "Vedi tutte" chip */}
+              {people.length > 8 && (
+                <Link
+                  href="/people"
+                  className="flex-none flex flex-col items-center gap-2 group"
+                >
+                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors">
+                    <span className="text-xs text-muted-foreground">+{people.length - 8}</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Tutte</p>
+                </Link>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* ── RIVIVI OGGI (se ci sono ricordi in questa data) ── */}
         {onThisDay.length > 0 && (
