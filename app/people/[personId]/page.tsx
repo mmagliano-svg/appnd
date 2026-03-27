@@ -275,17 +275,17 @@ async function RegisteredUserView({ userId, currentUserId }: { userId: string; c
 
 // ── Router ─────────────────────────────────────────────────────────────────
 
-export default async function PersonPage({ params }: { params: { userId: string } }) {
+export default async function PersonPage({ params }: { params: { personId: string } }) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
   // Try people table first (ghost / invited / active entities)
-  const personView = await PersonEntityView({ id: params.userId })
+  const personView = await PersonEntityView({ id: params.personId })
   if (personView) return personView
 
-  // Fallback: registered user NOI view
-  const userView = await RegisteredUserView({ userId: params.userId, currentUserId: user.id })
+  // Fallback: registered user NOI view (userId passed as personId from dashboard "Con chi")
+  const userView = await RegisteredUserView({ userId: params.personId, currentUserId: user.id })
   if (userView) return userView
 
   notFound()
