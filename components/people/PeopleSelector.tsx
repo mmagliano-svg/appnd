@@ -7,6 +7,8 @@ import type { SimplePerson } from '@/actions/persons'
 interface Props {
   onChange: (people: SimplePerson[]) => void
   initial?: SimplePerson[]
+  /** Controlled mode: pass external state. When provided, overrides internal state. */
+  selected?: SimplePerson[]
 }
 
 function PersonAvatar({ person, size = 'md' }: { person: SimplePerson; size?: 'sm' | 'md' }) {
@@ -24,8 +26,8 @@ function PersonAvatar({ person, size = 'md' }: { person: SimplePerson; size?: 's
   )
 }
 
-export function PeopleSelector({ onChange, initial = [] }: Props) {
-  const [selected, setSelected]     = useState<SimplePerson[]>(initial)
+export function PeopleSelector({ onChange, initial = [], selected: controlledSelected }: Props) {
+  const [internalSelected, setInternalSelected] = useState<SimplePerson[]>(initial)
   const [allPersons, setAllPersons] = useState<SimplePerson[]>([])
   const [query, setQuery]           = useState('')
   const [open, setOpen]             = useState(false)
@@ -33,10 +35,20 @@ export function PeopleSelector({ onChange, initial = [] }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const dropRef  = useRef<HTMLDivElement>(null)
 
+  // In controlled mode, sync internal state when external value changes
+  const selected = controlledSelected ?? internalSelected
+
   // Load all persons for autocomplete on mount
   useEffect(() => {
     getPersonsSimple().then(setAllPersons).catch(() => {})
   }, [])
+
+  // Sync internal state when controlled value changes (e.g. after async load)
+  useEffect(() => {
+    if (controlledSelected !== undefined) {
+      setInternalSelected(controlledSelected)
+    }
+  }, [controlledSelected])
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -67,7 +79,7 @@ export function PeopleSelector({ onChange, initial = [] }: Props) {
     !allPersons.some((p) => p.name.toLowerCase() === trimmed.toLowerCase())
 
   function updateSelected(next: SimplePerson[]) {
-    setSelected(next)
+    if (controlledSelected === undefined) setInternalSelected(next)
     onChange(next)
   }
 

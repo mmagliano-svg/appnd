@@ -3,11 +3,13 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { updateMemory, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
+import { getMemoryPeople, setMemoryPeople, type SimplePerson } from '@/actions/persons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
+import { PeopleSelector } from '@/components/people/PeopleSelector'
 import { createClient } from '@/lib/supabase/client'
 import { formatPeriodDisplay } from '@/lib/utils/dates'
 
@@ -31,10 +33,12 @@ export default function EditMemoryPage() {
   const [allTags, setAllTags] = useState<string[]>([])
   const [periods, setPeriods] = useState<PeriodSummary[]>([])
   const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
+  const [selectedPeople, setSelectedPeople] = useState<SimplePerson[]>([])
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
     getUserPeriods().then((p) => setPeriods(p.filter((period) => period.id !== id))).catch(() => {})
+    getMemoryPeople(id).then(setSelectedPeople).catch(() => {})
   }, [])
 
   const today = new Date().toISOString().split('T')[0]
@@ -114,6 +118,7 @@ export default function EditMemoryPage() {
         categories,
         tags,
       })
+      await setMemoryPeople(id, selectedPeople.map((p) => p.id))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
       setLoading(false)
@@ -301,16 +306,28 @@ export default function EditMemoryPage() {
             </div>
           </div>
 
+          {/* ── CON CHI ERI? ── */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Con chi eri?</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Aggiungi le persone che fanno parte di questo ricordo.
+            </p>
+            <PeopleSelector
+              selected={selectedPeople}
+              onChange={(people) => setSelectedPeople(people)}
+            />
+          </div>
+
           <div className="space-y-2">
             <Label className="text-sm font-medium">Connessioni</Label>
             <p className="text-xs text-muted-foreground -mt-1">
-              Persone, luoghi, temi — tutto ciò che collega questo momento agli altri.
+              Luoghi, temi — tutto ciò che collega questo momento agli altri.
             </p>
             <TagInput
               value={tags}
               onChange={setTags}
               suggestions={allTags}
-              placeholder="Es. Luca, Sardegna, estate…"
+              placeholder="Es. Sardegna, estate…"
             />
           </div>
 
