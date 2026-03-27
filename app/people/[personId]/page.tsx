@@ -27,17 +27,15 @@ function formatFirstDate(d: string) {
 
 function BackButton() {
   return (
-    <div className="px-4 pt-6 pb-2">
-      <Link
-        href="/people"
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
-        </svg>
-        Persone
-      </Link>
-    </div>
+    <Link
+      href="/people"
+      className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
+      </svg>
+      Persone
+    </Link>
   )
 }
 
@@ -144,11 +142,22 @@ async function PersonEntityView({ id }: { id: string }) {
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto pb-28">
-        <BackButton />
 
-        {/* ── Identity ── */}
-        <div className="px-4 pt-6 pb-8">
-          <div className="flex items-center gap-4">
+        {/* ── Top bar ── */}
+        <div className="px-4 pt-6 pb-2 flex items-center justify-between">
+          <BackButton />
+          <Link
+            href={`/people/${id}/edit`}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Modifica
+          </Link>
+        </div>
+
+        {/* ── IDENTITY BLOCK ── */}
+        <div className="px-4 pt-4 pb-8">
+          <div className="flex items-start gap-4">
+            {/* Avatar — person identity, not a memory photo */}
             <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center shrink-0 overflow-hidden">
               {person.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -157,13 +166,26 @@ async function PersonEntityView({ id }: { id: string }) {
                 <span className="text-xl font-bold tracking-tight text-background">{ini}</span>
               )}
             </div>
-            <div>
+
+            <div className="min-w-0 flex-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-0.5">
                 La tua storia con
               </p>
               <h1 className="text-2xl font-bold tracking-tight leading-none">{person.name}</h1>
+
+              {/* Relation label */}
+              {person.relationLabel && (
+                <p className="text-sm text-muted-foreground mt-1">{person.relationLabel}</p>
+              )}
+
+              {/* Short bio */}
+              {person.shortBio && (
+                <p className="text-sm text-foreground/70 mt-2 leading-relaxed">{person.shortBio}</p>
+              )}
+
+              {/* Together since */}
               {person.stats.firstDate && (
-                <p className="text-sm text-muted-foreground mt-1.5">
+                <p className="text-xs text-muted-foreground/60 mt-2">
                   Insieme dal {formatFirstDate(person.stats.firstDate)}
                 </p>
               )}
@@ -171,7 +193,9 @@ async function PersonEntityView({ id }: { id: string }) {
           </div>
         </div>
 
-        {/* ── Hero memory ── */}
+        {/* ── SHARED STORY BLOCK ── */}
+
+        {/* Hero memory — most recent with photo */}
         {heroMemory && (
           <div className="px-4 mb-10">
             <Link
@@ -203,7 +227,7 @@ async function PersonEntityView({ id }: { id: string }) {
           </div>
         )}
 
-        {/* ── Timeline ── */}
+        {/* Timeline */}
         <div className="px-4">
           <TimelineByYear
             items={sorted}

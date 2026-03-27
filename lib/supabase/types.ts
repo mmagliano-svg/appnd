@@ -21,6 +21,8 @@ export interface Database {
           owner_id: string
           name: string
           avatar_url: string | null
+          relation_label: string | null
+          short_bio: string | null
           status: 'ghost' | 'invited' | 'active'
           linked_user_id: string | null
           created_at: string
@@ -31,6 +33,8 @@ export interface Database {
           owner_id: string
           name: string
           avatar_url?: string | null
+          relation_label?: string | null
+          short_bio?: string | null
           status?: 'ghost' | 'invited' | 'active'
           linked_user_id?: string | null
           created_at?: string
@@ -41,6 +45,8 @@ export interface Database {
           owner_id?: string
           name?: string
           avatar_url?: string | null
+          relation_label?: string | null
+          short_bio?: string | null
           status?: 'ghost' | 'invited' | 'active'
           linked_user_id?: string | null
           created_at?: string

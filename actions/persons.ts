@@ -33,7 +33,10 @@ export interface PersonDetail {
   id: string
   name: string
   avatarUrl: string | null
+  relationLabel: string | null
+  shortBio: string | null
   status: 'ghost' | 'invited' | 'active'
+  linkedUserId: string | null
   memories: PersonMemory[]
   stats: {
     totalCount: number
@@ -201,7 +204,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
   // Verify ownership
   const { data: person } = await supabase
     .from('people')
-    .select('id, name, avatar_url, status')
+    .select('id, name, avatar_url, relation_label, short_bio, status, linked_user_id')
     .eq('id', personId)
     .eq('owner_id', user.id)
     .maybeSingle()
@@ -221,7 +224,10 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
       id: person.id,
       name: person.name,
       avatarUrl: person.avatar_url ?? null,
+      relationLabel: person.relation_label ?? null,
+      shortBio: person.short_bio ?? null,
       status: (person.status ?? 'ghost') as PersonDetail['status'],
+      linkedUserId: person.linked_user_id ?? null,
       memories: [],
       stats: { totalCount: 0, firstDate: null, uniqueLocations: 0, allPhotos: [] },
     }
@@ -258,7 +264,10 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
     id: person.id,
     name: person.name,
     avatarUrl: person.avatar_url ?? null,
+    relationLabel: person.relation_label ?? null,
+    shortBio: person.short_bio ?? null,
     status: (person.status ?? 'ghost') as PersonDetail['status'],
+    linkedUserId: person.linked_user_id ?? null,
     memories: (mems ?? []).map((m) => ({
       id: m.id,
       title: m.title,
@@ -367,4 +376,35 @@ export async function getMomentsByPersonId(personId: string): Promise<PersonMemo
 export async function getTopPeople(limit = 6): Promise<Person[]> {
   const all = await getAllPersons()  // already sorted by memoryCount desc
   return all.slice(0, limit)
+}
+
+// ── updatePerson ───────────────────────────────────────────────────────────
+
+export interface UpdatePersonInput {
+  name?: string
+  avatarUrl?: string | null
+  relationLabel?: string | null
+  shortBio?: string | null
+}
+
+/** Update editable identity fields for a person the current user owns. */
+export async function updatePerson(
+  personId: string,
+  input: UpdatePersonInput,
+): Promise<void> {
+  const { supabase, user } = await authedClient()
+
+  const patch: Record<string, unknown> = {}
+  if (input.name        !== undefined) patch.name           = input.name.trim()
+  if (input.avatarUrl   !== undefined) patch.avatar_url     = input.avatarUrl
+  if (input.relationLabel !== undefined) patch.relation_label = input.relationLabel?.trim() || null
+  if (input.shortBio    !== undefined) patch.short_bio      = input.shortBio?.trim() || null
+
+  const { error } = await supabase
+    .from('people')
+    .update(patch)
+    .eq('id', personId)
+    .eq('owner_id', user.id)
+
+  if (error) throw new Error(`Impossibile aggiornare persona: ${error.message}`)
 }
