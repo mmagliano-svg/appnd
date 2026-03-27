@@ -134,33 +134,21 @@ async function PersonEntityView({ id }: { id: string }) {
   if (!person) return null
 
   const ini = initials(person.name)
-  const sorted = person.memories   // already sorted ascending by start_date
+  const sorted = person.memories  // ascending by start_date
 
-  // Derived — no extra queries
-  const lastDate = sorted.length > 0 ? sorted[sorted.length - 1].start_date : null
-
-  // Hero memory: most recent with photo, fallback to most recent
+  // Hero memory: most recent with a photo, fallback to most recent
   const heroMemory =
     [...sorted].reverse().find((m) => m.previewUrl) ??
     (sorted.length > 0 ? sorted[sorted.length - 1] : null)
-
-  // Shared places from existing memory data
-  const placeMap = new Map<string, number>()
-  for (const m of sorted) {
-    if (m.location_name) placeMap.set(m.location_name, (placeMap.get(m.location_name) ?? 0) + 1)
-  }
-  const topPlaces = Array.from(placeMap.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto pb-28">
         <BackButton />
 
-        {/* ── Hero ── */}
-        <div className="px-4 pt-6 pb-6">
-          <div className="flex items-center gap-4 mb-5">
+        {/* ── Identity ── */}
+        <div className="px-4 pt-6 pb-8">
+          <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center shrink-0 overflow-hidden">
               {person.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -174,42 +162,18 @@ async function PersonEntityView({ id }: { id: string }) {
                 La tua storia con
               </p>
               <h1 className="text-2xl font-bold tracking-tight leading-none">{person.name}</h1>
+              {person.stats.firstDate && (
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  Insieme dal {formatFirstDate(person.stats.firstDate)}
+                </p>
+              )}
             </div>
           </div>
-
-          {sorted.length > 0 && (
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="text-center">
-                <p className="text-2xl font-bold tabular-nums leading-none">{person.stats.totalCount}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  moment{person.stats.totalCount === 1 ? 'o' : 'i'}
-                </p>
-              </div>
-              {person.stats.firstDate && (
-                <>
-                  <div className="w-px h-8 bg-border" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Insieme dal</p>
-                    <p className="text-sm font-semibold">{formatFirstDate(person.stats.firstDate)}</p>
-                  </div>
-                </>
-              )}
-              {lastDate && lastDate !== person.stats.firstDate && (
-                <>
-                  <div className="w-px h-8 bg-border" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Ultimo ricordo</p>
-                    <p className="text-sm font-semibold">{formatFirstDate(lastDate)}</p>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
         </div>
 
-        {/* ── Hero memory — emotional anchor ── */}
+        {/* ── Hero memory ── */}
         {heroMemory && (
-          <div className="px-4 mb-8">
+          <div className="px-4 mb-10">
             <Link
               href={`/memories/${heroMemory.id}`}
               className="block rounded-2xl overflow-hidden border border-border/40 hover:border-foreground/20 active:scale-[0.99] transition-all group"
@@ -239,30 +203,8 @@ async function PersonEntityView({ id }: { id: string }) {
           </div>
         )}
 
-        {/* ── Shared places ── */}
-        {topPlaces.length > 0 && (
-          <div className="px-4 mb-8">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Luoghi</p>
-            <div className="flex flex-wrap gap-2">
-              {topPlaces.map(([place, count]) => (
-                <span
-                  key={place}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium"
-                >
-                  📍 {place}{count > 1 && <span className="text-muted-foreground/60"> · {count}</span>}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* ── Timeline ── */}
         <div className="px-4">
-          {sorted.length > 1 && (
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
-              Tutti i momenti
-            </p>
-          )}
           <TimelineByYear
             items={sorted}
             renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
