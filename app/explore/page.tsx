@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getExploreData, getOnThisDayMemories } from '@/actions/memories'
-import { getAllPersons } from '@/actions/persons'
+import { getTopPeople } from '@/actions/persons'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
 
@@ -39,7 +39,7 @@ export default async function ExplorePage() {
   const [{ topTags, topPlaces, categories }, onThisDay, people] = await Promise.all([
     getExploreData(),
     getOnThisDayMemories(),
-    getAllPersons(),
+    getTopPeople(8),
   ])
 
   // Subtitle: "25 marzo, negli anni"
@@ -76,7 +76,7 @@ export default async function ExplorePage() {
               className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {people.slice(0, 8).map((person) => {
+              {people.map((person) => {
                 const ini = person.name.trim().slice(0, 2).toUpperCase()
                 const firstName = person.name.trim().split(/\s+/)[0]
                 const photo = person.avatarUrl ?? person.previewPhotoUrl
@@ -110,18 +110,6 @@ export default async function ExplorePage() {
                   </Link>
                 )
               })}
-              {/* "Vedi tutte" chip */}
-              {people.length > 8 && (
-                <Link
-                  href="/people"
-                  className="flex-none flex flex-col items-center gap-2 group"
-                >
-                  <div className="w-16 h-16 rounded-full border-2 border-dashed border-border flex items-center justify-center group-hover:border-foreground/30 transition-colors">
-                    <span className="text-xs text-muted-foreground">+{people.length - 8}</span>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Tutte</p>
-                </Link>
-              )}
             </div>
           </section>
         )}
