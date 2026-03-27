@@ -994,14 +994,13 @@ export function DashboardClient({ memories, allTags, people, groups, currentUser
                       {memory.tags.length > 0 && (
                         <div className="flex gap-1.5 flex-wrap">
                           {memory.tags.slice(0, 5).map((tag) => (
-                            <Link
+                            <span
                               key={tag}
-                              href={`/tags/${encodeURIComponent(tag)}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`/tags/${encodeURIComponent(tag)}`) }}
+                              className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors cursor-pointer"
                             >
                               #{tag}
-                            </Link>
+                            </span>
                           ))}
                           {memory.tags.length > 5 && (
                             <span className="text-xs text-muted-foreground self-center">
