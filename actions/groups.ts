@@ -34,19 +34,21 @@ export async function createGroup(name: string, type: string): Promise<string> {
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) redirect('/auth/login')
 
-  const { data: group, error: groupError } = await supabase
+  // Use admin client to bypass RLS for both inserts
+  const admin = createAdminClient()
+
+  const { data: group, error: groupError } = await admin
     .from('groups')
-    .insert({ name: name.trim(), type, created_by: user.id })
+    .insert({ name: name.trim(), type, created_by: user!.id })
     .select('id')
     .single()
 
-  if (groupError || !group) throw new Error('Impossibile creare il gruppo. Riprova.')
+  if (groupError || !group) throw new Error(`Impossibile creare il gruppo: ${groupError?.message ?? 'nessun dato restituito'}`)
 
-  // Add creator as admin member (use admin client — group_members RLS requires existing membership)
-  const admin = createAdminClient()
+  // Add creator as admin member
   await admin.from('group_members').insert({
     group_id: group.id,
-    user_id: user.id,
+    user_id: user!.id,
     joined_at: new Date().toISOString(),
     role: 'admin',
   })
