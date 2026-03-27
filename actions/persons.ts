@@ -324,3 +324,47 @@ export async function getMemoryPeople(memoryId: string): Promise<SimplePerson[]>
     })
     .filter((p): p is SimplePerson => p !== null)
 }
+
+// ── searchPeople ───────────────────────────────────────────────────────────
+
+/** Search people by name fragment (case-insensitive). Used for autocomplete. */
+export async function searchPeople(query: string): Promise<SimplePerson[]> {
+  const { supabase, user } = await authedClient()
+
+  const { data } = await supabase
+    .from('people')
+    .select('id, name, avatar_url')
+    .eq('owner_id', user.id)
+    .ilike('name', `%${query.trim()}%`)
+    .order('name', { ascending: true })
+    .limit(10)
+
+  return (data ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    avatarUrl: p.avatar_url ?? null,
+  }))
+}
+
+// ── getPersonById ──────────────────────────────────────────────────────────
+
+/** Alias for getPersonDetail — returns full person + their memories. */
+export async function getPersonById(personId: string): Promise<PersonDetail | null> {
+  return getPersonDetail(personId)
+}
+
+// ── getMomentsByPersonId ───────────────────────────────────────────────────
+
+/** Returns just the memory list for a person, without the wrapper. */
+export async function getMomentsByPersonId(personId: string): Promise<PersonMemory[]> {
+  const detail = await getPersonDetail(personId)
+  return detail?.memories ?? []
+}
+
+// ── getTopPeople ───────────────────────────────────────────────────────────
+
+/** Top N people ordered by memory count — for Home / Esplora widgets. */
+export async function getTopPeople(limit = 6): Promise<Person[]> {
+  const all = await getAllPersons()  // already sorted by memoryCount desc
+  return all.slice(0, limit)
+}

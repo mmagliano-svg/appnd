@@ -11,8 +11,22 @@ CREATE TABLE people (
   status         text        NOT NULL DEFAULT 'ghost'
                              CHECK (status IN ('ghost', 'invited', 'active')),
   linked_user_id uuid        REFERENCES users(id) ON DELETE SET NULL,
-  created_at     timestamptz NOT NULL DEFAULT now()
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
 );
+
+-- Auto-update updated_at on row change
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER people_updated_at
+  BEFORE UPDATE ON people
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- One person name per owner (case-insensitive)
 CREATE UNIQUE INDEX idx_people_owner_name ON people (owner_id, lower(name));

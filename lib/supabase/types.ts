@@ -24,6 +24,7 @@ export interface Database {
           status: 'ghost' | 'invited' | 'active'
           linked_user_id: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -33,6 +34,7 @@ export interface Database {
           status?: 'ghost' | 'invited' | 'active'
           linked_user_id?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -42,6 +44,7 @@ export interface Database {
           status?: 'ghost' | 'invited' | 'active'
           linked_user_id?: string | null
           created_at?: string
+          updated_at?: string
         }
         Relationships: []
       }
