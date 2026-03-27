@@ -134,14 +134,32 @@ async function PersonEntityView({ id }: { id: string }) {
   if (!person) return null
 
   const ini = initials(person.name)
+  const sorted = person.memories   // already sorted ascending by start_date
+
+  // Derived — no extra queries
+  const lastDate = sorted.length > 0 ? sorted[sorted.length - 1].start_date : null
+
+  // Hero memory: most recent with photo, fallback to most recent
+  const heroMemory =
+    [...sorted].reverse().find((m) => m.previewUrl) ??
+    (sorted.length > 0 ? sorted[sorted.length - 1] : null)
+
+  // Shared places from existing memory data
+  const placeMap = new Map<string, number>()
+  for (const m of sorted) {
+    if (m.location_name) placeMap.set(m.location_name, (placeMap.get(m.location_name) ?? 0) + 1)
+  }
+  const topPlaces = Array.from(placeMap.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto pb-28">
         <BackButton />
 
-        {/* Hero */}
-        <div className="px-4 pt-6 pb-8">
+        {/* ── Hero ── */}
+        <div className="px-4 pt-6 pb-6">
           <div className="flex items-center gap-4 mb-5">
             <div className="w-16 h-16 rounded-full bg-foreground flex items-center justify-center shrink-0 overflow-hidden">
               {person.avatarUrl ? (
@@ -159,11 +177,13 @@ async function PersonEntityView({ id }: { id: string }) {
             </div>
           </div>
 
-          {person.memories.length > 0 && (
-            <div className="flex items-center gap-4 text-sm">
+          {sorted.length > 0 && (
+            <div className="flex items-center gap-4 flex-wrap">
               <div className="text-center">
                 <p className="text-2xl font-bold tabular-nums leading-none">{person.stats.totalCount}</p>
-                <p className="text-xs text-muted-foreground mt-1">moment{person.stats.totalCount === 1 ? 'o' : 'i'}</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  moment{person.stats.totalCount === 1 ? 'o' : 'i'}
+                </p>
               </div>
               {person.stats.firstDate && (
                 <>
@@ -174,12 +194,12 @@ async function PersonEntityView({ id }: { id: string }) {
                   </div>
                 </>
               )}
-              {person.stats.uniqueLocations > 0 && (
+              {lastDate && lastDate !== person.stats.firstDate && (
                 <>
                   <div className="w-px h-8 bg-border" />
-                  <div className="text-center">
-                    <p className="text-2xl font-bold tabular-nums leading-none">{person.stats.uniqueLocations}</p>
-                    <p className="text-xs text-muted-foreground mt-1">luogh{person.stats.uniqueLocations === 1 ? 'o' : 'i'}</p>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Ultimo ricordo</p>
+                    <p className="text-sm font-semibold">{formatFirstDate(lastDate)}</p>
                   </div>
                 </>
               )}
@@ -187,20 +207,64 @@ async function PersonEntityView({ id }: { id: string }) {
           )}
         </div>
 
-        {/* Photo strip */}
-        {person.stats.allPhotos.length > 0 && (
-          <div className="flex gap-1.5 overflow-x-auto pb-2 px-4 mb-6" style={{ scrollbarWidth: 'none' }}>
-            {person.stats.allPhotos.map((url, i) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={i} src={url} alt="" className="h-24 w-24 shrink-0 rounded-xl object-cover" loading="lazy" draggable={false} />
-            ))}
+        {/* ── Hero memory — emotional anchor ── */}
+        {heroMemory && (
+          <div className="px-4 mb-8">
+            <Link
+              href={`/memories/${heroMemory.id}`}
+              className="block rounded-2xl overflow-hidden border border-border/40 hover:border-foreground/20 active:scale-[0.99] transition-all group"
+            >
+              {heroMemory.previewUrl && (
+                <div className="aspect-[16/9] overflow-hidden bg-muted">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={heroMemory.previewUrl}
+                    alt={heroMemory.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    loading="eager"
+                    draggable={false}
+                  />
+                </div>
+              )}
+              <div className="px-4 py-3.5">
+                <p className="font-semibold text-sm leading-snug line-clamp-2 mb-1">{heroMemory.title}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>{formatDayMonth(heroMemory.start_date)}</span>
+                  {heroMemory.location_name && (
+                    <><span className="text-border">·</span><span className="truncate">{heroMemory.location_name}</span></>
+                  )}
+                </div>
+              </div>
+            </Link>
           </div>
         )}
 
-        {/* Timeline */}
+        {/* ── Shared places ── */}
+        {topPlaces.length > 0 && (
+          <div className="px-4 mb-8">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Luoghi</p>
+            <div className="flex flex-wrap gap-2">
+              {topPlaces.map(([place, count]) => (
+                <span
+                  key={place}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1.5 text-xs font-medium"
+                >
+                  📍 {place}{count > 1 && <span className="text-muted-foreground/60"> · {count}</span>}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Timeline ── */}
         <div className="px-4">
+          {sorted.length > 1 && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+              Tutti i momenti
+            </p>
+          )}
           <TimelineByYear
-            items={person.memories}
+            items={sorted}
             renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
             emptyNote={`Nessun ricordo con ${person.name} ancora. Crea un momento e aggiungi ${person.name} nella sezione "Con chi eri?".`}
           />
