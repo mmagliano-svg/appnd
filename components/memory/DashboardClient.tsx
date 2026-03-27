@@ -8,7 +8,7 @@ import { CATEGORIES } from '@/lib/constants/categories'
 import { formatMemoryDate, formatMemoryDateShort, formatPeriodDisplay } from '@/lib/utils/dates'
 import { getRandomQuote } from '@/lib/memory-quotes'
 import { getOrCreateStoryToken } from '@/actions/stories'
-import type { PersonSummary } from '@/actions/people'
+import type { Person } from '@/actions/persons'
 import type { GroupSummary } from '@/lib/constants/groups'
 import { GroupCard } from '@/components/group/GroupCard'
 
@@ -38,7 +38,7 @@ interface Memory {
 interface DashboardClientProps {
   memories: Memory[]
   allTags: string[]
-  people: PersonSummary[]
+  people: Person[]
   groups: GroupSummary[]
   currentUser: { displayName: string }
 }
@@ -698,12 +698,12 @@ export function DashboardClient({ memories, allTags, people, groups, currentUser
               </div>
             )}
 
-            {/* ── 3. CON CHI ── */}
+            {/* ── 3. PERSONE ── */}
             {people.length > 0 && (
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Con chi
+                    Le persone della tua storia
                   </p>
                   <Link
                     href="/people"
@@ -714,20 +714,20 @@ export function DashboardClient({ memories, allTags, people, groups, currentUser
                 </div>
                 <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
                   {people.map((person) => {
-                    const parts = person.displayName.trim().split(/\s+/)
+                    const parts = person.name.trim().split(/\s+/)
                     const ini = parts.length >= 2
                       ? (parts[0][0] + parts[1][0]).toUpperCase()
-                      : person.displayName.slice(0, 2).toUpperCase()
+                      : person.name.slice(0, 2).toUpperCase()
                     const firstName = parts[0]
                     const photo = person.avatarUrl ?? person.previewPhotoUrl
                     return (
-                      <Link key={person.userId} href={`/people/${person.userId}`} className="flex-none flex flex-col items-center gap-2 group">
+                      <Link key={person.id} href={`/people/${person.id}`} className="flex-none flex flex-col items-center gap-2 group">
                         <div className="relative w-12 h-12 rounded-full overflow-hidden bg-foreground group-hover:opacity-80 transition-opacity">
                           {photo ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
                               src={photo}
-                              alt={person.displayName}
+                              alt={person.name}
                               className="w-full h-full object-cover"
                               loading="lazy"
                             />
@@ -740,7 +740,7 @@ export function DashboardClient({ memories, allTags, people, groups, currentUser
                         <div className="text-center">
                           <p className="text-xs font-medium leading-none">{firstName}</p>
                           <p className="text-[10px] text-muted-foreground mt-0.5">
-                            {person.sharedCount} moment{person.sharedCount === 1 ? 'o' : 'i'}
+                            {person.memoryCount} moment{person.memoryCount === 1 ? 'o' : 'i'}
                           </p>
                         </div>
                       </Link>

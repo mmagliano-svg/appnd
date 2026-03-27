@@ -2,7 +2,7 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories, getAllUserTags } from '@/actions/memories'
-import { getSharedPeople } from '@/actions/people'
+import { getTopPeople } from '@/actions/persons'
 import { getUserGroups } from '@/actions/groups'
 import { DashboardClient } from '@/components/memory/DashboardClient'
 
@@ -20,7 +20,7 @@ export default async function DashboardPage() {
   const [memories, allTags, people, groups] = await Promise.all([
     getUserMemories(),
     getAllUserTags(),
-    getSharedPeople(),
+    getTopPeople(6),
     getUserGroups(),
   ])
 
