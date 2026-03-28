@@ -441,7 +441,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         {/* Success feedback after contribution */}
         {searchParams.contributed === '1' && (
           <p className="pt-4 text-xs text-muted-foreground">
-            ✓ La tua versione è stata aggiunta.
+            ✓ Il tuo ricordo è stato aggiunto.
           </p>
         )}
 
@@ -681,7 +681,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         )}
 
         {/* ── Contributions — narrative ── */}
-        <div className="pt-8">
+        <div id="contributi" className="pt-8">
 
           {contributions.length === 0 ? (
             <div className="text-center py-16 space-y-3">
@@ -694,7 +694,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                   </p>
                 </>
               ) : (
-                <p className="text-sm font-medium">Ogni ricordo ha più di una versione.</p>
+                <p className="text-xs text-muted-foreground/60 italic">E tu, come lo ricordi?</p>
               )}
             </div>
           ) : (
@@ -801,9 +801,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* Soft nudge — no CTA, FAB handles it */}
         {contributions.length > 0 && !hasOwnContribution && (
-          <div className="mt-10 text-center space-y-1">
-            <p className="text-xs text-muted-foreground">Ogni ricordo ha più di una versione.</p>
-            <p className="text-xs text-muted-foreground/60">Tu come lo ricordi?</p>
+          <div className="mt-10 text-center">
+            <p className="text-xs text-muted-foreground/60 italic">E tu, come lo ricordi?</p>
           </div>
         )}
 
@@ -827,7 +826,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Aggiungi la tua versione
+          Raccontalo dal tuo punto di vista
         </Link>
       </div>
 

@@ -84,7 +84,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
         caption: caption || undefined,
       })
 
-      router.push(`/memories/${params.id}?contributed=1`)
+      router.push(`/memories/${params.id}?contributed=1#contributi`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore imprevisto.')
       setLoading(false)
@@ -107,9 +107,9 @@ export default function ContributePage({ params }: { params: { id: string } }) {
             </svg>
             Indietro
           </button>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">Il tuo contributo</h1>
-          <p className="text-sm text-muted-foreground">
-            La tua prospettiva su questo momento.
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Come lo ricordi tu?</h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Racconta questo momento dal tuo punto di vista. Anche solo una foto basta.
           </p>
         </div>
 
@@ -142,8 +142,8 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                 onChange={(e) => setText(e.target.value)}
                 placeholder={
                   tab === 'text'
-                    ? "Cosa ricordi di questo momento? C\u2019\u00e8 qualcosa che solo tu hai vissuto cos\u00ec."
-                    : 'Aggiungi una nota \u2014 qualcosa che solo tu ricordi.'
+                    ? "C\u2019\u00e8 qualcosa che solo tu ricordi cos\u00ec\u2026"
+                    : 'Una cosa che solo tu hai notato, sentito, vissuto.'
                 }
                 rows={8}
                 required
@@ -173,8 +173,8 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                     </svg>
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium">Tocca per scegliere una foto</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">JPEG, PNG, WebP — max 10 MB</p>
+                    <p className="text-sm font-medium">Tocca per aggiungere una foto</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Anche una sola foto racconta molto.</p>
                   </div>
                 </button>
               ) : (
@@ -210,7 +210,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                   type="text"
                   value={caption}
                   onChange={(e) => setCaption(e.target.value)}
-                  placeholder="Cosa rappresenta questa foto?"
+                  placeholder="Cosa stavi pensando in questo momento?"
                   className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
@@ -232,7 +232,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
           >
             {loading
               ? (uploadProgress || 'Salvataggio…')
-              : 'Aggiungi al ricordo'}
+              : 'Aggiungi la mia versione'}
           </Button>
         </form>
       </div>
