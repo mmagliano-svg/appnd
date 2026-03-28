@@ -24,6 +24,7 @@ export interface Database {
           first_name: string | null
           last_name: string | null
           nickname: string | null
+          nicknames: string[]
           avatar_url: string | null
           relation_label: string | null
           short_bio: string | null
@@ -44,6 +45,7 @@ export interface Database {
           first_name?: string | null
           last_name?: string | null
           nickname?: string | null
+          nicknames?: string[]
           avatar_url?: string | null
           relation_label?: string | null
           short_bio?: string | null
@@ -64,6 +66,7 @@ export interface Database {
           first_name?: string | null
           last_name?: string | null
           nickname?: string | null
+          nicknames?: string[]
           avatar_url?: string | null
           relation_label?: string | null
           short_bio?: string | null

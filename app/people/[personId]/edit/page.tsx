@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { getPersonById, updatePerson, type RelationshipType } from '@/actions/persons'
 import { getUserGroups, type GroupSummary } from '@/actions/groups'
 import { createClient } from '@/lib/supabase/client'
+import { NicknameInput } from '@/components/people/NicknameInput'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -70,7 +71,7 @@ export default function EditPersonPage() {
   const [name, setName]           = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName]   = useState('')
-  const [nickname, setNickname]   = useState('')
+  const [nicknames, setNicknames] = useState<string[]>([])
 
   // Avatar
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null)
@@ -103,7 +104,7 @@ export default function EditPersonPage() {
         setName(p.name)
         setFirstName(p.firstName ?? '')
         setLastName(p.lastName ?? '')
-        setNickname(p.nickname ?? '')
+        setNicknames(p.nicknames)
         setCurrentAvatarUrl(p.avatarUrl)
         setRelationshipType(p.relationshipType)
         setRelationLabel(p.relationLabel ?? '')
@@ -175,7 +176,7 @@ export default function EditPersonPage() {
           name,
           firstName:        firstName    || null,
           lastName:         lastName     || null,
-          nickname:         nickname     || null,
+          nicknames:        nicknames,
           avatarUrl:        newAvatarUrl,
           relationshipType: relationshipType,
           relationLabel:    relationLabel || null,
@@ -318,15 +319,13 @@ export default function EditPersonPage() {
               </div>
             </div>
 
-            {/* Nickname */}
+            {/* Nicknames */}
             <div>
-              <FieldLabel hint="facoltativo">Soprannome</FieldLabel>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
+              <FieldLabel hint="facoltativo">Soprannomi</FieldLabel>
+              <NicknameInput
+                value={nicknames}
+                onChange={setNicknames}
                 placeholder="Marko, il Prof, Gio…"
-                className={inputCls}
               />
             </div>
           </section>

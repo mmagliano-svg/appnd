@@ -35,6 +35,29 @@ function formatFirstDate(d: string) {
   return new Date(d).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
 }
 
+/** Wraps how_we_met in a natural Italian phrase unless user already wrote one. */
+function narrativeHowWeMet(text: string): string {
+  const t = text.trim()
+  const l = t.toLowerCase()
+  if (
+    l.startsWith('vi siete') || l.startsWith('ci siamo') ||
+    l.startsWith('siamo') || l.startsWith('abbiamo') ||
+    l.startsWith('ci conosciamo') || l.startsWith('vi conoscete')
+  ) return t
+  return 'Vi siete conosciuti ' + t.charAt(0).toLowerCase() + t.slice(1)
+}
+
+/** Wraps shared_context in a natural Italian phrase unless user already wrote one. */
+function narrativeSharedContext(text: string): string {
+  const t = text.trim()
+  const l = t.toLowerCase()
+  if (
+    l.startsWith('vi unisce') || l.startsWith('vi uniscono') ||
+    l.startsWith('condividete') || l.startsWith('avete in comune')
+  ) return t
+  return 'Vi unisce ' + t.charAt(0).toLowerCase() + t.slice(1)
+}
+
 // ── Shared UI ──────────────────────────────────────────────────────────────
 
 function BackButton() {
@@ -136,7 +159,7 @@ function TimelineByYear<T extends { id: string; start_date: string }>({
       ))}
       <div className="text-center pt-4 pb-2">
         <p className="text-xs text-muted-foreground/40 italic">
-          {items.length === 1 ? 'Un momento insieme.' : `${items.length} momenti insieme.`}
+          {items.length === 1 ? 'Un momento insieme.' : `${items.length} momenti scritti insieme.`}
         </p>
       </div>
     </div>
@@ -165,6 +188,15 @@ async function PersonEntityView({ id }: { id: string }) {
     }
   }
   const locations = Array.from(locationMap.entries()).sort((a, b) => b[1] - a[1])
+
+  // Compact relationship summary line
+  const summaryParts: string[] = []
+  if (person.stats.totalCount > 0)
+    summaryParts.push(`${person.stats.totalCount} moment${person.stats.totalCount === 1 ? 'o' : 'i'}`)
+  if (locations.length > 0)
+    summaryParts.push(`${locations.length} luogh${locations.length === 1 ? 'o' : 'i'}`)
+  if (person.stats.firstDate)
+    summaryParts.push(`insieme dal ${formatFirstDate(person.stats.firstDate)}`)
 
   const hasLegame = !!(person.howWeMet || person.sharedContext || person.groups.length > 0)
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ')
@@ -197,7 +229,7 @@ async function PersonEntityView({ id }: { id: string }) {
             )}
           </div>
 
-          {/* Label */}
+          {/* Eyebrow */}
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-1">
             La tua storia con
           </p>
@@ -205,9 +237,16 @@ async function PersonEntityView({ id }: { id: string }) {
           {/* Name */}
           <h1 className="text-3xl font-bold tracking-tight leading-tight mb-1">{person.name}</h1>
 
-          {/* Full name — if set and different */}
+          {/* Full name — if set and different from display name */}
           {fullName && fullName.toLowerCase() !== person.name.toLowerCase() && (
-            <p className="text-sm text-muted-foreground/60 mb-2">{fullName}</p>
+            <p className="text-sm text-muted-foreground/60 mb-1">{fullName}</p>
+          )}
+
+          {/* Nicknames */}
+          {person.nicknames.length > 0 && (
+            <p className="text-xs text-muted-foreground/40 italic mb-2">
+              {person.nicknames.map((n) => `"${n}"`).join(' · ')}
+            </p>
           )}
 
           {/* Relationship type pill */}
@@ -227,10 +266,10 @@ async function PersonEntityView({ id }: { id: string }) {
             <p className="text-sm text-foreground/70 leading-relaxed max-w-xs mt-1">{person.shortBio}</p>
           )}
 
-          {/* Together since */}
-          {person.stats.firstDate && (
-            <p className="text-xs text-muted-foreground/40 mt-4">
-              Insieme dal {formatFirstDate(person.stats.firstDate)}
+          {/* Compact relationship summary */}
+          {summaryParts.length > 0 && (
+            <p className="text-xs text-muted-foreground/40 mt-5 tracking-wide">
+              {summaryParts.join(' · ')}
             </p>
           )}
 
@@ -248,15 +287,19 @@ async function PersonEntityView({ id }: { id: string }) {
           <div className="px-4 pb-10">
             <div className="border-t border-border/30 mb-6" />
             <SectionTitle>Il vostro legame</SectionTitle>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {person.howWeMet && (
-                <p className="text-sm leading-relaxed text-foreground/80">{person.howWeMet}</p>
+                <p className="text-sm leading-relaxed text-foreground/75">
+                  {narrativeHowWeMet(person.howWeMet)}
+                </p>
               )}
               {person.sharedContext && (
-                <p className="text-sm leading-relaxed text-foreground/80">{person.sharedContext}</p>
+                <p className="text-sm leading-relaxed text-foreground/75">
+                  {narrativeSharedContext(person.sharedContext)}
+                </p>
               )}
               {person.groups.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
+                <div className="flex flex-wrap gap-2 pt-2">
                   {person.groups.map((g) => (
                     <span
                       key={g.id}
@@ -280,8 +323,8 @@ async function PersonEntityView({ id }: { id: string }) {
               {locations.map(([loc, count]) => (
                 <div key={loc} className="flex items-center justify-between gap-4">
                   <span className="text-sm leading-snug">{loc}</span>
-                  <span className="text-xs text-muted-foreground shrink-0">
-                    {count} moment{count === 1 ? 'o' : 'i'}
+                  <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
+                    {count === 1 ? '1 momento' : `${count} momenti`}
                   </span>
                 </div>
               ))}
@@ -292,11 +335,13 @@ async function PersonEntityView({ id }: { id: string }) {
         {/* ══ SECTION 4 — LA VOSTRA STORIA ══════════════════════════════════ */}
         <div className="px-4">
           <div className="border-t border-border/30 mb-6" />
-          <SectionTitle>La vostra storia</SectionTitle>
 
-          {/* Hero memory */}
+          {/* Hero memory — emotional anchor */}
           {heroMemory && (
-            <div className="mb-8">
+            <div className="mb-10">
+              <p className="text-xs text-muted-foreground/50 uppercase tracking-widest mb-3">
+                Un momento che vi racconta
+              </p>
               <Link
                 href={`/memories/${heroMemory.id}`}
                 className="block rounded-2xl overflow-hidden border border-border/40 hover:border-foreground/20 active:scale-[0.99] transition-all group"
@@ -327,6 +372,7 @@ async function PersonEntityView({ id }: { id: string }) {
           )}
 
           {/* Timeline */}
+          <SectionTitle>I vostri momenti</SectionTitle>
           <TimelineByYear
             items={sorted}
             renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
@@ -366,18 +412,13 @@ async function RegisteredUserView({ userId, currentUserId }: { userId: string; c
           <h1 className="text-3xl font-bold tracking-tight leading-tight mb-4">{otherUser.displayName}</h1>
 
           {memories.length > 0 && (
-            <div className="flex items-center gap-5 text-sm">
-              <div className="text-center">
-                <p className="text-2xl font-bold tabular-nums leading-none">{stats.totalCount}</p>
-                <p className="text-xs text-muted-foreground mt-1">moment{stats.totalCount === 1 ? 'o' : 'i'}</p>
-              </div>
-              {stats.firstDate && (
-                <><div className="w-px h-8 bg-border" /><div className="text-left"><p className="text-xs text-muted-foreground">Insieme dal</p><p className="text-sm font-semibold">{formatFirstDate(stats.firstDate)}</p></div></>
-              )}
-              {stats.uniqueLocations > 0 && (
-                <><div className="w-px h-8 bg-border" /><div className="text-center"><p className="text-2xl font-bold tabular-nums leading-none">{stats.uniqueLocations}</p><p className="text-xs text-muted-foreground mt-1">luogh{stats.uniqueLocations === 1 ? 'o' : 'i'}</p></div></>
-              )}
-            </div>
+            <p className="text-xs text-muted-foreground/40 tracking-wide">
+              {[
+                `${stats.totalCount} moment${stats.totalCount === 1 ? 'o' : 'i'}`,
+                stats.uniqueLocations > 0 ? `${stats.uniqueLocations} luogh${stats.uniqueLocations === 1 ? 'o' : 'i'}` : null,
+                stats.firstDate ? `insieme dal ${formatFirstDate(stats.firstDate)}` : null,
+              ].filter(Boolean).join(' · ')}
+            </p>
           )}
         </div>
 
@@ -392,11 +433,11 @@ async function RegisteredUserView({ userId, currentUserId }: { userId: string; c
 
         <div className="px-4">
           <div className="border-t border-border/30 mb-6" />
-          <h2 className="text-sm font-bold text-foreground mb-4">La vostra storia</h2>
+          <SectionTitle>I vostri momenti</SectionTitle>
           <TimelineByYear
             items={memories}
             renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
-            emptyNote={`Ancora nessun ricordo condiviso con ${otherUser.displayName}.`}
+            emptyNote={`Ancora nessun ricordo con ${otherUser.displayName}.`}
           />
         </div>
 
@@ -412,11 +453,9 @@ export default async function PersonPage({ params }: { params: { personId: strin
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
-  // Try people table first (ghost / invited / active entities)
   const personView = await PersonEntityView({ id: params.personId })
   if (personView) return personView
 
-  // Fallback: registered user NOI view
   const userView = await RegisteredUserView({ userId: params.personId, currentUserId: user.id })
   if (userView) return userView
 

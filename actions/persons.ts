@@ -41,7 +41,7 @@ export interface PersonDetail {
   name: string
   firstName: string | null
   lastName: string | null
-  nickname: string | null
+  nicknames: string[]
   avatarUrl: string | null
   relationLabel: string | null
   shortBio: string | null
@@ -219,7 +219,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
   // Verify ownership
   const { data: person } = await supabase
     .from('people')
-    .select('id, name, first_name, last_name, nickname, avatar_url, relation_label, short_bio, how_we_met, shared_context, relationship_type, claim_status, status, linked_user_id, group_ids')
+    .select('id, name, first_name, last_name, nicknames, avatar_url, relation_label, short_bio, how_we_met, shared_context, relationship_type, claim_status, status, linked_user_id, group_ids')
     .eq('id', personId)
     .eq('owner_id', user.id)
     .maybeSingle()
@@ -251,7 +251,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
       name: person.name,
       firstName: person.first_name ?? null,
       lastName: person.last_name ?? null,
-      nickname: person.nickname ?? null,
+      nicknames: (person.nicknames as string[] | null) ?? [],
       avatarUrl: person.avatar_url ?? null,
       relationLabel: person.relation_label ?? null,
       shortBio: person.short_bio ?? null,
@@ -426,7 +426,7 @@ export interface UpdatePersonInput {
   name?: string
   firstName?: string | null
   lastName?: string | null
-  nickname?: string | null
+  nicknames?: string[]
   avatarUrl?: string | null
   relationshipType?: RelationshipType | null
   relationLabel?: string | null
@@ -448,7 +448,7 @@ export async function updatePerson(
   if (input.name             !== undefined) patch.name              = input.name.trim()
   if (input.firstName        !== undefined) patch.first_name        = input.firstName?.trim()        || null
   if (input.lastName         !== undefined) patch.last_name         = input.lastName?.trim()         || null
-  if (input.nickname         !== undefined) patch.nickname          = input.nickname?.trim()         || null
+  if (input.nicknames        !== undefined) patch.nicknames         = input.nicknames
   if (input.avatarUrl        !== undefined) patch.avatar_url        = input.avatarUrl
   if (input.relationshipType !== undefined) patch.relationship_type = input.relationshipType
   if (input.relationLabel    !== undefined) patch.relation_label    = input.relationLabel?.trim()    || null
