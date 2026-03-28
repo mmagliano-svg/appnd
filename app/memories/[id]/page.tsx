@@ -10,7 +10,6 @@ import { MemoryChat } from '@/components/memory/MemoryChat'
 import { MemoryActions } from '@/components/memory/MemoryActions'
 import InviteForm from './InviteForm'
 import { RemoveParticipantButton } from '@/components/memory/RemoveParticipantButton'
-import { InvitePeopleSection } from '@/components/memory/InvitePeopleSection'
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -64,27 +63,6 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   if (!isParticipant) notFound()
 
   const isCreator = memory.created_by === user?.id
-  const sharingStatusEarly = (memory as { sharing_status?: string }).sharing_status ?? 'private'
-
-  // Fetch ghost/invited people for the shared-invite section (creator + shared only)
-  type InvitablePerson = { id: string; name: string; status: 'ghost' | 'invited' }
-  let invitablePeople: InvitablePerson[] = []
-  if (isCreator && sharingStatusEarly === 'shared') {
-    const { data: mpLinks } = await supabase
-      .from('memory_people')
-      .select('person_id, people(id, name, status)')
-      .eq('memory_id', params.id)
-
-    invitablePeople = (mpLinks ?? [])
-      .map((link) => {
-        const p = Array.isArray(link.people) ? link.people[0] : link.people
-        if (!p) return null
-        const person = p as { id: string; name: string; status: string }
-        if (person.status !== 'ghost' && person.status !== 'invited') return null
-        return { id: person.id, name: person.name, status: person.status as 'ghost' | 'invited' }
-      })
-      .filter((p): p is InvitablePerson => p !== null)
-  }
 
   const [initialMessages, initialLikes] = await Promise.all([
     getMessages(params.id),
@@ -623,11 +601,6 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               })}
             </div>
           </div>
-        )}
-
-        {/* ── Shared-story invite (creator + shared memories with ghost people) ── */}
-        {invitablePeople.length > 0 && (
-          <InvitePeopleSection memoryId={params.id} people={invitablePeople} />
         )}
 
         {/* ── Child events (periods only) ── */}

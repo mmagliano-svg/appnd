@@ -46,8 +46,8 @@ export default async function JoinPage({ params }: { params: { token: string } }
       .catch(() => {})
   }
 
-  // Fetch memory, photo, inviter, person in parallel
-  const [memoryRes, inviterRes, personRes] = await Promise.all([
+  // Fetch memory and inviter in parallel
+  const [memoryRes, inviterRes] = await Promise.all([
     admin
       .from('memories')
       .select('id, title, start_date, location_name')
@@ -57,11 +57,6 @@ export default async function JoinPage({ params }: { params: { token: string } }
       .from('users')
       .select('display_name, email')
       .eq('id', invite.inviter_user_id)
-      .maybeSingle(),
-    admin
-      .from('people')
-      .select('name')
-      .eq('id', invite.person_id)
       .maybeSingle(),
   ])
 
@@ -88,10 +83,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
   }
 
   const inviter = inviterRes.data
-  const inviterName =
-    inviter?.display_name ??
-    inviter?.email?.split('@')[0] ??
-    'Qualcuno'
+  const inviterName = inviter?.display_name ?? inviter?.email?.split('@')[0] ?? 'Qualcuno'
 
   // Check session
   const supabase = await createServerClient()
