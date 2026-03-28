@@ -208,7 +208,16 @@ export async function deleteMemory(id: string) {
     throw new Error('Non hai i permessi per eliminare questo ricordo.')
   }
 
-  const { error } = await supabase
+  // Use admin client to bypass RLS and delete child rows first (FK constraints)
+  const admin = createAdminClient()
+
+  await admin.from('memory_invites').delete().eq('memory_id', id)
+  await admin.from('memory_media').delete().eq('memory_id', id)
+  await admin.from('memory_contributions').delete().eq('memory_id', id)
+  await admin.from('memory_people').delete().eq('memory_id', id)
+  await admin.from('memory_participants').delete().eq('memory_id', id)
+
+  const { error } = await admin
     .from('memories')
     .delete()
     .eq('id', id)

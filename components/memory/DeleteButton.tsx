@@ -11,12 +11,15 @@ interface DeleteButtonProps {
 export function DeleteButton({ memoryId }: DeleteButtonProps) {
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function handleDelete() {
     setLoading(true)
+    setError(null)
     try {
       await deleteMemory(memoryId)
-    } catch {
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore imprevisto.')
       setLoading(false)
       setConfirming(false)
     }
@@ -46,13 +49,18 @@ export function DeleteButton({ memoryId }: DeleteButtonProps) {
   }
 
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => setConfirming(true)}
-      className="text-destructive border-destructive/30 hover:bg-destructive/5"
-    >
-      Elimina
-    </Button>
+    <div className="flex items-center gap-2">
+      {error && (
+        <p className="text-xs text-destructive max-w-[180px] leading-tight">{error}</p>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setConfirming(true)}
+        className="text-destructive border-destructive/30 hover:bg-destructive/5"
+      >
+        Elimina
+      </Button>
+    </div>
   )
 }
