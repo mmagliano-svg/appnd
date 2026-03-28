@@ -154,6 +154,73 @@ export async function acceptInvite(token: string) {
   redirect(`/memories/${invite.memory_id}`)
 }
 
+// ── Person-specific shared-story invite ────────────────────────────────────
+
+/**
+ * Generate (or reuse) an invite link for a specific person tagged on a shared memory.
+ * Route: /join/[token]
+ * The person must be in memory_people and owned by the current user.
+ */
+export async function createMemoryInvite(
+  memoryId: string,
+  personId: string,
+): Promise<{ token: string; inviteUrl: string }> {
+  const supabase = await createServerClient()
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) redirect('/auth/login')
+
+  // Verify caller participates in this memory
+  const { data: participant } = await supabase
+    .from('memory_participants')
+    .select('id')
+    .eq('memory_id', memoryId)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+    .maybeSingle()
+
+  if (!participant) throw new Error('Non hai accesso a questo ricordo.')
+
+  // Verify person is tagged on this memory by the caller
+  const { data: personLink } = await supabase
+    .from('memory_people')
+    .select('person_id')
+    .eq('memory_id', memoryId)
+    .eq('person_id', personId)
+    .maybeSingle()
+
+  if (!personLink) throw new Error('Questa persona non è associata al ricordo.')
+
+  const admin = createAdminClient()
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+  // Reuse existing non-expired invite if present
+  const { data: existing } = await admin
+    .from('memory_invites')
+    .select('token')
+    .eq('memory_id', memoryId)
+    .eq('person_id', personId)
+    .neq('status', 'expired')
+    .maybeSingle()
+
+  if (existing) {
+    return { token: existing.token, inviteUrl: `${appUrl}/join/${existing.token}` }
+  }
+
+  const token = generateInviteToken()
+  const { error: insertError } = await admin
+    .from('memory_invites')
+    .insert({
+      memory_id: memoryId,
+      person_id: personId,
+      inviter_user_id: user.id,
+      token,
+    })
+
+  if (insertError) throw new Error('Impossibile creare l\'invito. Riprova.')
+
+  return { token, inviteUrl: `${appUrl}/join/${token}` }
+}
+
 export async function removeParticipant(
   memoryId: string,
   participantId: string,
