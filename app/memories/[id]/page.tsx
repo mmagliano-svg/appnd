@@ -440,11 +440,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* Success feedback after contribution */}
         {searchParams.contributed === '1' && (
-          <div className="mt-4 rounded-xl bg-green-50 border border-green-200 px-4 py-2.5 dark:bg-green-950/30 dark:border-green-900">
-            <p className="text-sm font-medium text-green-700 dark:text-green-400">
-              ✓ La tua versione è stata aggiunta.
-            </p>
-          </div>
+          <p className="pt-4 text-xs text-muted-foreground">
+            ✓ La tua versione è stata aggiunta.
+          </p>
         )}
 
         {/* Title block — only when no hero photo */}
@@ -696,12 +694,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                   </p>
                 </>
               ) : (
-                <>
-                  <p className="text-sm font-medium">Ogni ricordo ha più di una versione.</p>
-                  <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                    Tu com&apos;eri lì? Aggiungi il tuo punto di vista.
-                  </p>
-                </>
+                <p className="text-sm font-medium">Ogni ricordo ha più di una versione.</p>
               )}
             </div>
           ) : (
@@ -806,17 +799,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           )}
         </div>
 
-        {/* Soft contribution prompt — visible after existing content, when user hasn't contributed yet */}
+        {/* Soft nudge — no CTA, FAB handles it */}
         {contributions.length > 0 && !hasOwnContribution && (
-          <div className="mt-10 pt-8 border-t border-border/30 text-center space-y-2">
-            <p className="text-sm font-medium">Ogni ricordo ha più di una versione.</p>
-            <p className="text-xs text-muted-foreground">Tu come lo ricordi?</p>
-            <Link
-              href={`/memories/${params.id}/contribute`}
-              className="inline-flex items-center gap-2 mt-3 rounded-full border border-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
-            >
-              Racconta la tua versione
-            </Link>
+          <div className="mt-10 text-center space-y-1">
+            <p className="text-xs text-muted-foreground">Ogni ricordo ha più di una versione.</p>
+            <p className="text-xs text-muted-foreground/60">Tu come lo ricordi?</p>
           </div>
         )}
 
