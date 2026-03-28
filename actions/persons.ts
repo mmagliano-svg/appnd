@@ -2,6 +2,8 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import type { RelationshipType } from '@/lib/supabase/types'
+export type { RelationshipType }
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -29,14 +31,27 @@ export interface PersonMemory {
   previewUrl: string | null
 }
 
+export interface PersonGroup {
+  id: string
+  name: string
+}
+
 export interface PersonDetail {
   id: string
   name: string
+  firstName: string | null
+  lastName: string | null
+  nickname: string | null
   avatarUrl: string | null
   relationLabel: string | null
   shortBio: string | null
+  howWeMet: string | null
+  sharedContext: string | null
+  relationshipType: RelationshipType | null
+  claimStatus: 'none' | 'claimable' | 'invited' | 'claimed'
   status: 'ghost' | 'invited' | 'active'
   linkedUserId: string | null
+  groups: PersonGroup[]
   memories: PersonMemory[]
   stats: {
     totalCount: number
@@ -204,12 +219,23 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
   // Verify ownership
   const { data: person } = await supabase
     .from('people')
-    .select('id, name, avatar_url, relation_label, short_bio, status, linked_user_id')
+    .select('id, name, first_name, last_name, nickname, avatar_url, relation_label, short_bio, how_we_met, shared_context, relationship_type, claim_status, status, linked_user_id, group_ids')
     .eq('id', personId)
     .eq('owner_id', user.id)
     .maybeSingle()
 
   if (!person) return null
+
+  // Resolve group associations (RLS ensures only groups the current user belongs to are returned)
+  const rawGroupIds = (person.group_ids ?? []) as string[]
+  const personGroups: PersonGroup[] = []
+  if (rawGroupIds.length > 0) {
+    const { data: groupRows } = await supabase
+      .from('groups')
+      .select('id, name')
+      .in('id', rawGroupIds)
+    for (const g of groupRows ?? []) personGroups.push({ id: g.id, name: g.name })
+  }
 
   // Their memories
   const { data: links } = await supabase
@@ -223,11 +249,19 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
     return {
       id: person.id,
       name: person.name,
+      firstName: person.first_name ?? null,
+      lastName: person.last_name ?? null,
+      nickname: person.nickname ?? null,
       avatarUrl: person.avatar_url ?? null,
       relationLabel: person.relation_label ?? null,
       shortBio: person.short_bio ?? null,
+      howWeMet: person.how_we_met ?? null,
+      sharedContext: person.shared_context ?? null,
+      relationshipType: (person.relationship_type ?? null) as RelationshipType | null,
+      claimStatus: (person.claim_status ?? 'none') as PersonDetail['claimStatus'],
       status: (person.status ?? 'ghost') as PersonDetail['status'],
       linkedUserId: person.linked_user_id ?? null,
+      groups: personGroups,
       memories: [],
       stats: { totalCount: 0, firstDate: null, uniqueLocations: 0, allPhotos: [] },
     }
@@ -263,11 +297,19 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
   return {
     id: person.id,
     name: person.name,
+    firstName: person.first_name ?? null,
+    lastName: person.last_name ?? null,
+    nickname: person.nickname ?? null,
     avatarUrl: person.avatar_url ?? null,
     relationLabel: person.relation_label ?? null,
     shortBio: person.short_bio ?? null,
+    howWeMet: person.how_we_met ?? null,
+    sharedContext: person.shared_context ?? null,
+    relationshipType: (person.relationship_type ?? null) as RelationshipType | null,
+    claimStatus: (person.claim_status ?? 'none') as PersonDetail['claimStatus'],
     status: (person.status ?? 'ghost') as PersonDetail['status'],
     linkedUserId: person.linked_user_id ?? null,
+    groups: personGroups,
     memories: (mems ?? []).map((m) => ({
       id: m.id,
       title: m.title,
@@ -382,9 +424,17 @@ export async function getTopPeople(limit = 6): Promise<Person[]> {
 
 export interface UpdatePersonInput {
   name?: string
+  firstName?: string | null
+  lastName?: string | null
+  nickname?: string | null
   avatarUrl?: string | null
+  relationshipType?: RelationshipType | null
   relationLabel?: string | null
   shortBio?: string | null
+  howWeMet?: string | null
+  sharedContext?: string | null
+  claimStatus?: 'none' | 'claimable' | 'invited' | 'claimed'
+  groupIds?: string[]
 }
 
 /** Update editable identity fields for a person the current user owns. */
@@ -395,10 +445,18 @@ export async function updatePerson(
   const { supabase, user } = await authedClient()
 
   const patch: Record<string, unknown> = {}
-  if (input.name        !== undefined) patch.name           = input.name.trim()
-  if (input.avatarUrl   !== undefined) patch.avatar_url     = input.avatarUrl
-  if (input.relationLabel !== undefined) patch.relation_label = input.relationLabel?.trim() || null
-  if (input.shortBio    !== undefined) patch.short_bio      = input.shortBio?.trim() || null
+  if (input.name             !== undefined) patch.name              = input.name.trim()
+  if (input.firstName        !== undefined) patch.first_name        = input.firstName?.trim()        || null
+  if (input.lastName         !== undefined) patch.last_name         = input.lastName?.trim()         || null
+  if (input.nickname         !== undefined) patch.nickname          = input.nickname?.trim()         || null
+  if (input.avatarUrl        !== undefined) patch.avatar_url        = input.avatarUrl
+  if (input.relationshipType !== undefined) patch.relationship_type = input.relationshipType
+  if (input.relationLabel    !== undefined) patch.relation_label    = input.relationLabel?.trim()    || null
+  if (input.shortBio         !== undefined) patch.short_bio         = input.shortBio?.trim()         || null
+  if (input.howWeMet         !== undefined) patch.how_we_met        = input.howWeMet?.trim()         || null
+  if (input.sharedContext    !== undefined) patch.shared_context    = input.sharedContext?.trim()    || null
+  if (input.claimStatus      !== undefined) patch.claim_status      = input.claimStatus
+  if (input.groupIds         !== undefined) patch.group_ids         = input.groupIds
 
   const { error } = await supabase
     .from('people')

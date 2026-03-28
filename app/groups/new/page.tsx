@@ -22,8 +22,8 @@ export default function NewGroupPage() {
       try {
         const groupId = await createGroup(name, type)
         router.push(`/groups/${groupId}?new=1`)
-      } catch {
-        setError('Impossibile creare il gruppo. Riprova.')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Impossibile creare il gruppo. Riprova.')
       }
     })
   }

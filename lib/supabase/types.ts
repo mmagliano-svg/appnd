@@ -11,6 +11,7 @@ export type Json =
 
 export type ContentType = 'text' | 'photo' | 'note'
 export type MediaType = 'image' | 'video'
+export type RelationshipType = 'family' | 'partner' | 'child' | 'parent' | 'sibling' | 'friend' | 'colleague' | 'acquaintance' | 'other'
 
 export interface Database {
   public: {
@@ -20,11 +21,19 @@ export interface Database {
           id: string
           owner_id: string
           name: string
+          first_name: string | null
+          last_name: string | null
+          nickname: string | null
           avatar_url: string | null
           relation_label: string | null
           short_bio: string | null
+          how_we_met: string | null
+          shared_context: string | null
+          relationship_type: RelationshipType | null
+          claim_status: 'none' | 'claimable' | 'invited' | 'claimed'
           status: 'ghost' | 'invited' | 'active'
           linked_user_id: string | null
+          group_ids: string[]
           created_at: string
           updated_at: string
         }
@@ -32,11 +41,19 @@ export interface Database {
           id?: string
           owner_id: string
           name: string
+          first_name?: string | null
+          last_name?: string | null
+          nickname?: string | null
           avatar_url?: string | null
           relation_label?: string | null
           short_bio?: string | null
+          how_we_met?: string | null
+          shared_context?: string | null
+          relationship_type?: RelationshipType | null
+          claim_status?: 'none' | 'claimable' | 'invited' | 'claimed'
           status?: 'ghost' | 'invited' | 'active'
           linked_user_id?: string | null
+          group_ids?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -44,11 +61,19 @@ export interface Database {
           id?: string
           owner_id?: string
           name?: string
+          first_name?: string | null
+          last_name?: string | null
+          nickname?: string | null
           avatar_url?: string | null
           relation_label?: string | null
           short_bio?: string | null
+          how_we_met?: string | null
+          shared_context?: string | null
+          relationship_type?: RelationshipType | null
+          claim_status?: 'none' | 'claimable' | 'invited' | 'claimed'
           status?: 'ghost' | 'invited' | 'active'
           linked_user_id?: string | null
+          group_ids?: string[]
           created_at?: string
           updated_at?: string
         }
