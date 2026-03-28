@@ -218,6 +218,12 @@ export async function createMemoryInvite(
 
   if (insertError) throw new Error('Impossibile creare l\'invito. Riprova.')
 
+  // Mark memory as shared now that a person-specific invite has been created
+  await admin
+    .from('memories')
+    .update({ sharing_status: 'shared' })
+    .eq('id', memoryId)
+
   return { token, inviteUrl: `${appUrl}/join/${token}` }
 }
 

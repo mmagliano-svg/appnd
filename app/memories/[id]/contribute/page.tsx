@@ -83,6 +83,8 @@ export default function ContributePage({ params }: { params: { id: string } }) {
         media_url: mediaUrl,
         caption: caption || undefined,
       })
+
+      router.push(`/memories/${params.id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore imprevisto.')
       setLoading(false)

@@ -8,7 +8,6 @@ import { getMessages } from '@/actions/messages'
 import { getLikeState } from '@/actions/likes'
 import { MemoryChat } from '@/components/memory/MemoryChat'
 import { MemoryActions } from '@/components/memory/MemoryActions'
-import InviteForm from './InviteForm'
 import { RemoveParticipantButton } from '@/components/memory/RemoveParticipantButton'
 
 function formatDateTime(dateStr: string) {
@@ -776,11 +775,6 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           />
         </div>
 
-        {/* ── Invite section ── */}
-        <div className="mt-8 pt-6 border-t border-border/50">
-          <InviteForm memoryId={params.id} />
-        </div>
-
       </div>
 
       {/* ── FAB — floating contribute button ── */}
@@ -792,7 +786,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Contribuisci
+          Aggiungi la tua versione
         </Link>
       </div>
 

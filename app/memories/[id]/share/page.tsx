@@ -1,23 +1,15 @@
 import { redirect, notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getSharedPeople } from '@/actions/people'
-import { ShareFlowClient } from '@/components/invite/ShareFlowClient'
+import { ShareStep } from '@/components/memory/ShareStep'
 
-export default async function SharePage({
-  params,
-  searchParams,
-}: {
-  params: { id: string }
-  searchParams: { new?: string }
-}) {
+export default async function SharePage({ params }: { params: { id: string } }) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // Verify memory exists and user has access
   const { data: memory } = await supabase
     .from('memories')
-    .select('id, title, start_date, location_name')
+    .select('id, title')
     .eq('id', params.id)
     .single()
   if (!memory) notFound()
@@ -31,29 +23,16 @@ export default async function SharePage({
     .single()
   if (!participant) notFound()
 
-  // Get first photo for hero
-  const { data: photoRow } = await supabase
-    .from('memory_contributions')
-    .select('media_url')
+  const { data: rows } = await supabase
+    .from('memory_people')
+    .select('people ( id, name )')
     .eq('memory_id', params.id)
-    .eq('content_type', 'photo')
-    .not('media_url', 'is', null)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
 
-  // Existing contacts for quick-select
-  const contacts = await getSharedPeople()
+  const people = (rows ?? [])
+    .map((r) => r.people as { id: string; name: string } | null)
+    .filter(Boolean) as { id: string; name: string }[]
 
-  return (
-    <ShareFlowClient
-      memoryId={params.id}
-      memoryTitle={memory.title}
-      memoryDate={memory.start_date}
-      memoryLocation={memory.location_name}
-      heroPhoto={(photoRow as { media_url: string } | null)?.media_url ?? null}
-      contacts={contacts}
-      isNewMemory={searchParams.new === '1'}
-    />
-  )
+  if (people.length === 0) redirect(`/memories/${params.id}`)
+
+  return <ShareStep memoryId={params.id} memoryTitle={memory.title} people={people} />
 }

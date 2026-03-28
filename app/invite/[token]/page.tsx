@@ -1,5 +1,6 @@
 import { acceptInvite } from '@/actions/invites'
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
 
 function formatDate(dateStr: string) {
@@ -118,6 +119,7 @@ export default async function InvitePage({ params }: { params: { token: string }
   async function accept() {
     'use server'
     await acceptInvite(params.token)
+    redirect(`/memories/${memory?.id}`)
   }
 
   return (
@@ -202,8 +204,8 @@ function LandingPage({
           <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-4">
             <p className="text-sm text-white/80 leading-relaxed">
               <span className="font-semibold text-white">{creatorName}</span>
-              {' '}ti ha condiviso questo momento.
-              Unisciti e aggiungi la tua versione.
+              {' '}ha un ricordo da condividere con te.
+              Entra per vederlo.
             </p>
           </div>
 
