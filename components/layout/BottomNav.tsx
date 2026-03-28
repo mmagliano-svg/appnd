@@ -3,8 +3,8 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
-const SHOW_ON_EXACT = ['/dashboard', '/explore']
-const SHOW_ON_PREFIX = ['/timeline']
+const SHOW_ON_EXACT = ['/dashboard', '/explore', '/profile']
+const SHOW_ON_PREFIX = ['/timeline', '/people']
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -91,6 +91,7 @@ export function BottomNav() {
   const isHome = pathname === '/dashboard'
   const isTimeline = pathname.startsWith('/timeline')
   const isExplore = pathname === '/explore'
+  const isProfile = pathname === '/profile' || pathname.startsWith('/people')
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-sm">
@@ -120,6 +121,23 @@ export function BottomNav() {
         {/* Esplora */}
         <NavTab href="/explore" label="Esplora" active={isExplore}>
           <ExploreIcon active={isExplore} />
+        </NavTab>
+
+        {/* Profilo */}
+        <NavTab href="/profile" label="Profilo" active={isProfile}>
+          <svg
+            className={`w-5 h-5 transition-colors ${isProfile ? 'text-foreground' : 'text-muted-foreground'}`}
+            fill={isProfile ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={isProfile ? 0 : 1.75}
+              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+            />
+          </svg>
         </NavTab>
 
       </div>
