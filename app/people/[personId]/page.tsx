@@ -340,7 +340,7 @@ async function PersonEntityView({ id }: { id: string }) {
           {heroMemory && (
             <div className="mb-10">
               <p className="text-xs text-muted-foreground/50 uppercase tracking-widest mb-3">
-                Un momento che vi racconta
+                Un momento speciale della vostra storia
               </p>
               <Link
                 href={`/memories/${heroMemory.id}`}
@@ -372,7 +372,7 @@ async function PersonEntityView({ id }: { id: string }) {
           )}
 
           {/* Timeline */}
-          <SectionTitle>I vostri momenti</SectionTitle>
+          <SectionTitle>I vostri momenti insieme</SectionTitle>
           <TimelineByYear
             items={sorted}
             renderItem={(m) => <MemoryRow key={m.id} memory={m} />}
