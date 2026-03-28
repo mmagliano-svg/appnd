@@ -39,8 +39,12 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
     // Show fallback options immediately
     setInvites((prev) => ({ ...prev, [personId]: { loading: false, url: inviteUrl, copied: false, error: null } }))
 
-    // Also try native share sheet (fire-and-forget — fallback options stay visible regardless)
-    if (typeof navigator !== 'undefined' && navigator.share) {
+    // Trigger native share sheet only on mobile (touch device or narrow screen)
+    const isMobile =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || window.innerWidth < 768)
+
+    if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
       navigator
         .share({ title: memoryTitle, text: `${personName}, ho un ricordo da condividere con te`, url: inviteUrl })
         .catch(() => {})
