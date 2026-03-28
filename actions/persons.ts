@@ -29,6 +29,7 @@ export interface PersonMemory {
   category: string | null
   categories: string[]
   previewUrl: string | null
+  sharingStatus: 'private' | 'shared'
 }
 
 export interface PersonGroup {
@@ -269,7 +270,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
 
   const { data: mems } = await supabase
     .from('memories')
-    .select('id, title, start_date, location_name, category, categories')
+    .select('id, title, start_date, location_name, category, categories, sharing_status')
     .in('id', memIds)
     .order('start_date', { ascending: true })
 
@@ -318,6 +319,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
       category: m.category ?? null,
       categories: (m.categories as string[] | null) ?? (m.category ? [m.category] : []),
       previewUrl: photoMap.get(m.id) ?? null,
+      sharingStatus: ((m.sharing_status as string | null) ?? 'private') as 'private' | 'shared',
     })),
     stats: {
       totalCount: (mems ?? []).length,

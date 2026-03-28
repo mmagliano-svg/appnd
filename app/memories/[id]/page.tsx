@@ -81,6 +81,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   const catInfo = getCategoryByValue(memoryCats[0] ?? null)
   const isFirstTime = (memory as { is_first_time?: boolean }).is_first_time ?? false
   const isAnniversary = (memory as { is_anniversary?: boolean }).is_anniversary ?? false
+  const sharingStatus = (memory as { sharing_status?: string }).sharing_status ?? 'private'
 
   const memoryEndDate = (memory as { end_date?: string | null }).end_date ?? null
   const memoryStartDate = (memory as { start_date?: string }).start_date ?? memory.happened_at
@@ -398,8 +399,8 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               )}
             </div>
             {/* Badges */}
-            {(isFirstTime || isAnniversary) && (
-              <div className="flex gap-1.5 mt-2">
+            {(isFirstTime || isAnniversary || sharingStatus === 'shared') && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
                 {isFirstTime && (
                   <span className="text-[9px] font-semibold rounded-full bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 text-amber-200">
                     ✦ Prima volta
@@ -408,6 +409,11 @@ export default async function MemoryPage({ params }: { params: { id: string } })
                 {isAnniversary && (
                   <span className="text-[9px] font-semibold rounded-full bg-violet-400/20 border border-violet-300/40 px-2 py-0.5 text-violet-200">
                     ↺ Ricorrenza
+                  </span>
+                )}
+                {sharingStatus === 'shared' && (
+                  <span className="text-[9px] font-semibold rounded-full bg-white/10 border border-white/20 px-2 py-0.5 text-white/60">
+                    ♡ Parte della vostra storia
                   </span>
                 )}
               </div>
@@ -443,7 +449,7 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               <h1 className="text-3xl font-bold tracking-tight leading-tight flex-1">
                 {memory.title}
               </h1>
-              {(isFirstTime || isAnniversary) && (
+              {(isFirstTime || isAnniversary || sharingStatus === 'shared') && (
                 <div className="flex flex-col gap-1 mt-1 shrink-0">
                   {isFirstTime && (
                     <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
@@ -453,6 +459,11 @@ export default async function MemoryPage({ params }: { params: { id: string } })
                   {isAnniversary && (
                     <span className="text-[9px] font-semibold rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
                       ↺ Ricorrenza
+                    </span>
+                  )}
+                  {sharingStatus === 'shared' && (
+                    <span className="text-[9px] font-semibold rounded-full bg-muted border border-border px-2 py-0.5 text-muted-foreground">
+                      ♡ Parte della vostra storia
                     </span>
                   )}
                 </div>

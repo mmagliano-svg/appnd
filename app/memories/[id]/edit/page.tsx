@@ -34,6 +34,7 @@ export default function EditMemoryPage() {
   const [periods, setPeriods] = useState<PeriodSummary[]>([])
   const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
   const [selectedPeople, setSelectedPeople] = useState<SimplePerson[]>([])
+  const [sharingStatus, setSharingStatus] = useState<'private' | 'shared'>('private')
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
@@ -70,6 +71,7 @@ export default function EditMemoryPage() {
         )
         setTags(data.tags ?? [])
         setParentPeriodId(data.parent_period_id ?? null)
+        setSharingStatus((data.sharing_status as 'private' | 'shared' | null) ?? 'private')
       }
       setFetching(false)
     }
@@ -117,6 +119,7 @@ export default function EditMemoryPage() {
         description,
         categories,
         tags,
+        sharing_status: selectedPeople.length > 0 ? sharingStatus : 'private',
       })
       await setMemoryPeople(id, selectedPeople.map((p) => p.id))
     } catch (err) {
@@ -317,6 +320,42 @@ export default function EditMemoryPage() {
               onChange={(people) => setSelectedPeople(people)}
             />
           </div>
+
+          {/* ── Parte della loro storia? ── */}
+          {selectedPeople.length > 0 && (
+            <div className="space-y-2.5 rounded-2xl border border-border/60 bg-muted/20 px-4 py-4">
+              <div>
+                <p className="text-sm font-medium leading-snug">Parte della loro storia?</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Vuoi che questo ricordo faccia parte anche della loro storia?
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSharingStatus('private')}
+                  className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
+                    sharingStatus === 'private'
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  No, solo mio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSharingStatus('shared')}
+                  className={`flex-1 rounded-xl border px-4 py-2.5 text-sm font-medium transition-all ${
+                    sharingStatus === 'shared'
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  Sì, storia condivisa
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label className="text-sm font-medium">Connessioni</Label>

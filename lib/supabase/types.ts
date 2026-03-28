@@ -290,6 +290,7 @@ export interface Database {
           created_at: string
           updated_at: string
           group_id: string | null
+          sharing_status: 'private' | 'shared'
         }
         Insert: {
           id?: string
@@ -309,6 +310,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           group_id?: string | null
+          sharing_status?: 'private' | 'shared'
         }
         Update: {
           id?: string
@@ -328,6 +330,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
           group_id?: string | null
+          sharing_status?: 'private' | 'shared'
         }
         Relationships: [
           {

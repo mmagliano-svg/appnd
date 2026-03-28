@@ -19,6 +19,7 @@ export interface CreateMemoryInput {
   is_anniversary?: boolean
   is_first_time?: boolean
   group_id?: string | null
+  sharing_status?: 'private' | 'shared'
 }
 
 export interface UpdateMemoryInput {
@@ -34,6 +35,7 @@ export interface UpdateMemoryInput {
   tags?: string[]
   is_anniversary?: boolean
   is_first_time?: boolean
+  sharing_status?: 'private' | 'shared'
 }
 
 // Non-redirecting version — returns memory ID, caller handles navigation
@@ -60,6 +62,7 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
       is_first_time: input.is_first_time ?? false,
       created_by: user!.id,
       group_id: input.group_id ?? null,
+      sharing_status: input.sharing_status ?? 'private',
     })
     .select('id')
     .single()
@@ -176,6 +179,7 @@ export async function updateMemory(input: UpdateMemoryInput) {
       categories: input.categories ?? (input.category ? [input.category] : []),
       category: (input.categories ?? [])[0] ?? input.category ?? null,
       tags: normalizeTags(input.tags ?? []),
+      ...(input.sharing_status !== undefined ? { sharing_status: input.sharing_status } : {}),
     })
     .eq('id', input.id)
 

@@ -81,7 +81,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 }
 
 function MemoryRow({ memory }: {
-  memory: { id: string; title: string; start_date: string; location_name: string | null; category: string | null; previewUrl?: string | null }
+  memory: { id: string; title: string; start_date: string; location_name: string | null; category: string | null; previewUrl?: string | null; sharingStatus?: 'private' | 'shared' }
 }) {
   const catInfo = getCategoryByValue(memory.category)
   return (
@@ -110,6 +110,9 @@ function MemoryRow({ memory }: {
             <><span className="text-border">·</span><span className="truncate">{memory.location_name}</span></>
           )}
         </div>
+        {memory.sharingStatus === 'shared' && (
+          <p className="text-[10px] text-muted-foreground/40 mt-1">♡ storia condivisa</p>
+        )}
       </div>
     </Link>
   )
