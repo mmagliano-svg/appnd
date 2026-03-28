@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation'
 import { createAdminClient, createServerClient } from '@/lib/supabase/server'
+import { generateInviteToken } from '@/lib/utils/invite'
 import Link from 'next/link'
 
 function formatDate(dateStr: string) {
@@ -45,6 +47,46 @@ export default async function JoinPage({ params }: { params: { token: string } }
       .then(() => {}, () => {})
   }
 
+  // If the viewer is already logged in → accept immediately and send to memory
+  const supabaseCheck = await createServerClient()
+  const { data: { user: authedUser } } = await supabaseCheck.auth.getUser()
+
+  if (authedUser) {
+    // Check if already a participant
+    const { data: existing } = await admin
+      .from('memory_participants')
+      .select('id, joined_at')
+      .eq('memory_id', invite.memory_id)
+      .eq('user_id', authedUser.id)
+      .maybeSingle()
+
+    if (!existing?.joined_at) {
+      if (existing) {
+        await admin
+          .from('memory_participants')
+          .update({ joined_at: new Date().toISOString() })
+          .eq('id', existing.id)
+      } else {
+        await admin
+          .from('memory_participants')
+          .insert({
+            memory_id: invite.memory_id,
+            user_id: authedUser.id,
+            joined_at: new Date().toISOString(),
+            invite_token: generateInviteToken(),
+          })
+      }
+      // Mark invite as accepted
+      admin
+        .from('memory_invites')
+        .update({ status: 'accepted', accepted_at: new Date().toISOString() })
+        .eq('id', invite.id)
+        .then(() => {}, () => {})
+    }
+
+    redirect(`/memories/${invite.memory_id}`)
+  }
+
   // Fetch memory and inviter in parallel
   const [memoryRes, inviterRes] = await Promise.all([
     admin
@@ -84,11 +126,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
   const inviter = inviterRes.data
   const inviterName = inviter?.display_name ?? inviter?.email?.split('@')[0] ?? 'Qualcuno'
 
-  // Check session
-  const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  const memoryTarget = memory ? `/memories/${memory.id}` : '/dashboard'
+  // Unauthenticated viewer — CTA sends to login, which redirects back here after auth
   const authTarget = `/auth/login?next=/join/${params.token}`
 
   return (
@@ -155,7 +193,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
 
           {/* Primary CTA */}
           <Link
-            href={user ? memoryTarget : authTarget}
+            href={authTarget}
             className="flex items-center justify-center w-full rounded-full bg-white text-black py-4 text-base font-semibold active:scale-[0.98] transition-all"
           >
             Entra nella vostra storia →
