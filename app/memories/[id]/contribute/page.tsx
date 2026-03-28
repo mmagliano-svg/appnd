@@ -108,8 +108,8 @@ export default function ContributePage({ params }: { params: { id: string } }) {
             Indietro
           </button>
           <h1 className="text-3xl font-bold tracking-tight mb-1">Come lo ricordi tu?</h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Racconta questo momento dal tuo punto di vista. Anche solo una foto basta.
+          <p className="text-sm text-muted-foreground">
+            Racconta questo momento dal tuo punto di vista.
           </p>
         </div>
 
@@ -174,7 +174,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-medium">Tocca per aggiungere una foto</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Anche una sola foto racconta molto.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">JPEG, PNG, WebP · max 10 MB</p>
                   </div>
                 </button>
               ) : (

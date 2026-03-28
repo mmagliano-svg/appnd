@@ -694,7 +694,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                   </p>
                 </>
               ) : (
-                <p className="text-xs text-muted-foreground/60 italic">E tu, come lo ricordi?</p>
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                  Ancora nessun contributo.
+                </p>
               )}
             </div>
           ) : (
@@ -826,7 +828,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
-          Raccontalo dal tuo punto di vista
+          Aggiungi la tua versione
         </Link>
       </div>
 
