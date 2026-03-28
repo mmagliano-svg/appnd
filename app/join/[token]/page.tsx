@@ -125,7 +125,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
 
           {/* Eyebrow */}
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/35">
-            Appnd · La vostra storia
+            Appnd · Un momento condiviso
           </p>
 
           {/* Memory */}
@@ -147,9 +147,9 @@ export default async function JoinPage({ params }: { params: { token: string } }
           <div className="rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 px-4 py-4">
             <p className="text-sm text-white/80 leading-relaxed">
               <span className="font-semibold text-white">{inviterName}</span>
-              {' '}ha salvato questo momento con te.
+              {' '}ha salvato un momento che parla anche di te.
               <br />
-              Entra per vedere tutta la vostra storia.
+              Aprilo — e aggiungi la tua versione.
             </p>
           </div>
 
@@ -158,7 +158,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
             href={user ? memoryTarget : authTarget}
             className="flex items-center justify-center w-full rounded-full bg-white text-black py-4 text-base font-semibold active:scale-[0.98] transition-all"
           >
-            Entra per vedere tutta la vostra storia →
+            Entra nella vostra storia →
           </Link>
 
           {/* Secondary CTA */}

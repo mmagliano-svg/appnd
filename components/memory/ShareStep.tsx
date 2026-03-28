@@ -46,7 +46,7 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
 
     if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
       navigator
-        .share({ title: memoryTitle, text: `${personName}, ho un ricordo da condividere con te`, url: inviteUrl })
+        .share({ title: memoryTitle, text: `${personName}, ho salvato un momento che parla anche di te.`, url: inviteUrl })
         .catch(() => {})
     }
   }
@@ -63,10 +63,9 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
       <div className="max-w-lg mx-auto px-4 pb-16">
 
         <div className="pt-6 pb-8">
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Fai sapere a chi c'era</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-2">Questo ricordo parla anche di loro</h1>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Condividi <span className="font-medium text-foreground">"{memoryTitle}"</span> con
-            chi lo ha vissuto con te — potranno aggiungere la loro versione.
+            Invia a chi era con te — potranno aprire <span className="font-medium text-foreground">"{memoryTitle}"</span> e aggiungere la loro versione.
           </p>
         </div>
 
@@ -75,11 +74,11 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
             const state = invites[person.id]
             const hasUrl = Boolean(state?.url)
             const waText = encodeURIComponent(
-              `${person.name}, ho un ricordo da condividere con te 🤍\n${state?.url ?? ''}`,
+              `${person.name}, ho salvato un momento della nostra storia 🤍\nAprilo qui: ${state?.url ?? ''}`,
             )
-            const mailSubject = encodeURIComponent('Un ricordo per te')
+            const mailSubject = encodeURIComponent("C\u2019\u00e8 un ricordo che parla anche di te")
             const mailBody = encodeURIComponent(
-              `Ciao ${person.name},\n\nho salvato un ricordo che ci riguarda su Appnd.\nPuoi vederlo qui: ${state?.url ?? ''}`,
+              `Ciao ${person.name},\n\nho salvato un momento che ci riguarda su Appnd.\nEntra per vederlo — e per aggiungere la tua versione.\n\n${state?.url ?? ''}`,
             )
 
             return (
@@ -99,7 +98,7 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
                       disabled={state?.loading}
                       className="shrink-0 rounded-full bg-foreground text-background px-4 py-1.5 text-sm font-medium disabled:opacity-50"
                     >
-                      {state?.loading ? '…' : 'Invita'}
+                      {state?.loading ? '…' : 'Aggiungi'}
                     </button>
                   )}
                 </div>
@@ -111,7 +110,7 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
                 {/* Share options — revealed after link generation */}
                 {hasUrl && (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">Condividi con {person.name}</p>
+                    <p className="text-xs text-muted-foreground">Invia il ricordo a {person.name}</p>
                     <div className="grid grid-cols-3 gap-2">
 
                       <a
@@ -153,7 +152,7 @@ export function ShareStep({ memoryId, memoryTitle, people }: ShareStepProps) {
           onClick={() => router.push(`/memories/${memoryId}`)}
           className="mt-8 flex items-center justify-center w-full rounded-full bg-foreground text-background py-4 text-base font-semibold"
         >
-          Vai al ricordo →
+          Apri il ricordo →
         </button>
 
       </div>
