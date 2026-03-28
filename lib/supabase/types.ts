@@ -391,45 +391,6 @@ export interface Database {
           }
         ]
       }
-      memory_invites: {
-        Row: {
-          id: string
-          memory_id: string
-          person_id: string
-          inviter_user_id: string
-          token: string
-          status: 'pending' | 'opened' | 'accepted' | 'expired'
-          created_at: string
-          opened_at: string | null
-          accepted_at: string | null
-          expires_at: string | null
-        }
-        Insert: {
-          id?: string
-          memory_id: string
-          person_id: string
-          inviter_user_id: string
-          token: string
-          status?: 'pending' | 'opened' | 'accepted' | 'expired'
-          created_at?: string
-          opened_at?: string | null
-          accepted_at?: string | null
-          expires_at?: string | null
-        }
-        Update: {
-          id?: string
-          memory_id?: string
-          person_id?: string
-          inviter_user_id?: string
-          token?: string
-          status?: 'pending' | 'opened' | 'accepted' | 'expired'
-          created_at?: string
-          opened_at?: string | null
-          accepted_at?: string | null
-          expires_at?: string | null
-        }
-        Relationships: []
-      }
       memory_contributions: {
         Row: {
           id: string

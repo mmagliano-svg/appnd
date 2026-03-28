@@ -300,7 +300,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
     name: person.name,
     firstName: person.first_name ?? null,
     lastName: person.last_name ?? null,
-    nickname: person.nickname ?? null,
+    nicknames: (person.nicknames as string[] | null) ?? [],
     avatarUrl: person.avatar_url ?? null,
     relationLabel: person.relation_label ?? null,
     shortBio: person.short_bio ?? null,

@@ -23,14 +23,21 @@ export default async function SharePage({ params }: { params: { id: string } }) 
     .single()
   if (!participant) notFound()
 
-  const { data: rows } = await supabase
+  const { data: links } = await supabase
     .from('memory_people')
-    .select('people ( id, name )')
+    .select('person_id')
     .eq('memory_id', params.id)
 
-  const people = (rows ?? [])
-    .map((r) => r.people as { id: string; name: string } | null)
-    .filter(Boolean) as { id: string; name: string }[]
+  const personIds = (links ?? []).map((l) => l.person_id)
+
+  let people: { id: string; name: string }[] = []
+  if (personIds.length > 0) {
+    const { data: peopleRows } = await supabase
+      .from('people')
+      .select('id, name')
+      .in('id', personIds)
+    people = peopleRows ?? []
+  }
 
   if (people.length === 0) redirect(`/memories/${params.id}`)
 

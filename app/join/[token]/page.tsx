@@ -42,8 +42,7 @@ export default async function JoinPage({ params }: { params: { token: string } }
       .from('memory_invites')
       .update({ status: 'opened', opened_at: new Date().toISOString() })
       .eq('id', invite.id)
-      .then(() => {})
-      .catch(() => {})
+      .then(() => {}, () => {})
   }
 
   // Fetch memory and inviter in parallel
