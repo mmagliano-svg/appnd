@@ -84,7 +84,7 @@ export default function ContributePage({ params }: { params: { id: string } }) {
         caption: caption || undefined,
       })
 
-      router.push(`/memories/${params.id}`)
+      router.push(`/memories/${params.id}?contributed=1`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore imprevisto.')
       setLoading(false)
@@ -142,8 +142,8 @@ export default function ContributePage({ params }: { params: { id: string } }) {
                 onChange={(e) => setText(e.target.value)}
                 placeholder={
                   tab === 'text'
-                    ? "Com'era per te questo momento? Cosa ricordi? Come ti sentivi?"
-                    : 'Aggiungi una nota al ricordo…'
+                    ? "Cosa ricordi di questo momento? C\u2019\u00e8 qualcosa che solo tu hai vissuto cos\u00ec."
+                    : 'Aggiungi una nota \u2014 qualcosa che solo tu ricordi.'
                 }
                 rows={8}
                 required

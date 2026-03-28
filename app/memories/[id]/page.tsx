@@ -25,7 +25,7 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export default async function MemoryPage({ params }: { params: { id: string } }) {
+export default async function MemoryPage({ params, searchParams }: { params: { id: string }; searchParams: { contributed?: string } }) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -82,6 +82,19 @@ export default async function MemoryPage({ params }: { params: { id: string } })
   const isFirstTime = (memory as { is_first_time?: boolean }).is_first_time ?? false
   const isAnniversary = (memory as { is_anniversary?: boolean }).is_anniversary ?? false
   const sharingStatus = (memory as { sharing_status?: string }).sharing_status ?? 'private'
+
+  const hasOwnContribution = contributions.some((c) => c.author_id === user?.id)
+
+  // Fetch creator name — used for contextual line shown to invited (non-creator) participants
+  let creatorName: string | null = null
+  if (!isCreator && sharingStatus === 'shared') {
+    const { data: creatorRow } = await supabase
+      .from('users')
+      .select('display_name, email')
+      .eq('id', memory.created_by)
+      .maybeSingle()
+    creatorName = creatorRow?.display_name ?? creatorRow?.email?.split('@')[0] ?? null
+  }
 
   const memoryEndDate = (memory as { end_date?: string | null }).end_date ?? null
   const memoryStartDate = (memory as { start_date?: string }).start_date ?? memory.happened_at
@@ -425,6 +438,15 @@ export default async function MemoryPage({ params }: { params: { id: string } })
       {/* ── Body ── */}
       <div className="max-w-lg mx-auto px-4 pb-32">
 
+        {/* Success feedback after contribution */}
+        {searchParams.contributed === '1' && (
+          <div className="mt-4 rounded-xl bg-green-50 border border-green-200 px-4 py-2.5 dark:bg-green-950/30 dark:border-green-900">
+            <p className="text-sm font-medium text-green-700 dark:text-green-400">
+              ✓ La tua versione è stata aggiunta.
+            </p>
+          </div>
+        )}
+
         {/* Title block — only when no hero photo */}
         {!heroPhoto && (
           <div className="pt-6 pb-6 border-b border-border/50">
@@ -487,6 +509,13 @@ export default async function MemoryPage({ params }: { params: { id: string } })
               )}
             </div>
           </div>
+        )}
+
+        {/* Contextual invite line — shown to non-creators in shared memories */}
+        {!isCreator && creatorName && (
+          <p className="text-xs text-muted-foreground pt-4 pb-1">
+            {creatorName} ha salvato questo momento con te.
+          </p>
         )}
 
         {/* ── Actions bar (like · chat · people) ── */}
@@ -659,10 +688,21 @@ export default async function MemoryPage({ params }: { params: { id: string } })
           {contributions.length === 0 ? (
             <div className="text-center py-16 space-y-3">
               <p className="text-3xl">✦</p>
-              <p className="text-sm font-medium">Ancora nessun contributo.</p>
-              <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                Aggiungi i tuoi pensieri, foto o note su questo momento.
-              </p>
+              {isCreator ? (
+                <>
+                  <p className="text-sm font-medium">Ancora nessun contributo.</p>
+                  <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                    Aggiungi i tuoi pensieri, foto o note su questo momento.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-medium">Ogni ricordo ha più di una versione.</p>
+                  <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                    Tu com&apos;eri lì? Aggiungi il tuo punto di vista.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
             <div className="space-y-10">
@@ -765,6 +805,20 @@ export default async function MemoryPage({ params }: { params: { id: string } })
             </div>
           )}
         </div>
+
+        {/* Soft contribution prompt — visible after existing content, when user hasn't contributed yet */}
+        {contributions.length > 0 && !hasOwnContribution && (
+          <div className="mt-10 pt-8 border-t border-border/30 text-center space-y-2">
+            <p className="text-sm font-medium">Ogni ricordo ha più di una versione.</p>
+            <p className="text-xs text-muted-foreground">Tu come lo ricordi?</p>
+            <Link
+              href={`/memories/${params.id}/contribute`}
+              className="inline-flex items-center gap-2 mt-3 rounded-full border border-foreground/20 px-5 py-2.5 text-sm font-medium hover:bg-accent transition-colors"
+            >
+              Racconta la tua versione
+            </Link>
+          </div>
+        )}
 
         {/* ── Chat ── */}
         <div className="mt-8">
