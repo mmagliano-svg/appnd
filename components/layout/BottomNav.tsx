@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const SHOW_ON_EXACT = ['/dashboard', '/explore', '/profile']
-const SHOW_ON_PREFIX = ['/timeline', '/people']
+const SHOW_ON_PREFIX = ['/timeline', '/people', '/places']
 
 function HomeIcon({ active }: { active: boolean }) {
   return (
@@ -91,7 +91,7 @@ export function BottomNav() {
   const isHome = pathname === '/dashboard'
   const isTimeline = pathname.startsWith('/timeline')
   const isExplore = pathname === '/explore'
-  const isProfile = pathname === '/profile' || pathname.startsWith('/people')
+  const isPeople = pathname.startsWith('/people')
 
   return (
     <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/95 backdrop-blur-sm">
@@ -123,19 +123,19 @@ export function BottomNav() {
           <ExploreIcon active={isExplore} />
         </NavTab>
 
-        {/* Profilo */}
-        <NavTab href="/profile" label="Profilo" active={isProfile}>
+        {/* Persone */}
+        <NavTab href="/people" label="Persone" active={isPeople}>
           <svg
-            className={`w-5 h-5 transition-colors ${isProfile ? 'text-foreground' : 'text-muted-foreground'}`}
-            fill={isProfile ? 'currentColor' : 'none'}
+            className={`w-5 h-5 transition-colors ${isPeople ? 'text-foreground' : 'text-muted-foreground'}`}
+            fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              strokeWidth={isProfile ? 0 : 1.75}
-              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              strokeWidth={isPeople ? 2.25 : 1.75}
+              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
             />
           </svg>
         </NavTab>

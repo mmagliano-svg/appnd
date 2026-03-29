@@ -1,4 +1,7 @@
+'use client'
+
 import Link from 'next/link'
+import { useRef, useEffect } from 'react'
 import { formatMemoryDate } from '@/lib/utils/dates'
 
 export interface HeroMemory {
@@ -15,10 +18,39 @@ interface HomeHeroCarouselProps {
 }
 
 export function HomeHeroCarousel({ memories }: HomeHeroCarouselProps) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const indexRef = useRef(0)
+  const pausedRef = useRef(false)
+
+  useEffect(() => {
+    if (memories.length <= 1) return
+    const timer = setInterval(() => {
+      if (pausedRef.current) return
+      const el = scrollRef.current
+      if (!el) return
+      indexRef.current = (indexRef.current + 1) % memories.length
+      const cards = el.querySelectorAll('[data-hero-card]')
+      const target = cards[indexRef.current] as HTMLElement | undefined
+      if (target) {
+        el.scrollTo({ left: target.offsetLeft - 16, behavior: 'smooth' })
+      }
+    }, 4000)
+    return () => clearInterval(timer)
+  }, [memories.length])
+
+  const handlePointerDown = () => { pausedRef.current = true }
+  const handlePointerUp = () => {
+    setTimeout(() => { pausedRef.current = false }, 2500)
+  }
+
   if (memories.length === 0) return null
 
   return (
     <div
+      ref={scrollRef}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
       className="flex overflow-x-auto gap-3 px-4 pb-1 snap-x snap-mandatory"
       style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
     >
@@ -26,6 +58,7 @@ export function HomeHeroCarousel({ memories }: HomeHeroCarouselProps) {
         <Link
           key={memory.id}
           href={`/memories/${memory.id}`}
+          data-hero-card
           className="relative shrink-0 w-[78vw] max-w-[320px] aspect-[3/4] rounded-3xl overflow-hidden snap-start bg-muted"
         >
           {memory.previewUrl ? (

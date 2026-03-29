@@ -155,6 +155,7 @@ export default async function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-background pb-28">
+      <div className="max-w-[1100px] mx-auto">
 
       <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
 
@@ -183,6 +184,7 @@ export default async function DashboardPage() {
 
         <AllMemoriesList memories={allMemories} />
 
+      </div>
       </div>
     </main>
   )
