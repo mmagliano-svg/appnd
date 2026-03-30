@@ -191,13 +191,13 @@ function NewMemoryForm() {
                 onClick={() => fileRef.current?.click()}
                 className="w-full h-36 rounded-3xl bg-muted/50 hover:bg-muted/70 transition-colors flex flex-col items-center justify-center gap-2"
               >
-                <svg className="w-7 h-7 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-muted-foreground/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="text-sm text-muted-foreground/60">Aggiungi una foto</span>
+                <span className="text-sm text-muted-foreground/75">Aggiungi una foto</span>
               </button>
             ) : (
               <div className="relative">
@@ -246,7 +246,7 @@ function NewMemoryForm() {
               placeholder="Come vuoi ricordarlo?"
               required
               autoFocus
-              className="w-full bg-transparent text-2xl font-bold placeholder:text-muted-foreground/30 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
+              className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/35 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
             />
 
             {/* Date */}
@@ -349,7 +349,7 @@ function NewMemoryForm() {
           </div>
 
           {/* ── Divider ──────────────────────────────────────────── */}
-          <p className="text-sm text-muted-foreground/40 text-center">
+          <p className="text-sm text-muted-foreground/40">
             Aggiungi altri dettagli
           </p>
 
@@ -415,7 +415,7 @@ function NewMemoryForm() {
             </div>
 
             {/* Classification */}
-            <div className="space-y-3">
+            <div className="space-y-3 pt-2">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 Questo momento è…
               </p>
