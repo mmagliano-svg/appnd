@@ -9,9 +9,6 @@ import { setMemoryPeople } from '@/actions/persons'
 import { PeopleSelector } from '@/components/people/PeopleSelector'
 import type { SimplePerson } from '@/actions/persons'
 import { createClient } from '@/lib/supabase/client'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
 import { formatPeriodDisplay } from '@/lib/utils/dates'
@@ -35,17 +32,13 @@ function NewMemoryForm() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedPeople, setSelectedPeople] = useState<SimplePerson[]>([])
 
-  // Date type state
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
   const [isOngoing, setIsOngoing] = useState(false)
-
-  // Memory classification
   const [isAnniversary, setIsAnniversary] = useState(false)
   const [isFirstTime, setIsFirstTime] = useState(false)
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0])
   const [endDate, setEndDate] = useState('')
 
-  // Media state
   const [mediaFile, setMediaFile] = useState<File | null>(null)
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
@@ -69,14 +62,12 @@ function NewMemoryForm() {
     }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-suggest: find the most specific period containing startDate
   const suggestedPeriod = useMemo(() => {
     if (memoryType === 'period' || !startDate || periods.length === 0) return null
     const matches = periods.filter(
       (p) => startDate >= p.start_date && startDate <= p.end_date
     )
     if (matches.length === 0) return null
-    // Return the shortest (most specific) matching period
     return matches.sort(
       (a, b) =>
         (new Date(a.end_date).getTime() - new Date(a.start_date).getTime()) -
@@ -84,7 +75,6 @@ function NewMemoryForm() {
     )[0]
   }, [startDate, periods, memoryType])
 
-  // Warning if selected period range doesn't contain startDate
   const outOfRange = useMemo(() => {
     if (!parentPeriodId || !startDate) return false
     const sel = periods.find((p) => p.id === parentPeriodId)
@@ -95,14 +85,11 @@ function NewMemoryForm() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-
     const isVideo = file.type.startsWith('video/')
     setMediaFile(file)
     setMediaPreview(URL.createObjectURL(file))
     setMediaType(isVideo ? 'video' : 'image')
     setError('')
-
-    // Auto-focus title after selecting media
     setTimeout(() => titleRef.current?.focus(), 100)
   }
 
@@ -122,7 +109,6 @@ function NewMemoryForm() {
     const form = new FormData(e.currentTarget)
 
     try {
-      // 1 — Create memory (no redirect)
       setUploadStep('Creazione ricordo…')
       const memoryId = await createMemoryReturnId({
         title: form.get('title') as string,
@@ -140,38 +126,29 @@ function NewMemoryForm() {
         group_id: memoryType === 'day' ? selectedGroupId : null,
       })
 
-      // 2 — Tag people (must complete before redirecting to share step)
       if (selectedPeople.length > 0) {
         await setMemoryPeople(memoryId, selectedPeople.map((p) => p.id))
       }
 
-      // 3 — Upload media if present
       if (mediaFile) {
         setUploadStep('Caricamento foto…')
         const supabase = createClient()
         const ext = mediaFile.name.split('.').pop() ?? 'jpg'
         const path = `${memoryId}/${Date.now()}.${ext}`
-
         const { error: uploadError } = await supabase.storage
           .from('memory-media')
           .upload(path, mediaFile, { upsert: false })
-
         if (uploadError) {
-          // Memory was created — navigate anyway, media upload failed silently
           router.push(`/memories/${memoryId}`)
           return
         }
-
         const { data: { publicUrl } } = supabase.storage
           .from('memory-media')
           .getPublicUrl(path)
-
-        // 3 — Save as contribution
         setUploadStep('Salvataggio…')
         await addMediaContribution(memoryId, publicUrl)
       }
 
-      // If people are tagged, go to share step regardless of memory type
       if (selectedPeople.length > 0) {
         router.push(`/memories/${memoryId}/share`)
       } else {
@@ -190,60 +167,64 @@ function NewMemoryForm() {
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="max-w-lg mx-auto px-4 pb-16">
+      <div className="max-w-lg mx-auto px-4 pb-24">
 
-        {/* Header */}
-        <div className="pt-6 pb-6">
+        {/* ── Header ── */}
+        <div className="flex items-center justify-between pt-6 pb-8">
           <button
+            type="button"
             onClick={() => router.back()}
-            className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+            className="w-11 h-11 -ml-2 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+            aria-label="Indietro"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Indietro
           </button>
-          <h1 className="text-3xl font-bold tracking-tight mb-1">Nuovo ricordo</h1>
-          <p className="text-sm text-muted-foreground">
-            {hasMedia ? 'Il momento è catturato. Dagli un nome.' : 'Cattura il momento prima che sfugga.'}
-          </p>
+          <p className="text-sm font-semibold">Nuovo ricordo</p>
+          <div className="w-11" /> {/* spacer */}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-8">
 
-          {/* ── MEDIA PICKER — in cima ── */}
-          <div>
+          {/* ══ ZONA 1 — Il momento ══════════════════════════════════════ */}
+          <div className="space-y-5">
+
+            {/* Photo */}
             {!mediaPreview ? (
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-full rounded-2xl border-2 border-dashed border-border hover:border-foreground/30 bg-muted/10 hover:bg-muted/20 transition-all flex flex-col items-center justify-center gap-3 py-10"
+                className="flex items-center gap-3 w-full text-left min-h-[44px] group"
               >
-                <div className="w-14 h-14 rounded-full bg-secondary flex items-center justify-center">
-                  <svg className="w-7 h-7 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0 group-hover:bg-muted/70 transition-colors">
+                  <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                       d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
-                </div>
-                <div className="text-center">
-                  <p className="text-sm font-medium text-foreground">Cattura questo momento</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Tocca per aggiungere una foto o video</p>
-                </div>
+                </span>
+                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                  Aggiungi una foto o video
+                </span>
+                <svg className="w-4 h-4 text-muted-foreground/40 ml-auto shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             ) : (
               <div className="relative">
                 {mediaType === 'image' ? (
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={mediaPreview}
-                    alt="Anteprima"
-                    className="w-full rounded-2xl object-cover max-h-80"
+                    alt=""
+                    className="w-full rounded-3xl object-cover max-h-72"
                   />
                 ) : (
                   <video
                     src={mediaPreview}
-                    className="w-full rounded-2xl max-h-80"
+                    className="w-full rounded-3xl max-h-72"
                     controls
                     playsInline
                   />
@@ -251,13 +232,16 @@ function NewMemoryForm() {
                 <button
                   type="button"
                   onClick={clearMedia}
-                  className="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center text-sm hover:bg-black/80 transition-colors"
+                  className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
                   aria-label="Rimuovi media"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
             )}
+
             <input
               ref={fileRef}
               type="file"
@@ -265,35 +249,25 @@ function NewMemoryForm() {
               onChange={handleFileChange}
               className="hidden"
             />
-          </div>
 
-          {/* ── TITOLO ── */}
-          <div className="space-y-2">
-            <Label htmlFor="title" className="text-sm font-medium">
-              Titolo <span className="text-muted-foreground font-normal">*</span>
-            </Label>
-            <Input
+            {/* Title — underline style, dominant */}
+            <input
               ref={titleRef}
               id="title"
               name="title"
+              type="text"
               placeholder="Come chiami questo momento?"
               required
               autoFocus={!hasMedia}
-              className="text-base"
+              className="w-full bg-transparent text-2xl font-bold placeholder:text-muted-foreground/30 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
             />
-          </div>
 
-          {/* ── DETTAGLI SECONDARI (meno prominenti se c'è media) ── */}
-          <div className={`space-y-6 transition-opacity duration-300 ${hasMedia ? 'opacity-80' : ''}`}>
-
-            {/* Data */}
+            {/* Date */}
             <div className="space-y-3">
-              {/* Type toggle + label */}
               <div className="flex items-center justify-between gap-3">
-                <Label className="text-sm font-medium">
-                  {isPeriod ? 'Quanto è durato?' : 'Quando è successo?'}{' '}
-                  <span className="text-muted-foreground font-normal">*</span>
-                </Label>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  {isPeriod ? 'Quanto è durato?' : 'Quando è successo?'}
+                </p>
                 <div className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0">
                   <button
                     type="button"
@@ -301,7 +275,7 @@ function NewMemoryForm() {
                     className={`px-3 py-1.5 font-medium transition-colors ${
                       !isPeriod
                         ? 'bg-foreground text-background'
-                        : 'bg-background text-muted-foreground hover:bg-muted/50'
+                        : 'text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
                     Giorno
@@ -312,7 +286,7 @@ function NewMemoryForm() {
                     className={`px-3 py-1.5 font-medium transition-colors border-l border-border ${
                       isPeriod
                         ? 'bg-foreground text-background'
-                        : 'bg-background text-muted-foreground hover:bg-muted/50'
+                        : 'text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
                     Periodo
@@ -320,53 +294,52 @@ function NewMemoryForm() {
                 </div>
               </div>
 
-              {/* Date picker(s) */}
               {!isPeriod ? (
-                <Input
+                <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   max={today}
                   required
+                  className="w-full bg-transparent text-base text-foreground focus:outline-none border-b border-border pb-2.5 min-h-[44px]"
                 />
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <p className="text-xs text-muted-foreground">Dal</p>
-                      <Input
+                      <input
                         type="date"
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         max={today}
                         required
+                        className="w-full bg-transparent text-sm text-foreground focus:outline-none border-b border-border pb-2 min-h-[44px]"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <p className="text-xs text-muted-foreground">Al</p>
                       {isOngoing ? (
-                        <div className="flex items-center h-10 rounded-xl border border-foreground bg-foreground px-3">
+                        <div className="flex items-center min-h-[44px] rounded-xl border border-foreground bg-foreground px-3">
                           <span className="text-sm font-medium text-background">ancora in corso</span>
                         </div>
                       ) : (
-                        <Input
+                        <input
                           type="date"
                           value={endDate}
                           onChange={(e) => setEndDate(e.target.value)}
                           min={startDate}
                           max={today}
+                          className="w-full bg-transparent text-sm text-foreground focus:outline-none border-b border-border pb-2 min-h-[44px]"
                         />
                       )}
                     </div>
                   </div>
-                  {/* Ongoing toggle */}
                   <button
                     type="button"
                     onClick={() => { setIsOngoing((v) => !v); setEndDate('') }}
-                    className={`flex items-center gap-2 text-sm transition-colors ${
-                      isOngoing
-                        ? 'text-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground'
+                    className={`flex items-center gap-2 text-sm min-h-[44px] transition-colors ${
+                      isOngoing ? 'text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
@@ -378,70 +351,87 @@ function NewMemoryForm() {
                         </svg>
                       )}
                     </span>
-                    Ancora in corso (nessuna data di fine)
+                    Ancora in corso
                   </button>
                 </div>
               )}
             </div>
 
-            {/* Tipo di momento */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Questo momento è…</Label>
-              <div className="flex gap-2 flex-wrap">
-                {/* Prima volta */}
-                <button
-                  type="button"
-                  onClick={() => setIsFirstTime((v) => !v)}
-                  className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                    isFirstTime
-                      ? 'border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-700'
-                      : 'border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                  }`}
-                >
-                  <span className="text-base leading-none">✦</span>
-                  Prima volta
-                </button>
-
-                {/* Anniversario */}
-                <button
-                  type="button"
-                  onClick={() => setIsAnniversary((v) => !v)}
-                  className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all ${
-                    isAnniversary
-                      ? 'border-violet-400 bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400 dark:border-violet-700'
-                      : 'border-border bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                  }`}
-                >
-                  <span className="text-base leading-none">↺</span>
-                  Ricorrenza
-                </button>
-              </div>
-              {isAnniversary && (
-                <p className="text-xs text-muted-foreground">
-                  Questo ricordo tornerà in evidenza ogni anno nella stessa data.
-                </p>
-              )}
+            {/* Classification chips — inline, light */}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setIsFirstTime((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
+                  isFirstTime
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                }`}
+              >
+                ✦ Prima volta
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsAnniversary((v) => !v)}
+                className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
+                  isAnniversary
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                }`}
+              >
+                ↺ Ricorrenza
+              </button>
             </div>
+            {isAnniversary && (
+              <p className="text-xs text-muted-foreground -mt-4 px-1">
+                Tornerà in evidenza ogni anno nella stessa data.
+              </p>
+            )}
+          </div>
+
+          {/* ── Divider ── */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-border/30" />
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+              Contesto
+            </p>
+            <div className="flex-1 border-t border-border/30" />
+          </div>
+
+          {/* ══ ZONA 2 — Contesto ════════════════════════════════════════ */}
+          <div className="space-y-7">
 
             {/* Luogo */}
-            <div className="space-y-2">
-              <Label htmlFor="location_name" className="text-sm font-medium">
-                Dove eravate?
-              </Label>
-              <Input
+            <div className="space-y-1.5">
+              <label htmlFor="location_name" className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Dove eri?
+              </label>
+              <input
                 id="location_name"
                 name="location_name"
+                type="text"
                 placeholder="Es. Roma, Trastevere"
+                className="w-full bg-transparent text-base placeholder:text-muted-foreground/40 focus:outline-none border-b border-border pb-2.5"
               />
             </div>
 
-            {/* Categorie — multi-select */}
+            {/* Con chi */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Chi era con te?
+              </p>
+              <PeopleSelector onChange={setSelectedPeople} />
+            </div>
+
+            {/* Categorie — horizontal scroll chips */}
             <div className="space-y-3">
-              <div>
-                <Label className="text-sm font-medium">Capitoli della vita</Label>
-                <p className="text-xs text-muted-foreground mt-0.5">Puoi selezionarne più di uno.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Di che tipo è questo momento?
+              </p>
+              <div
+                className="flex gap-2 overflow-x-auto pb-1"
+                style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+              >
                 {CATEGORIES.map((cat) => {
                   const active = categories.includes(cat.value)
                   return (
@@ -455,13 +445,13 @@ function NewMemoryForm() {
                             : [...prev, cat.value],
                         )
                       }
-                      className={`flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                      className={`shrink-0 flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
                         active
-                          ? 'border-foreground bg-foreground text-background font-medium'
-                          : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                          ? 'border-foreground bg-foreground text-background'
+                          : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
                       }`}
                     >
-                      <span className="text-base">{cat.emoji}</span>
+                      <span>{cat.emoji}</span>
                       <span>{cat.label}</span>
                     </button>
                   )
@@ -469,71 +459,66 @@ function NewMemoryForm() {
               </div>
             </div>
 
-            {/* ── Con chi eri? ── */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Con chi eri?</Label>
-              <p className="text-xs text-muted-foreground -mt-1">
-                Aggiungi le persone che fanno parte di questo ricordo.
-              </p>
-              <PeopleSelector onChange={setSelectedPeople} />
-            </div>
-
-            {/* Tag */}
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Connessioni</Label>
-              <p className="text-xs text-muted-foreground -mt-1">
-                Luoghi, temi — tutto ciò che collega questo momento agli altri.
-              </p>
-              <TagInput
-                value={tags}
-                onChange={setTags}
-                suggestions={allTags}
-                placeholder="Es. Sardegna, estate, vacanze…"
-              />
-            </div>
-
-            {/* Descrizione con prompt guidato */}
-            <div className="space-y-2">
+            {/* Racconto */}
+            <div className="space-y-1.5">
               <div className="flex items-baseline justify-between">
-                <Label htmlFor="description" className="text-sm font-medium">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
                   Il racconto
-                </Label>
-                <span className="text-[10px] text-muted-foreground/50 italic">
-                  facoltativo
-                </span>
+                </p>
+                <span className="text-[10px] text-muted-foreground/40 italic">facoltativo</span>
               </div>
               <textarea
                 id="description"
                 name="description"
                 placeholder={getPromptForCategory(categories[0] || null)}
-                rows={5}
-                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none leading-relaxed"
+                rows={4}
+                className="w-full rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-base placeholder:text-muted-foreground/40 focus:outline-none focus:border-border focus:bg-background transition-colors resize-none leading-relaxed"
               />
-              <p className="text-[11px] text-muted-foreground/50 leading-relaxed px-1">
-                Scrivi in libertà — anche solo due righe. Questo è il tuo spazio.
+            </div>
+
+          </div>
+
+          {/* ── Divider ── */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-border/30" />
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/40">
+              Avanzato
+            </p>
+            <div className="flex-1 border-t border-border/30" />
+          </div>
+
+          {/* ══ ZONA 3 — Avanzato ════════════════════════════════════════ */}
+          <div className="space-y-7">
+
+            {/* Connessioni / Tag */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                Connessioni
               </p>
+              <TagInput
+                value={tags}
+                onChange={setTags}
+                suggestions={allTags}
+                placeholder="Luoghi, temi, parole chiave…"
+              />
             </div>
 
             {/* Periodo di appartenenza */}
             {!isPeriod && periods.length > 0 && (
               <div className="space-y-3">
-                <div>
-                  <Label className="text-sm font-medium">Fa parte di un periodo?</Label>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Collega questo momento a una fase della tua vita.
-                  </p>
-                </div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                  Fa parte di un periodo?
+                </p>
 
-                {/* Auto-suggest banner */}
                 {suggestedPeriod && parentPeriodId !== suggestedPeriod.id && (
                   <button
                     type="button"
                     onClick={() => setParentPeriodId(suggestedPeriod.id)}
-                    className="w-full flex items-center justify-between gap-3 rounded-xl border border-foreground/20 bg-muted/30 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+                    className="w-full flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
                   >
                     <div>
-                      <p className="text-xs text-muted-foreground mb-0.5">Suggerito</p>
-                      <p className="text-sm font-medium">{suggestedPeriod.title}</p>
+                      <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-0.5">Suggerito</p>
+                      <p className="text-sm font-semibold">{suggestedPeriod.title}</p>
                       <p className="text-xs text-muted-foreground">
                         {formatPeriodDisplay(suggestedPeriod.start_date, suggestedPeriod.end_date)}
                       </p>
@@ -542,108 +527,105 @@ function NewMemoryForm() {
                   </button>
                 )}
 
-                {/* Period list */}
                 <div className="space-y-1.5">
                   <button
                     type="button"
                     onClick={() => setParentPeriodId(null)}
-                    className={`w-full flex items-center gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                    className={`w-full flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm transition-all text-left min-h-[44px] ${
                       parentPeriodId === null
-                        ? 'border-foreground bg-foreground text-background font-medium'
-                        : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                        ? 'border-foreground bg-foreground text-background font-semibold'
+                        : 'border-border/50 hover:border-border hover:bg-muted/20'
                     }`}
                   >
-                    <span>Nessun periodo</span>
+                    Nessun periodo
                   </button>
                   {periods.map((period) => (
                     <button
                       key={period.id}
                       type="button"
                       onClick={() => setParentPeriodId(period.id)}
-                      className={`w-full flex items-center justify-between gap-2.5 rounded-xl border px-3.5 py-3 text-sm transition-all text-left ${
+                      className={`w-full flex items-center justify-between gap-2.5 rounded-2xl border px-4 py-3 text-sm transition-all text-left min-h-[44px] ${
                         parentPeriodId === period.id
-                          ? 'border-foreground bg-foreground text-background font-medium'
-                          : 'border-border hover:border-foreground/30 hover:bg-accent/50'
+                          ? 'border-foreground bg-foreground text-background font-semibold'
+                          : 'border-border/50 hover:border-border hover:bg-muted/20'
                       }`}
                     >
                       <span className="truncate">{period.title}</span>
-                      <span className={`text-xs shrink-0 ${parentPeriodId === period.id ? 'text-background/70' : 'text-muted-foreground'}`}>
+                      <span className={`text-xs shrink-0 ${parentPeriodId === period.id ? 'text-background/60' : 'text-muted-foreground'}`}>
                         {formatPeriodDisplay(period.start_date, period.end_date)}
                       </span>
                     </button>
                   ))}
                 </div>
 
-                {/* Out-of-range warning */}
                 {outOfRange && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-                    <span>⚠</span>
-                    La data dell'evento è fuori dal range di questo periodo.
+                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 px-1">
+                    <span>⚠</span> La data è fuori dal range di questo periodo.
                   </p>
                 )}
               </div>
             )}
 
-          </div>
-
-          {/* ── Gruppo ── */}
-          {memoryType === 'day' && groups.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <label className="text-sm font-medium">Gruppo</label>
-                <span className="text-xs text-muted-foreground">(opzionale)</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSelectedGroupId(null)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium border transition-all ${
-                    selectedGroupId === null
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'border-border hover:border-foreground/30 hover:bg-accent/30'
-                  }`}
-                >
-                  Nessun gruppo
-                </button>
-                {groups.map((g) => (
+            {/* Gruppo */}
+            {memoryType === 'day' && groups.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">Gruppo</p>
+                  <span className="text-[10px] text-muted-foreground/40">(opzionale)</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
                   <button
-                    key={g.id}
                     type="button"
-                    onClick={() => setSelectedGroupId(g.id)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium border transition-all ${
-                      selectedGroupId === g.id
+                    onClick={() => setSelectedGroupId(null)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium border transition-all min-h-[44px] ${
+                      selectedGroupId === null
                         ? 'bg-foreground text-background border-foreground'
-                        : 'border-border hover:border-foreground/30 hover:bg-accent/30'
+                        : 'border-border text-muted-foreground hover:border-foreground/30'
                     }`}
                   >
-                    {g.name}
+                    Nessun gruppo
                   </button>
-                ))}
+                  {groups.map((g) => (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => setSelectedGroupId(g.id)}
+                      className={`rounded-full px-4 py-2 text-sm font-medium border transition-all min-h-[44px] ${
+                        selectedGroupId === g.id
+                          ? 'bg-foreground text-background border-foreground'
+                          : 'border-border text-muted-foreground hover:border-foreground/30'
+                      }`}
+                    >
+                      {g.name}
+                    </button>
+                  ))}
+                </div>
+                {selectedGroupId && (() => {
+                  const sg = groups.find((g) => g.id === selectedGroupId)
+                  return sg ? (
+                    <p className="text-xs text-muted-foreground px-1">
+                      Tutti i {sg.memberCount} membri di &ldquo;{sg.name}&rdquo; avranno accesso automatico.
+                    </p>
+                  ) : null
+                })()}
               </div>
-              {selectedGroupId && (() => {
-                const sg = groups.find((g) => g.id === selectedGroupId)
-                return sg ? (
-                  <p className="text-xs text-muted-foreground px-1">
-                    Tutti i {sg.memberCount} membri di "{sg.name}" avranno accesso automatico.
-                  </p>
-                ) : null
-              })()}
-            </div>
-          )}
+            )}
 
+          </div>
+
+          {/* ── Error ── */}
           {error && (
-            <div className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3">
-              <p className="text-sm text-destructive">{error}</p>
-            </div>
+            <p className="text-sm text-destructive px-1">{error}</p>
           )}
 
-          <Button
+          {/* ── Primary CTA ── */}
+          <button
             type="submit"
-            className="w-full rounded-full py-6 text-base font-medium"
             disabled={loading}
+            className="w-full rounded-full bg-foreground text-background py-4 text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? (uploadStep || 'Salvataggio…') : 'Salva il ricordo'}
-          </Button>
+          </button>
 
         </form>
       </div>
