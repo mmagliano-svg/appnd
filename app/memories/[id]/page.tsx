@@ -345,7 +345,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           className="absolute inset-0"
           style={{
             background: heroPhoto
-              ? 'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0) 35%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.72) 100%)'
+              ? 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 32%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.86) 100%)'
               : 'none',
           }}
         />
@@ -356,7 +356,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             href="/dashboard"
             className={`inline-flex items-center gap-1.5 text-sm transition-colors ${
               heroPhoto
-                ? 'text-white/80 hover:text-white drop-shadow-sm'
+                ? 'text-white/45 hover:text-white/80 drop-shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -371,7 +371,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 href={`/memories/${params.id}/edit`}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                   heroPhoto
-                    ? 'text-white/80 hover:text-white hover:bg-white/10'
+                    ? 'text-white/40 hover:text-white/70 hover:bg-white/10'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
@@ -384,7 +384,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* Hero caption — bottom of hero when photo exists */}
         {heroPhoto && (
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 z-10">
+          <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 z-10">
             {memoryCats.length > 0 && (
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1.5">
                 {memoryCats.map((cv) => {
@@ -516,17 +516,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </p>
         )}
 
-        {/* ── Actions bar (like · chat · people) ── */}
-        <MemoryActions
-          memoryId={params.id}
-          initialLikes={initialLikes}
-          participantCount={participants.length}
-        />
 
         {/* ── Description ── */}
         {memory.description && (
-          <div className={`${heroPhoto ? 'pt-4' : 'pt-5'} pb-5 border-b border-border/50`}>
-            <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">
+          <div className={`${heroPhoto ? 'pt-8' : 'pt-5'} pb-5 border-b border-border/50`}>
+            <p className="text-base text-foreground/80 leading-[1.8] whitespace-pre-wrap">
               {memory.description}
             </p>
           </div>
@@ -548,6 +542,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             </div>
           </div>
         )}
+
+        {/* ── Actions (like · chat · people) — after content ── */}
+        <MemoryActions
+          memoryId={params.id}
+          initialLikes={initialLikes}
+          participantCount={participants.length}
+        />
 
         {/* ── Parent period ── */}
         {parentPeriod && (
@@ -688,7 +689,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               <p className="text-3xl">✦</p>
               {isCreator ? (
                 <>
-                  <p className="text-sm font-medium">Ancora nessun contributo.</p>
+                  <p className="text-sm text-muted-foreground/60 font-normal italic">Ancora nessun racconto.</p>
                   <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
                     Aggiungi i tuoi pensieri, foto o note su questo momento.
                   </p>

@@ -141,16 +141,12 @@ export function MemoryChat({ memoryId, currentUserId, initialMessages }: Props) 
   }
 
   return (
-    <div id="memory-chat" className="border-t border-border mt-8 pt-6">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-        Conversazione
-      </p>
-
+    <div id="memory-chat" className="border-t border-border/40 mt-12 pt-8">
       {/* Message list */}
-      <div className="space-y-6 mb-4 max-h-[480px] overflow-y-auto pr-1">
+      <div className="space-y-6 mb-6 max-h-[480px] overflow-y-auto pr-1">
         {grouped.length === 0 && (
-          <p className="text-sm text-muted-foreground/50 text-center py-6">
-            Nessun messaggio ancora. Inizia tu.
+          <p className="text-xs text-muted-foreground/35 text-center py-4 italic">
+            Scrivi qualcosa su questo momento…
           </p>
         )}
 
@@ -246,15 +242,12 @@ export function MemoryChat({ memoryId, currentUserId, initialMessages }: Props) 
           </svg>
         </button>
       </div>
-      <div className="flex items-center justify-between mt-2 px-1">
-        <p className="text-[10px] text-muted-foreground/30">
-          Enter per inviare · Shift+Enter per andare a capo
-        </p>
+      <div className="flex items-center justify-end mt-2 px-1">
         <a
           href={`/memories/${memoryId}/contribute`}
-          className="text-[10px] font-medium text-muted-foreground/50 hover:text-foreground transition-colors"
+          className="text-[10px] text-muted-foreground/40 hover:text-muted-foreground transition-colors"
         >
-          + Aggiungi al ricordo
+          + Aggiungi foto o testo al ricordo
         </a>
       </div>
     </div>
