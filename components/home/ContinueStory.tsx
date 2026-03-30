@@ -17,12 +17,14 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
   if (memories.length === 0) return null
 
   return (
-    <section className="space-y-3 pt-4">
-      <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
-        Riprendi da qui
-      </p>
+    <section className="pt-4 space-y-3">
+      <div className="px-4">
+        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+          Riprendi da qui
+        </p>
+      </div>
       <div
-        className="flex gap-4 overflow-x-auto px-4 pb-2 snap-x"
+        className="flex gap-4 overflow-x-auto pb-2 snap-x pl-4"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
         {memories.map((memory, i) => {
