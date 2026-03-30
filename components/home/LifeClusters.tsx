@@ -72,12 +72,14 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
         I tuoi mondi
       </p>
       <div
-        className="flex items-end gap-4 overflow-x-auto px-4 pb-3"
+        className="overflow-x-auto pb-3"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
-        {all.map((item, i) => (
-          <ClusterCard key={item.id + item.href} item={item} index={i} />
-        ))}
+        <div className="flex items-end gap-4 px-4 w-max">
+          {all.map((item, i) => (
+            <ClusterCard key={item.id + item.href} item={item} index={i} />
+          ))}
+        </div>
       </div>
     </section>
   )

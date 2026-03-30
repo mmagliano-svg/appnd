@@ -24,9 +24,10 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
         </p>
       </div>
       <div
-        className="flex gap-4 overflow-x-auto pb-2 snap-x pl-4"
+        className="overflow-x-auto pb-2"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
+        <div className="flex gap-4 snap-x px-4 w-max">
         {memories.map((memory, i) => {
           const isFirst = i === 0
           // First card is wider and taller — natural entry point, not just another card
@@ -75,6 +76,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
             </Link>
           )
         })}
+        </div>
       </div>
     </section>
   )
