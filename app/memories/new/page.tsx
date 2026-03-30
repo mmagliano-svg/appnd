@@ -182,22 +182,22 @@ function NewMemoryForm() {
         <form onSubmit={handleSubmit} className="space-y-8">
 
           {/* ══ ZONA PRINCIPALE ════════════════════════════════════════ */}
-          <div className="space-y-5">
+          <div className="space-y-6">
 
             {/* Photo */}
             {!mediaPreview ? (
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="w-full h-36 rounded-3xl bg-muted/40 hover:bg-muted/60 transition-colors flex flex-col items-center justify-center gap-2"
+                className="w-full h-36 rounded-3xl bg-muted/50 hover:bg-muted/70 transition-colors flex flex-col items-center justify-center gap-2"
               >
-                <svg className="w-7 h-7 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-7 h-7 text-muted-foreground/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
                     d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="text-sm text-muted-foreground/70">Aggiungi una foto</span>
+                <span className="text-sm text-muted-foreground/60">Aggiungi una foto</span>
               </button>
             ) : (
               <div className="relative">
@@ -339,26 +339,25 @@ function NewMemoryForm() {
                 </div>
               )}
 
-              {/* Auto period hint — subtle, non-editable */}
-              {suggestedPeriod && !isPeriod && (
-                <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
-                  <span>↳</span>
-                  Parte di <span className="font-medium text-muted-foreground">{suggestedPeriod.title}</span>
+              {/* Auto period hint — informational only */}
+              {suggestedPeriod && !isPeriod && startDate && (
+                <p className="text-[10px] text-muted-foreground/50">
+                  Parte di {suggestedPeriod.title}
                 </p>
               )}
             </div>
           </div>
 
-          {/* ── Divider: optional enrichment ─────────────────────── */}
-          <p className="text-sm text-muted-foreground/50 text-center">
-            Aggiungi altri dettagli (facoltativo)
+          {/* ── Divider ──────────────────────────────────────────── */}
+          <p className="text-sm text-muted-foreground/40 text-center">
+            Aggiungi altri dettagli
           </p>
 
           {/* ══ ZONA ARRICCHIMENTO ═════════════════════════════════════ */}
           <div className="space-y-7">
 
             {/* Con chi */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 Chi era con te?
               </p>
@@ -475,13 +474,10 @@ function NewMemoryForm() {
             <button
               type="button"
               onClick={() => setShowAdvanced((v) => !v)}
-              className="flex items-center gap-1.5 text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors min-h-[44px]"
+              className="flex items-center gap-1 text-sm text-muted-foreground/50 hover:text-muted-foreground transition-colors min-h-[44px]"
             >
-              {showAdvanced ? (
-                <>Nascondi dettagli <span className="text-xs">↑</span></>
-              ) : (
-                <>Altri dettagli <span className="text-xs">→</span></>
-              )}
+              {showAdvanced ? 'Nascondi' : 'Altri dettagli'}
+              <span className="text-xs ml-0.5">{showAdvanced ? '↑' : '→'}</span>
             </button>
 
             {showAdvanced && (
