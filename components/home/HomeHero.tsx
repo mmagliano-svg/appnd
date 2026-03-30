@@ -19,7 +19,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
   if (!memory) {
     return (
       <div className="px-4">
-        <div className="w-full aspect-[3/4] max-h-[72vh] rounded-3xl bg-muted flex flex-col items-center justify-center gap-4 text-center px-8">
+        <div className="w-full aspect-[3/4] max-h-[62vh] rounded-3xl bg-muted flex flex-col items-center justify-center gap-4 text-center px-8">
           <span className="text-3xl text-muted-foreground/40 select-none">✦</span>
           <p className="text-base font-semibold text-muted-foreground/70 leading-snug">
             La tua storia inizia qui.
@@ -39,7 +39,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
     <div className="px-4">
       <Link
         href={`/memories/${memory.id}`}
-        className="relative block w-full aspect-[3/4] max-h-[72vh] rounded-3xl overflow-hidden bg-muted"
+        className="relative block w-full aspect-[3/4] max-h-[62vh] rounded-3xl overflow-hidden bg-muted"
         style={{ boxShadow: '0 20px 56px rgba(0,0,0,0.08)' }}
       >
         {memory.previewUrl ? (
@@ -55,7 +55,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900" />
         )}
 
-        {/* Gradient — stronger toward text for immediate readability */}
+        {/* Gradient */}
         <div
           className="absolute inset-0"
           style={{
@@ -65,7 +65,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
         />
 
         {/* Memory text */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-9 animate-hero-text">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 animate-hero-text">
           <p
             className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-1"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.28)' }}

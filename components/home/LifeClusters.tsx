@@ -14,44 +14,30 @@ interface LifeClustersProps {
   chapters: ClusterItem[]
 }
 
-// Width cycle for non-first items — organic, no visible pattern.
-// All values must be valid Tailwind widths.
-const WIDTH_CYCLE = ['w-32', 'w-36', 'w-28', 'w-32', 'w-24', 'w-36'] as const
-
-function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
-  const isFirst = index === 0
-  // First card: wide + tall — pulls the eye naturally
-  const w = isFirst ? 'w-40' : WIDTH_CYCLE[(index - 1) % WIDTH_CYCLE.length]
-  const aspect = isFirst ? 'aspect-[3/4]' : 'aspect-square'
-
-  const imageEl = item.previewUrl ? (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={item.previewUrl}
-      alt=""
-      className="w-full h-full object-cover"
-      loading="lazy"
-    />
-  ) : (
-    <div className="w-full h-full bg-muted/50" />
-  )
-
+function ClusterCard({ item }: { item: ClusterItem }) {
   return (
     <Link
       href={item.href}
-      className={[
-        `flex flex-col shrink-0 ${w} gap-2`,
-        'transition-[transform,opacity] duration-200 hover:scale-[1.012] hover:opacity-90 active:opacity-70',
-      ].join(' ')}
+      className="flex flex-col shrink-0 w-32 gap-2 transition-[transform,opacity] duration-200 hover:scale-[1.012] hover:opacity-90 active:opacity-70"
     >
-      <div className={`${aspect} rounded-2xl overflow-hidden`}>
-        {imageEl}
+      <div className="aspect-square rounded-2xl overflow-hidden">
+        {item.previewUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.previewUrl}
+            alt=""
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted/50" />
+        )}
       </div>
       <div className="px-0.5">
         <p className="text-[11px] font-medium truncate leading-tight text-foreground/60">
           {item.label}
         </p>
-        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+        <p className="text-[10px] text-muted-foreground/50 mt-0.5">
           {item.count} moment{item.count !== 1 ? 'i' : 'o'}
         </p>
       </div>
@@ -67,7 +53,7 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
   if (all.length === 0) return null
 
   return (
-    <section className="space-y-4 pt-2">
+    <section className="pt-2 space-y-3">
       <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
         I tuoi mondi
       </p>
@@ -75,9 +61,9 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
         className="overflow-x-auto pb-3"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
-        <div className="flex items-end gap-4 px-4 w-max">
-          {all.map((item, i) => (
-            <ClusterCard key={item.id + item.href} item={item} index={i} />
+        <div className="flex gap-3 px-4 w-max">
+          {all.map((item) => (
+            <ClusterCard key={item.id + item.href} item={item} />
           ))}
         </div>
       </div>

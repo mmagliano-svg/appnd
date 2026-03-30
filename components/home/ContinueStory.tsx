@@ -17,7 +17,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
   if (memories.length === 0) return null
 
   return (
-    <section className="pt-4 space-y-3">
+    <section className="pt-2 space-y-3">
       <div className="px-4">
         <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
           Riprendi da qui
@@ -27,20 +27,14 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
         className="overflow-x-auto pb-2"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
-        <div className="flex gap-4 snap-x px-4 w-max">
-        {memories.map((memory, i) => {
-          const isFirst = i === 0
-          // First card is wider and taller — natural entry point, not just another card
-          const sizeClass = isFirst ? 'w-44 h-52' : 'w-36 h-44'
-
-          return (
+        <div className="flex gap-3 snap-x px-4 w-max">
+          {memories.map((memory) => (
             <Link
               key={memory.id}
               href={`/memories/${memory.id}`}
               className={[
-                'relative shrink-0 rounded-2xl overflow-hidden snap-start',
+                'relative shrink-0 w-36 h-44 rounded-2xl overflow-hidden snap-start',
                 'transition-[transform,opacity] duration-200 hover:scale-[1.012] hover:opacity-90 active:opacity-70',
-                sizeClass,
                 memory.previewUrl ? '' : 'bg-muted/60',
               ].join(' ')}
             >
@@ -50,7 +44,6 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                   src={memory.previewUrl}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover"
-                  style={isFirst ? { filter: 'brightness(1.06) contrast(1.03)' } : undefined}
                   loading="lazy"
                   draggable={false}
                 />
@@ -70,13 +63,12 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                 >
                   {memory.title}
                 </p>
-                <p className="text-white/38 text-[10px] mt-1">
+                <p className="text-white/50 text-[10px] mt-1">
                   {formatMemoryDate(memory.start_date, memory.end_date)}
                 </p>
               </div>
             </Link>
-          )
-        })}
+          ))}
         </div>
       </div>
     </section>
