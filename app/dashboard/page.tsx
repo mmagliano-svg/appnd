@@ -3,12 +3,10 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
 import { getTopPeople } from '@/actions/persons'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
-import { HomeHeroCarousel, type HeroMemory } from '@/components/home/HomeHeroCarousel'
-import { HomeStats } from '@/components/home/HomeStats'
+import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
 import { SharedMemories, type SharedMemory } from '@/components/home/SharedMemories'
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
-import { AllMemoriesList, type ListMemory } from '@/components/home/AllMemoriesList'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -45,34 +43,33 @@ export default async function DashboardPage() {
   const events = memoriesRaw.filter((m) => !m.end_date)
   const periods = memoriesRaw.filter((m) => Boolean(m.end_date))
 
-  // ── Hero carousel ──────────────────────────────────────────────────────────
-  // Prefer memories with photos; fill up to 5 from the rest
-  const withPhoto = events.filter((m) => previewUrl(m) !== null)
-  const withoutPhoto = events.filter((m) => previewUrl(m) === null)
-  const heroMemories: HeroMemory[] = [...withPhoto, ...withoutPhoto]
-    .slice(0, 5)
+  // ── Hero — single dominant card ────────────────────────────────────────────
+  // Best: most recent event with a photo; fallback to most recent event
+  const heroSource =
+    events.find((m) => previewUrl(m) !== null) ?? events[0] ?? null
+  const heroMemory: HeroMemory | null = heroSource
+    ? {
+        id: heroSource.id,
+        title: heroSource.title,
+        start_date: heroSource.start_date,
+        end_date: heroSource.end_date ?? null,
+        location_name: heroSource.location_name ?? null,
+        previewUrl: previewUrl(heroSource),
+      }
+    : null
+
+  // ── Continue Story ─────────────────────────────────────────────────────────
+  // Exclude the hero memory so it doesn't appear twice
+  const continueMemories: StoryMemory[] = events
+    .filter((m) => m.id !== heroSource?.id)
+    .slice(0, 6)
     .map((m) => ({
       id: m.id,
       title: m.title,
       start_date: m.start_date,
       end_date: m.end_date ?? null,
-      location_name: m.location_name ?? null,
       previewUrl: previewUrl(m),
     }))
-
-  // ── Stats ──────────────────────────────────────────────────────────────────
-  const uniquePlaces = new Set(
-    memoriesRaw.filter((m) => m.location_name).map((m) => m.location_name!),
-  ).size
-
-  // ── Continue Story ─────────────────────────────────────────────────────────
-  const continueMemories: StoryMemory[] = events.slice(0, 6).map((m) => ({
-    id: m.id,
-    title: m.title,
-    start_date: m.start_date,
-    end_date: m.end_date ?? null,
-    previewUrl: previewUrl(m),
-  }))
 
   // ── Shared With You ────────────────────────────────────────────────────────
   const sharedRaw = memoriesRaw.filter((m) => m.created_by !== user.id)
@@ -141,50 +138,31 @@ export default async function DashboardPage() {
     previewUrl: previewUrl(p),
   }))
 
-  // ── All Memories list ──────────────────────────────────────────────────────
-  const allMemories: ListMemory[] = events.map((m) => ({
-    id: m.id,
-    title: m.title,
-    start_date: m.start_date,
-    end_date: m.end_date ?? null,
-    location_name: m.location_name ?? null,
-    category: m.category ?? null,
-    categories: m.categories as string[] | null,
-    previewUrl: previewUrl(m),
-  }))
-
   return (
     <main className="min-h-screen bg-background pb-28">
       <div className="max-w-[1100px] mx-auto">
 
-      <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
+        <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
 
-      <div className="space-y-8 pt-1">
+        <div className="space-y-8 pt-1">
 
-        <HomeHeroCarousel memories={heroMemories} />
+          <HomeHero memory={heroMemory} displayName={displayName} />
 
-        <HomeStats
-          momentCount={events.length}
-          chapterCount={periods.length}
-          placeCount={uniquePlaces}
-          peopleCount={peopleRaw.length}
-        />
+          {continueMemories.length > 0 && (
+            <ContinueStory memories={continueMemories} />
+          )}
 
-        <ContinueStory memories={continueMemories} />
+          {sharedMemories.length > 0 && (
+            <SharedMemories memories={sharedMemories} />
+          )}
 
-        {sharedMemories.length > 0 && (
-          <SharedMemories memories={sharedMemories} />
-        )}
+          <LifeClusters
+            people={peopleClusters}
+            places={placesClusters}
+            chapters={chapterClusters}
+          />
 
-        <LifeClusters
-          people={peopleClusters}
-          places={placesClusters}
-          chapters={chapterClusters}
-        />
-
-        <AllMemoriesList memories={allMemories} />
-
-      </div>
+        </div>
       </div>
     </main>
   )
