@@ -18,7 +18,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
 
   return (
     <section className="space-y-3 pt-4">
-      <p className="px-4 text-[10px] font-normal uppercase tracking-[0.18em] text-muted-foreground/38">
+      <p className="px-4 text-[10px] font-normal uppercase tracking-[0.22em] text-muted-foreground/32">
         Da dove eri
       </p>
       <div
@@ -27,9 +27,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
       >
         {memories.map((memory, i) => {
           const isFirst = i === 0
-          const sizeClass = isFirst
-            ? 'w-40 h-52'
-            : 'w-36 h-44'
+          const sizeClass = isFirst ? 'w-40 h-52' : 'w-36 h-44'
 
           return (
             <Link
@@ -37,7 +35,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
               href={`/memories/${memory.id}`}
               className={[
                 'relative shrink-0 rounded-2xl overflow-hidden snap-start',
-                'transition-[transform,opacity] duration-150 hover:scale-[1.015] hover:opacity-90 active:opacity-70',
+                'transition-[transform,opacity] duration-200 hover:scale-[1.012] hover:opacity-90 active:opacity-70',
                 sizeClass,
                 memory.previewUrl ? '' : 'bg-muted/60',
               ].join(' ')}
@@ -57,14 +55,17 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
               <div
                 className="absolute inset-0"
                 style={{
-                  background: 'linear-gradient(to bottom, transparent 42%, rgba(0,0,0,0.54) 100%)',
+                  background: 'linear-gradient(to bottom, transparent 44%, rgba(0,0,0,0.52) 100%)',
                 }}
               />
               <div className="absolute bottom-0 left-0 right-0 p-3">
-                <p className="text-white/85 text-[11px] font-medium leading-snug line-clamp-2">
+                <p
+                  className="text-white/85 text-[11px] font-medium leading-snug line-clamp-2"
+                  style={{ textShadow: '0 1px 6px rgba(0,0,0,0.22)' }}
+                >
                   {memory.title}
                 </p>
-                <p className="text-white/38 text-[10px] mt-0.5">
+                <p className="text-white/38 text-[10px] mt-1">
                   {formatMemoryDate(memory.start_date, memory.end_date)}
                 </p>
               </div>

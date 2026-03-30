@@ -20,7 +20,6 @@ const WIDTH_CYCLE = ['w-36', 'w-28', 'w-32', 'w-24', 'w-36', 'w-28'] as const
 function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
   const isFirst = index === 0
   const w = isFirst ? 'w-40' : WIDTH_CYCLE[index % WIDTH_CYCLE.length]
-  // First card taller for natural vertical tension in items-end row
   const aspect = isFirst ? 'aspect-[3/4]' : 'aspect-square'
 
   const imageEl = item.previewUrl ? (
@@ -40,17 +39,17 @@ function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
       href={item.href}
       className={[
         `flex flex-col shrink-0 ${w} gap-2`,
-        'transition-[transform,opacity] duration-150 hover:scale-[1.015] hover:opacity-90 active:opacity-70',
+        'transition-[transform,opacity] duration-200 hover:scale-[1.012] hover:opacity-90 active:opacity-70',
       ].join(' ')}
     >
       <div className={`${aspect} rounded-2xl overflow-hidden`}>
         {imageEl}
       </div>
       <div className="px-0.5">
-        <p className="text-[11px] font-medium truncate leading-tight text-foreground/75">
+        <p className="text-[11px] font-medium truncate leading-tight text-foreground/60">
           {item.label}
         </p>
-        <p className="text-[10px] text-muted-foreground/38 mt-0.5">
+        <p className="text-[10px] text-muted-foreground/32 mt-0.5">
           {item.count} moment{item.count !== 1 ? 'i' : 'o'}
         </p>
       </div>
@@ -67,7 +66,7 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
 
   return (
     <section className="space-y-4 pt-2">
-      <p className="px-4 text-[10px] font-normal uppercase tracking-[0.18em] text-muted-foreground/38">
+      <p className="px-4 text-[10px] font-normal uppercase tracking-[0.22em] text-muted-foreground/32">
         I tuoi mondi
       </p>
       <div
