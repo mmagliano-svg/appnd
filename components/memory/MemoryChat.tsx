@@ -40,9 +40,14 @@ export function MemoryChat({ memoryId, currentUserId, initialMessages }: Props) 
   const [isPending, startTransition] = useTransition()
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef  = useRef<HTMLTextAreaElement>(null)
+  const mountedRef = useRef(false)
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom only when NEW messages arrive after mount — never on load
   useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true
+      return
+    }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 

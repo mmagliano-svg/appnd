@@ -9,6 +9,7 @@ import { getLikeState } from '@/actions/likes'
 import { MemoryChat } from '@/components/memory/MemoryChat'
 import { MemoryActions } from '@/components/memory/MemoryActions'
 import { RemoveParticipantButton } from '@/components/memory/RemoveParticipantButton'
+import { ScrollToTop } from '@/components/memory/ScrollToTop'
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -327,6 +328,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
   return (
     <main className="min-h-screen bg-background">
+      <ScrollToTop />
 
       {/* ── Hero block ── */}
       <div className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'pt-14'} bg-muted overflow-hidden`}>
