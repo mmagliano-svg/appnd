@@ -15,7 +15,7 @@ interface LifeClustersProps {
 }
 
 // Width sequence — feels organic, not grid-like
-const WIDTH_CYCLE = ['w-36', 'w-28', 'w-32', 'w-30', 'w-36', 'w-28'] as const
+const WIDTH_CYCLE = ['w-36', 'w-28', 'w-32', 'w-24', 'w-36', 'w-28'] as const
 
 function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
   const w = WIDTH_CYCLE[index % WIDTH_CYCLE.length]
