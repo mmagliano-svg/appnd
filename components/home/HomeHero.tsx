@@ -55,17 +55,17 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900" />
         )}
 
-        {/* Gradient — transparent top, deepens toward text */}
+        {/* Gradient — stronger toward text for immediate readability */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(to bottom, transparent 0%, transparent 38%, rgba(0,0,0,0.48) 68%, rgba(0,0,0,0.80) 100%)',
+              'linear-gradient(to bottom, transparent 0%, transparent 35%, rgba(0,0,0,0.52) 65%, rgba(0,0,0,0.88) 100%)',
           }}
         />
 
         {/* Memory text */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-8 animate-hero-text">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 animate-hero-text">
           <p
             className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-1"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.28)' }}

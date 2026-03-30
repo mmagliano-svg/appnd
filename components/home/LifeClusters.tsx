@@ -14,12 +14,14 @@ interface LifeClustersProps {
   chapters: ClusterItem[]
 }
 
-// Width cycle — organic variation. All values must be valid Tailwind widths.
-const WIDTH_CYCLE = ['w-36', 'w-28', 'w-32', 'w-24', 'w-36', 'w-28'] as const
+// Width cycle for non-first items — organic, no visible pattern.
+// All values must be valid Tailwind widths.
+const WIDTH_CYCLE = ['w-32', 'w-36', 'w-28', 'w-32', 'w-24', 'w-36'] as const
 
 function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
   const isFirst = index === 0
-  const w = isFirst ? 'w-40' : WIDTH_CYCLE[index % WIDTH_CYCLE.length]
+  // First card: wide + tall — pulls the eye naturally
+  const w = isFirst ? 'w-40' : WIDTH_CYCLE[(index - 1) % WIDTH_CYCLE.length]
   const aspect = isFirst ? 'aspect-[3/4]' : 'aspect-square'
 
   const imageEl = item.previewUrl ? (
@@ -49,7 +51,7 @@ function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
         <p className="text-[11px] font-medium truncate leading-tight text-foreground/60">
           {item.label}
         </p>
-        <p className="text-[10px] text-muted-foreground/32 mt-0.5">
+        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
           {item.count} moment{item.count !== 1 ? 'i' : 'o'}
         </p>
       </div>
@@ -66,7 +68,7 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
 
   return (
     <section className="space-y-4 pt-2">
-      <p className="px-4 text-[10px] font-normal uppercase tracking-[0.22em] text-muted-foreground/32">
+      <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
         I tuoi mondi
       </p>
       <div

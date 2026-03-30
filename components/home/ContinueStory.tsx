@@ -18,8 +18,8 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
 
   return (
     <section className="space-y-3 pt-4">
-      <p className="px-4 text-[10px] font-normal uppercase tracking-[0.22em] text-muted-foreground/32">
-        Da dove eri
+      <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+        Riprendi da qui
       </p>
       <div
         className="flex gap-4 overflow-x-auto px-4 pb-2 snap-x"
@@ -27,7 +27,8 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
       >
         {memories.map((memory, i) => {
           const isFirst = i === 0
-          const sizeClass = isFirst ? 'w-40 h-52' : 'w-36 h-44'
+          // First card is wider and taller — natural entry point, not just another card
+          const sizeClass = isFirst ? 'w-44 h-52' : 'w-36 h-44'
 
           return (
             <Link
