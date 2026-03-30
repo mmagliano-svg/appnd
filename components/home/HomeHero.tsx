@@ -65,7 +65,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
         />
 
         {/* Memory text */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 animate-hero-text">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-9 animate-hero-text">
           <p
             className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-1"
             style={{ textShadow: '0 2px 8px rgba(0,0,0,0.28)' }}

@@ -117,7 +117,7 @@ export default async function DashboardPage() {
 
         <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
 
-        <div className="space-y-12 pt-1">
+        <div className="space-y-14 pt-1">
 
           <HomeHero memory={heroMemory} displayName={displayName} />
 

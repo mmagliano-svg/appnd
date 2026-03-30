@@ -19,7 +19,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
   return (
     <section className="pt-4 space-y-3">
       <div className="px-4">
-        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/70">
+        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
           Riprendi da qui
         </p>
       </div>
@@ -50,6 +50,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                   src={memory.previewUrl}
                   alt=""
                   className="absolute inset-0 w-full h-full object-cover"
+                  style={isFirst ? { filter: 'brightness(1.06) contrast(1.03)' } : undefined}
                   loading="lazy"
                   draggable={false}
                 />
