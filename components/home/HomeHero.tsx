@@ -19,7 +19,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
   if (!memory) {
     return (
       <div className="px-4">
-        <div className="w-full aspect-[3/4] max-h-[62vh] rounded-3xl bg-muted flex flex-col items-center justify-center gap-4 text-center px-8">
+        <div className="w-full aspect-[3/4] max-h-[56vh] rounded-3xl bg-muted flex flex-col items-center justify-center gap-4 text-center px-8">
           <span className="text-3xl text-muted-foreground/40 select-none">✦</span>
           <p className="text-base font-semibold text-muted-foreground/70 leading-snug">
             La tua storia inizia qui.
@@ -39,7 +39,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
     <div className="px-4">
       <Link
         href={`/memories/${memory.id}`}
-        className="relative block w-full aspect-[3/4] max-h-[62vh] rounded-3xl overflow-hidden bg-muted"
+        className="relative block w-full aspect-[3/4] max-h-[56vh] rounded-3xl overflow-hidden bg-muted"
         style={{ boxShadow: '0 20px 56px rgba(0,0,0,0.08)' }}
       >
         {memory.previewUrl ? (

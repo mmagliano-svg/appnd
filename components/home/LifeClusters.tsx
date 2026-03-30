@@ -54,7 +54,7 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
 
   return (
     <section className="pt-2 space-y-3">
-      <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
+      <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
         I tuoi mondi
       </p>
       <div
