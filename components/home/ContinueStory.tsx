@@ -29,7 +29,10 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
           <Link
             key={memory.id}
             href={`/memories/${memory.id}`}
-            className="relative shrink-0 w-36 h-44 rounded-2xl overflow-hidden bg-muted snap-start"
+            className={[
+              'relative shrink-0 w-36 h-44 rounded-2xl overflow-hidden snap-start transition-opacity hover:opacity-80 active:opacity-70',
+              memory.previewUrl ? '' : 'bg-muted/60',
+            ].join(' ')}
           >
             {memory.previewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -45,7 +48,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
             )}
             <div
               className="absolute inset-0"
-              style={{ background: 'linear-gradient(to bottom, transparent 30%, rgba(0,0,0,0.72) 100%)' }}
+              style={{ background: 'linear-gradient(to bottom, transparent 35%, rgba(0,0,0,0.68) 100%)' }}
             />
             <div className="absolute bottom-0 left-0 right-0 p-3">
               <p className="text-white text-xs font-semibold leading-snug line-clamp-2">

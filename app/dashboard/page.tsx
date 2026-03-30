@@ -5,7 +5,6 @@ import { getTopPeople } from '@/actions/persons'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
-import { SharedMemories, type SharedMemory } from '@/components/home/SharedMemories'
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
 
 export default async function DashboardPage() {
@@ -71,32 +70,6 @@ export default async function DashboardPage() {
       previewUrl: previewUrl(m),
     }))
 
-  // ── Shared With You ────────────────────────────────────────────────────────
-  const sharedRaw = memoriesRaw.filter((m) => m.created_by !== user.id)
-  let sharedMemories: SharedMemory[] = []
-
-  if (sharedRaw.length > 0) {
-    const creatorIds = Array.from(new Set(sharedRaw.map((m) => m.created_by)))
-    const { data: creators } = await supabase
-      .from('users')
-      .select('id, display_name, email')
-      .in('id', creatorIds)
-    const creatorMap = new Map(
-      (creators ?? []).map((c) => [
-        c.id,
-        c.display_name ?? c.email?.split('@')[0] ?? 'Qualcuno',
-      ]),
-    )
-    sharedMemories = sharedRaw.slice(0, 5).map((m) => ({
-      id: m.id,
-      title: m.title,
-      start_date: m.start_date,
-      end_date: m.end_date ?? null,
-      previewUrl: previewUrl(m),
-      sharedBy: creatorMap.get(m.created_by) ?? 'Qualcuno',
-    }))
-  }
-
   // ── Life Clusters ──────────────────────────────────────────────────────────
   // People
   const peopleClusters: ClusterItem[] = peopleRaw.slice(0, 3).map((p) => ({
@@ -144,16 +117,12 @@ export default async function DashboardPage() {
 
         <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
 
-        <div className="space-y-8 pt-1">
+        <div className="space-y-10 pt-1">
 
           <HomeHero memory={heroMemory} displayName={displayName} />
 
           {continueMemories.length > 0 && (
             <ContinueStory memories={continueMemories} />
-          )}
-
-          {sharedMemories.length > 0 && (
-            <SharedMemories memories={sharedMemories} />
           )}
 
           <LifeClusters
