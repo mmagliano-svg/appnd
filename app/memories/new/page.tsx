@@ -11,7 +11,6 @@ import type { SimplePerson } from '@/actions/persons'
 import { createClient } from '@/lib/supabase/client'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
-import { formatPeriodDisplay } from '@/lib/utils/dates'
 import { getPromptForCategory } from '@/lib/constants/prompts'
 
 function NewMemoryForm() {
@@ -27,10 +26,10 @@ function NewMemoryForm() {
   const [categories, setCategories] = useState<string[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [periods, setPeriods] = useState<PeriodSummary[]>([])
-  const [parentPeriodId, setParentPeriodId] = useState<string | null>(null)
   const [groups, setGroups] = useState<GroupSummary[]>([])
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedPeople, setSelectedPeople] = useState<SimplePerson[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
   const [isOngoing, setIsOngoing] = useState(false)
@@ -50,9 +49,6 @@ function NewMemoryForm() {
     getAllUserTags().then(setAllTags).catch(() => {})
     getUserPeriods().then((loaded) => {
       setPeriods(loaded)
-      if (periodFromUrl && loaded.some((p) => p.id === periodFromUrl)) {
-        setParentPeriodId(periodFromUrl)
-      }
     }).catch(() => {})
     getUserGroups().then((loaded) => {
       setGroups(loaded)
@@ -62,7 +58,8 @@ function NewMemoryForm() {
     }).catch(() => {})
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const suggestedPeriod = useMemo(() => {
+  // Auto-detect the most specific period containing startDate
+  const suggestedPeriod = useMemo((): PeriodSummary | null => {
     if (memoryType === 'period' || !startDate || periods.length === 0) return null
     const matches = periods.filter(
       (p) => startDate >= p.start_date && startDate <= p.end_date
@@ -75,12 +72,9 @@ function NewMemoryForm() {
     )[0]
   }, [startDate, periods, memoryType])
 
-  const outOfRange = useMemo(() => {
-    if (!parentPeriodId || !startDate) return false
-    const sel = periods.find((p) => p.id === parentPeriodId)
-    if (!sel) return false
-    return startDate < sel.start_date || startDate > sel.end_date
-  }, [parentPeriodId, startDate, periods])
+  // Auto-resolved period: URL param takes priority, then date-based suggestion
+  const autoParentPeriodId: string | null =
+    periodFromUrl ?? suggestedPeriod?.id ?? null
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -116,7 +110,8 @@ function NewMemoryForm() {
         end_date: memoryType === 'period'
           ? (isOngoing ? '9999-12-31' : endDate || undefined)
           : undefined,
-        parent_period_id: memoryType === 'day' ? parentPeriodId : null,
+        // Auto-associate period based on date — no manual selection
+        parent_period_id: memoryType === 'day' ? autoParentPeriodId : null,
         location_name: form.get('location_name') as string,
         description: form.get('description') as string,
         categories,
@@ -162,14 +157,13 @@ function NewMemoryForm() {
   }
 
   const today = new Date().toISOString().split('T')[0]
-  const hasMedia = Boolean(mediaFile)
   const isPeriod = memoryType === 'period'
 
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 pb-24">
 
-        {/* ── Header ── */}
+        {/* ── Header ───────────────────────────────────────────────── */}
         <div className="flex items-center justify-between pt-6 pb-8">
           <button
             type="button"
@@ -182,12 +176,12 @@ function NewMemoryForm() {
             </svg>
           </button>
           <p className="text-sm font-semibold">Nuovo ricordo</p>
-          <div className="w-11" /> {/* spacer */}
+          <div className="w-11" />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
 
-          {/* ══ ZONA 1 — Il momento ══════════════════════════════════════ */}
+          {/* ══ ZONA PRINCIPALE ════════════════════════════════════════ */}
           <div className="space-y-5">
 
             {/* Photo */}
@@ -195,22 +189,15 @@ function NewMemoryForm() {
               <button
                 type="button"
                 onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-3 w-full text-left min-h-[44px] group"
+                className="w-full h-36 rounded-3xl bg-muted/40 hover:bg-muted/60 transition-colors flex flex-col items-center justify-center gap-2"
               >
-                <span className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0 group-hover:bg-muted/70 transition-colors">
-                  <svg className="w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                      d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </span>
-                <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                  Aggiungi una foto o video
-                </span>
-                <svg className="w-4 h-4 text-muted-foreground/40 ml-auto shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
+                <svg className="w-7 h-7 text-muted-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
+                <span className="text-sm text-muted-foreground/70">Aggiungi una foto</span>
               </button>
             ) : (
               <div className="relative">
@@ -250,22 +237,22 @@ function NewMemoryForm() {
               className="hidden"
             />
 
-            {/* Title — underline style, dominant */}
+            {/* Title */}
             <input
               ref={titleRef}
               id="title"
               name="title"
               type="text"
-              placeholder="Come chiami questo momento?"
+              placeholder="Come vuoi ricordarlo?"
               required
-              autoFocus={!hasMedia}
+              autoFocus
               className="w-full bg-transparent text-2xl font-bold placeholder:text-muted-foreground/30 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
             />
 
             {/* Date */}
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                   {isPeriod ? 'Quanto è durato?' : 'Quando è successo?'}
                 </p>
                 <div className="flex rounded-lg border border-border overflow-hidden text-xs shrink-0">
@@ -273,9 +260,7 @@ function NewMemoryForm() {
                     type="button"
                     onClick={() => { setMemoryType('day'); setEndDate('') }}
                     className={`px-3 py-1.5 font-medium transition-colors ${
-                      !isPeriod
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:bg-muted/50'
+                      !isPeriod ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
                     Giorno
@@ -284,9 +269,7 @@ function NewMemoryForm() {
                     type="button"
                     onClick={() => setMemoryType('period')}
                     className={`px-3 py-1.5 font-medium transition-colors border-l border-border ${
-                      isPeriod
-                        ? 'bg-foreground text-background'
-                        : 'text-muted-foreground hover:bg-muted/50'
+                      isPeriod ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-muted/50'
                     }`}
                   >
                     Periodo
@@ -355,55 +338,36 @@ function NewMemoryForm() {
                   </button>
                 </div>
               )}
-            </div>
 
-            {/* Classification chips — inline, light */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setIsFirstTime((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
-                  isFirstTime
-                    ? 'border-foreground bg-foreground text-background'
-                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                }`}
-              >
-                ✦ Prima volta
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsAnniversary((v) => !v)}
-                className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
-                  isAnniversary
-                    ? 'border-foreground bg-foreground text-background'
-                    : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                }`}
-              >
-                ↺ Ricorrenza
-              </button>
+              {/* Auto period hint — subtle, non-editable */}
+              {suggestedPeriod && !isPeriod && (
+                <p className="text-xs text-muted-foreground/60 flex items-center gap-1.5">
+                  <span>↳</span>
+                  Parte di <span className="font-medium text-muted-foreground">{suggestedPeriod.title}</span>
+                </p>
+              )}
             </div>
-            {isAnniversary && (
-              <p className="text-xs text-muted-foreground -mt-4 px-1">
-                Tornerà in evidenza ogni anno nella stessa data.
-              </p>
-            )}
           </div>
 
-          {/* ── Divider ── */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-border/30" />
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/40">
-              Contesto
-            </p>
-            <div className="flex-1 border-t border-border/30" />
-          </div>
+          {/* ── Divider: optional enrichment ─────────────────────── */}
+          <p className="text-sm text-muted-foreground/50 text-center">
+            Aggiungi altri dettagli (facoltativo)
+          </p>
 
-          {/* ══ ZONA 2 — Contesto ════════════════════════════════════════ */}
+          {/* ══ ZONA ARRICCHIMENTO ═════════════════════════════════════ */}
           <div className="space-y-7">
+
+            {/* Con chi */}
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                Chi era con te?
+              </p>
+              <PeopleSelector onChange={setSelectedPeople} />
+            </div>
 
             {/* Luogo */}
             <div className="space-y-1.5">
-              <label htmlFor="location_name" className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              <label htmlFor="location_name" className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                 Dove eri?
               </label>
               <input
@@ -415,18 +379,10 @@ function NewMemoryForm() {
               />
             </div>
 
-            {/* Con chi */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                Chi era con te?
-              </p>
-              <PeopleSelector onChange={setSelectedPeople} />
-            </div>
-
-            {/* Categorie — horizontal scroll chips */}
+            {/* Categorie */}
             <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                Di che tipo è questo momento?
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                Di che tipo è?
               </p>
               <div
                 className="flex gap-2 overflow-x-auto pb-1"
@@ -459,10 +415,46 @@ function NewMemoryForm() {
               </div>
             </div>
 
+            {/* Classification */}
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                Questo momento è…
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsFirstTime((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
+                    isFirstTime
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  ✦ Prima volta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsAnniversary((v) => !v)}
+                  className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
+                    isAnniversary
+                      ? 'border-foreground bg-foreground text-background'
+                      : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  }`}
+                >
+                  ↺ Ricorrenza
+                </button>
+              </div>
+              {isAnniversary && (
+                <p className="text-xs text-muted-foreground/60 px-1">
+                  Tornerà in evidenza ogni anno nella stessa data.
+                </p>
+              )}
+            </div>
+
             {/* Racconto */}
             <div className="space-y-1.5">
               <div className="flex items-baseline justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                   Il racconto
                 </p>
                 <span className="text-[10px] text-muted-foreground/40 italic">facoltativo</span>
@@ -478,139 +470,82 @@ function NewMemoryForm() {
 
           </div>
 
-          {/* ── Divider ── */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-border/30" />
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/40">
-              Avanzato
-            </p>
-            <div className="flex-1 border-t border-border/30" />
-          </div>
+          {/* ══ SEZIONE AVANZATA (collassata) ═════════════════════════ */}
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((v) => !v)}
+              className="flex items-center gap-1.5 text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors min-h-[44px]"
+            >
+              {showAdvanced ? (
+                <>Nascondi dettagli <span className="text-xs">↑</span></>
+              ) : (
+                <>Altri dettagli <span className="text-xs">→</span></>
+              )}
+            </button>
 
-          {/* ══ ZONA 3 — Avanzato ════════════════════════════════════════ */}
-          <div className="space-y-7">
+            {showAdvanced && (
+              <div className="space-y-7 mt-5">
 
-            {/* Connessioni / Tag */}
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                Connessioni
-              </p>
-              <TagInput
-                value={tags}
-                onChange={setTags}
-                suggestions={allTags}
-                placeholder="Luoghi, temi, parole chiave…"
-              />
-            </div>
-
-            {/* Periodo di appartenenza */}
-            {!isPeriod && periods.length > 0 && (
-              <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-                  Fa parte di un periodo?
-                </p>
-
-                {suggestedPeriod && parentPeriodId !== suggestedPeriod.id && (
-                  <button
-                    type="button"
-                    onClick={() => setParentPeriodId(suggestedPeriod.id)}
-                    className="w-full flex items-center justify-between gap-3 rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-left hover:bg-muted/40 transition-colors"
-                  >
-                    <div>
-                      <p className="text-[10px] text-muted-foreground/60 uppercase tracking-wider mb-0.5">Suggerito</p>
-                      <p className="text-sm font-semibold">{suggestedPeriod.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatPeriodDisplay(suggestedPeriod.start_date, suggestedPeriod.end_date)}
-                      </p>
-                    </div>
-                    <span className="text-xs text-muted-foreground shrink-0">Collega →</span>
-                  </button>
-                )}
-
-                <div className="space-y-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setParentPeriodId(null)}
-                    className={`w-full flex items-center gap-2.5 rounded-2xl border px-4 py-3 text-sm transition-all text-left min-h-[44px] ${
-                      parentPeriodId === null
-                        ? 'border-foreground bg-foreground text-background font-semibold'
-                        : 'border-border/50 hover:border-border hover:bg-muted/20'
-                    }`}
-                  >
-                    Nessun periodo
-                  </button>
-                  {periods.map((period) => (
-                    <button
-                      key={period.id}
-                      type="button"
-                      onClick={() => setParentPeriodId(period.id)}
-                      className={`w-full flex items-center justify-between gap-2.5 rounded-2xl border px-4 py-3 text-sm transition-all text-left min-h-[44px] ${
-                        parentPeriodId === period.id
-                          ? 'border-foreground bg-foreground text-background font-semibold'
-                          : 'border-border/50 hover:border-border hover:bg-muted/20'
-                      }`}
-                    >
-                      <span className="truncate">{period.title}</span>
-                      <span className={`text-xs shrink-0 ${parentPeriodId === period.id ? 'text-background/60' : 'text-muted-foreground'}`}>
-                        {formatPeriodDisplay(period.start_date, period.end_date)}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {outOfRange && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5 px-1">
-                    <span>⚠</span> La data è fuori dal range di questo periodo.
+                {/* Connessioni / Tag */}
+                <div className="space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                    Connessioni
                   </p>
-                )}
-              </div>
-            )}
+                  <TagInput
+                    value={tags}
+                    onChange={setTags}
+                    suggestions={allTags}
+                    placeholder="Luoghi, temi, parole chiave…"
+                  />
+                </div>
 
-            {/* Gruppo */}
-            {memoryType === 'day' && groups.length > 0 && (
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/60">Gruppo</p>
-                  <span className="text-[10px] text-muted-foreground/40">(opzionale)</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGroupId(null)}
-                    className={`rounded-full px-4 py-2 text-sm font-medium border transition-all min-h-[44px] ${
-                      selectedGroupId === null
-                        ? 'bg-foreground text-background border-foreground'
-                        : 'border-border text-muted-foreground hover:border-foreground/30'
-                    }`}
-                  >
-                    Nessun gruppo
-                  </button>
-                  {groups.map((g) => (
-                    <button
-                      key={g.id}
-                      type="button"
-                      onClick={() => setSelectedGroupId(g.id)}
-                      className={`rounded-full px-4 py-2 text-sm font-medium border transition-all min-h-[44px] ${
-                        selectedGroupId === g.id
-                          ? 'bg-foreground text-background border-foreground'
-                          : 'border-border text-muted-foreground hover:border-foreground/30'
-                      }`}
-                    >
-                      {g.name}
-                    </button>
-                  ))}
-                </div>
-                {selectedGroupId && (() => {
-                  const sg = groups.find((g) => g.id === selectedGroupId)
-                  return sg ? (
-                    <p className="text-xs text-muted-foreground px-1">
-                      Tutti i {sg.memberCount} membri di &ldquo;{sg.name}&rdquo; avranno accesso automatico.
+                {/* Gruppo */}
+                {memoryType === 'day' && groups.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                      Gruppo
                     </p>
-                  ) : null
-                })()}
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedGroupId(null)}
+                        className={`rounded-full px-4 py-2 text-sm font-medium border transition-all min-h-[44px] ${
+                          selectedGroupId === null
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'border-border text-muted-foreground hover:border-foreground/30'
+                        }`}
+                      >
+                        Nessun gruppo
+                      </button>
+                      {groups.map((g) => (
+                        <button
+                          key={g.id}
+                          type="button"
+                          onClick={() => setSelectedGroupId(g.id)}
+                          className={`rounded-full px-4 py-2 text-sm font-medium border transition-all min-h-[44px] ${
+                            selectedGroupId === g.id
+                              ? 'bg-foreground text-background border-foreground'
+                              : 'border-border text-muted-foreground hover:border-foreground/30'
+                          }`}
+                        >
+                          {g.name}
+                        </button>
+                      ))}
+                    </div>
+                    {selectedGroupId && (() => {
+                      const sg = groups.find((g) => g.id === selectedGroupId)
+                      return sg ? (
+                        <p className="text-xs text-muted-foreground/60 px-1">
+                          Tutti i {sg.memberCount} membri di &ldquo;{sg.name}&rdquo; avranno accesso automatico.
+                        </p>
+                      ) : null
+                    })()}
+                  </div>
+                )}
+
               </div>
             )}
-
           </div>
 
           {/* ── Error ── */}
@@ -624,7 +559,7 @@ function NewMemoryForm() {
             disabled={loading}
             className="w-full rounded-full bg-foreground text-background py-4 text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {loading ? (uploadStep || 'Salvataggio…') : 'Salva il ricordo'}
+            {loading ? (uploadStep || 'Salvataggio…') : 'Salva questo momento'}
           </button>
 
         </form>
