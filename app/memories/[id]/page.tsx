@@ -103,9 +103,10 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   const isPeriod = Boolean(memoryEndDate)
 
   // Hero photo — first photo contribution chronologically
-  const heroPhoto = contributions.find(
+  const heroContribution = contributions.find(
     (c) => c.content_type === 'photo' && c.media_url
-  )?.media_url ?? null
+  ) ?? null
+  const heroPhoto = heroContribution?.media_url ?? null
 
   // Fetch child events if this is a period
   const { data: childEventsData } = isPeriod
@@ -705,6 +706,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           ) : (
             <div className="space-y-10">
               {contributions.map((c) => {
+                // Skip hero photo — already shown as the page hero above
+                if (c.id === heroContribution?.id) return null
+
                 const authorData = (c as {
                   users?: { display_name?: string | null; email?: string | null }
                 }).users
