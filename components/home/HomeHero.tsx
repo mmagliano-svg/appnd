@@ -40,6 +40,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
       <Link
         href={`/memories/${memory.id}`}
         className="relative block w-full aspect-[3/4] max-h-[72vh] rounded-3xl overflow-hidden bg-muted"
+        style={{ boxShadow: '0 12px 40px rgba(0,0,0,0.10)' }}
       >
         {memory.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -54,21 +55,21 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900" />
         )}
 
-        {/* Overlay */}
+        {/* Gradient — top clear, bottom soft vignette */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(to bottom, rgba(0,0,0,0.06) 0%, transparent 30%, rgba(0,0,0,0.72) 100%)',
+              'linear-gradient(to bottom, transparent 0%, transparent 45%, rgba(0,0,0,0.55) 80%, rgba(0,0,0,0.72) 100%)',
           }}
         />
 
-        {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 p-5">
-          <p className="text-white font-bold text-2xl leading-snug tracking-tight line-clamp-2">
+        {/* Memory text */}
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-6">
+          <p className="text-white/90 font-semibold text-xl leading-snug tracking-tight line-clamp-2">
             {memory.title}
           </p>
-          <p className="text-white/55 text-xs mt-1.5">
+          <p className="text-white/45 text-[11px] mt-1.5 tracking-wide">
             {formatMemoryDate(memory.start_date, memory.end_date)}
             {memory.location_name && <span> · {memory.location_name}</span>}
           </p>

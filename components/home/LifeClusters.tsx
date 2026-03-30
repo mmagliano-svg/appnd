@@ -14,20 +14,22 @@ interface LifeClustersProps {
   chapters: ClusterItem[]
 }
 
-// Width sequence — feels organic, not grid-like
+// Width cycle — organic, not grid-like. All values must be valid Tailwind widths.
 const WIDTH_CYCLE = ['w-36', 'w-28', 'w-32', 'w-24', 'w-36', 'w-28'] as const
 
 function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
-  const w = WIDTH_CYCLE[index % WIDTH_CYCLE.length]
+  const isFirst = index === 0
+  // First item: slightly wider, taller aspect for visual tension
+  const w = isFirst ? 'w-40' : WIDTH_CYCLE[index % WIDTH_CYCLE.length]
+  const aspect = isFirst ? 'aspect-[3/4]' : 'aspect-square'
 
   if (item.previewUrl) {
-    // Image-dominant: no container, image IS the card
     return (
       <Link
         href={item.href}
         className={`flex flex-col shrink-0 ${w} gap-1.5 transition-opacity hover:opacity-80 active:opacity-70`}
       >
-        <div className="aspect-square rounded-2xl overflow-hidden">
+        <div className={`${aspect} rounded-2xl overflow-hidden`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={item.previewUrl}
@@ -38,7 +40,7 @@ function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
         </div>
         <div className="px-0.5">
           <p className="text-[11px] font-semibold truncate leading-tight">{item.label}</p>
-          <p className="text-[10px] text-muted-foreground/55 mt-0.5">
+          <p className="text-[10px] text-muted-foreground/45 mt-0.5">
             {item.count} moment{item.count !== 1 ? 'i' : 'o'}
           </p>
         </div>
@@ -46,16 +48,15 @@ function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
     )
   }
 
-  // No image: soft tonal background, no border
   return (
     <Link
       href={item.href}
       className={`flex flex-col shrink-0 ${w} gap-1.5 transition-opacity hover:opacity-80 active:opacity-70`}
     >
-      <div className="aspect-square rounded-2xl bg-muted/50" />
+      <div className={`${aspect} rounded-2xl bg-muted/50`} />
       <div className="px-0.5">
         <p className="text-[11px] font-semibold truncate leading-tight">{item.label}</p>
-        <p className="text-[10px] text-muted-foreground/55 mt-0.5">
+        <p className="text-[10px] text-muted-foreground/45 mt-0.5">
           {item.count} moment{item.count !== 1 ? 'i' : 'o'}
         </p>
       </div>
@@ -64,7 +65,6 @@ function ClusterCard({ item, index }: { item: ClusterItem; index: number }) {
 }
 
 export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
-  // Drop items with no image and 0 memories — they add nothing
   const all = [...people, ...places, ...chapters].filter(
     (item) => item.previewUrl !== null || item.count > 0,
   )
@@ -72,12 +72,12 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
   if (all.length === 0) return null
 
   return (
-    <section className="space-y-3">
-      <p className="px-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
-        La tua vita
+    <section className="space-y-3 pt-2">
+      <p className="px-4 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground/50">
+        I tuoi mondi
       </p>
       <div
-        className="flex items-end gap-3 overflow-x-auto px-4 pb-2"
+        className="flex items-end gap-4 overflow-x-auto px-4 pb-2"
         style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
       >
         {all.map((item, i) => (
