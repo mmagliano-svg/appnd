@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createOrGetPerson, setMemoryPeople } from '@/actions/persons'
 
 interface ChipPerson {
@@ -9,16 +9,27 @@ interface ChipPerson {
   name: string
 }
 
-function EnrichForm() {
-  const params = useSearchParams()
+export default function EnrichPage() {
   const router = useRouter()
-  const memoryId = params.get('memoryId') ?? ''
 
+  const [memoryId, setMemoryId] = useState('')
   const [input, setInput] = useState('')
   const [people, setPeople] = useState<ChipPerson[]>([])
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [ready, setReady] = useState(false)
+
+  // Hydrate from sessionStorage; redirect back if memoryId missing
+  useEffect(() => {
+    const storedId = sessionStorage.getItem('onboarding_memoryId') ?? ''
+    if (!storedId) {
+      router.replace('/onboarding')
+      return
+    }
+    setMemoryId(storedId)
+    setReady(true)
+  }, [router])
 
   async function addPerson() {
     const name = input.trim()
@@ -45,10 +56,6 @@ function EnrichForm() {
   }
 
   async function handleContinue() {
-    if (!memoryId) {
-      router.push('/dashboard')
-      return
-    }
     setSaving(true)
     setError('')
     try {
@@ -57,11 +64,8 @@ function EnrichForm() {
           memoryId,
           people.map((p) => p.id),
         )
-        const firstName = encodeURIComponent(people[0].name)
-        const peopleIds = people.map((p) => p.id).join(',')
-        router.push(
-          `/onboarding/collaborate?memoryId=${memoryId}&firstName=${firstName}&people=${encodeURIComponent(peopleIds)}`,
-        )
+        sessionStorage.setItem('onboarding_people', JSON.stringify(people))
+        router.push('/onboarding/collaborate')
       } else {
         router.push('/dashboard')
       }
@@ -71,6 +75,8 @@ function EnrichForm() {
     }
   }
 
+  if (!ready) return null
+
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <div className="flex-1 flex flex-col max-w-lg mx-auto w-full px-6 py-12">
@@ -79,7 +85,7 @@ function EnrichForm() {
           <div className="flex-1 flex flex-col gap-7">
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">
-                Chi c&apos;era con te?
+                Chi era con te in questo momento?
               </p>
               <h1 className="text-2xl font-bold leading-tight">
                 Aggiungi le persone che erano lì
@@ -154,13 +160,5 @@ function EnrichForm() {
         </div>
       </div>
     </main>
-  )
-}
-
-export default function EnrichPage() {
-  return (
-    <Suspense>
-      <EnrichForm />
-    </Suspense>
   )
 }

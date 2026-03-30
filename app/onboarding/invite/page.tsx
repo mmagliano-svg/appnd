@@ -1,54 +1,76 @@
 'use client'
 
-import { Suspense, useEffect, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
-import { getMemoryPeople, type SimplePerson } from '@/actions/persons'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createMemoryInvite } from '@/actions/invites'
+
+interface StoredPerson {
+  id: string
+  name: string
+}
 
 interface InviteState {
   loading: boolean
-  url: string | null
-  copied: boolean
+  sent: boolean
   error: string | null
+  url: string | null
 }
 
-function InviteForm() {
-  const params = useSearchParams()
+export default function InvitePage() {
   const router = useRouter()
 
-  const memoryId = params.get('memoryId') ?? ''
-
-  const [people, setPeople] = useState<SimplePerson[]>([])
-  const [fetching, setFetching] = useState(true)
+  const [memoryId, setMemoryId] = useState('')
+  const [people, setPeople] = useState<StoredPerson[]>([])
   const [invites, setInvites] = useState<Record<string, InviteState>>({})
   const [anyInvited, setAnyInvited] = useState(false)
+  const [ready, setReady] = useState(false)
 
+  // Hydrate from sessionStorage; redirect if required data is missing
   useEffect(() => {
-    if (!memoryId) return
-    getMemoryPeople(memoryId)
-      .then((list) => {
-        setPeople(list)
-        const init: Record<string, InviteState> = {}
-        for (const p of list) {
-          init[p.id] = { loading: false, url: null, copied: false, error: null }
-        }
-        setInvites(init)
-      })
-      .finally(() => setFetching(false))
-  }, [memoryId])
+    const storedId = sessionStorage.getItem('onboarding_memoryId') ?? ''
+    const storedPeople = sessionStorage.getItem('onboarding_people') ?? ''
+
+    if (!storedId || !storedPeople) {
+      router.replace('/onboarding')
+      return
+    }
+
+    let parsed: StoredPerson[] = []
+    try {
+      parsed = JSON.parse(storedPeople) as StoredPerson[]
+    } catch {
+      router.replace('/onboarding')
+      return
+    }
+
+    if (parsed.length === 0) {
+      router.replace('/onboarding')
+      return
+    }
+
+    const init: Record<string, InviteState> = {}
+    for (const p of parsed) {
+      init[p.id] = { loading: false, sent: false, error: null, url: null }
+    }
+
+    setMemoryId(storedId)
+    setPeople(parsed)
+    setInvites(init)
+    setReady(true)
+  }, [router])
 
   function setPersonState(id: string, patch: Partial<InviteState>) {
     setInvites((prev) => ({ ...prev, [id]: { ...prev[id], ...patch } }))
   }
 
-  async function handleInvite(person: SimplePerson) {
+  async function handleInvite(person: StoredPerson) {
     setPersonState(person.id, { loading: true, error: null })
     try {
       const { inviteUrl } = await createMemoryInvite(memoryId, person.id)
-      setPersonState(person.id, { loading: false, url: inviteUrl })
+      setPersonState(person.id, { loading: false, sent: true, url: inviteUrl })
       setAnyInvited(true)
 
-      // Native share on mobile
+      // Native share on mobile — best-effort
       if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
         try {
           await navigator.share({
@@ -56,7 +78,7 @@ function InviteForm() {
             text: `Ho salvato un momento che abbiamo vissuto insieme 🤍\nAprilo qui: ${inviteUrl}`,
           })
         } catch {
-          // User cancelled share — that's fine
+          // User cancelled — that's fine
         }
       }
     } catch (err) {
@@ -67,23 +89,25 @@ function InviteForm() {
     }
   }
 
-  async function handleCopy(id: string, url: string) {
+  async function handleCopy(id: string) {
+    const url = invites[id]?.url
+    if (!url) return
     try {
       await navigator.clipboard.writeText(url)
-      setPersonState(id, { copied: true })
-      setTimeout(() => setPersonState(id, { copied: false }), 2000)
     } catch {
-      // Fallback: select text — handled silently
+      // Silent fail — native share already attempted
     }
   }
 
-  if (fetching) {
-    return (
-      <main className="min-h-screen bg-background flex items-center justify-center">
-        <p className="text-sm text-muted-foreground">Caricamento…</p>
-      </main>
-    )
+  function handleDone() {
+    // Clear onboarding state on exit
+    sessionStorage.removeItem('onboarding_title')
+    sessionStorage.removeItem('onboarding_memoryId')
+    sessionStorage.removeItem('onboarding_people')
+    router.push('/dashboard')
   }
+
+  if (!ready) return null
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -110,7 +134,7 @@ function InviteForm() {
                 return (
                   <div
                     key={person.id}
-                    className="rounded-2xl border border-border/50 bg-card px-4 py-4 space-y-3"
+                    className="rounded-2xl border border-border/50 bg-card px-4 py-4"
                   >
                     {/* Person row */}
                     <div className="flex items-center justify-between gap-3">
@@ -125,7 +149,7 @@ function InviteForm() {
                         </span>
                       </div>
 
-                      {!state.url && (
+                      {!state.sent && (
                         <button
                           onClick={() => handleInvite(person)}
                           disabled={state.loading}
@@ -134,33 +158,26 @@ function InviteForm() {
                           {state.loading ? '…' : 'Invita'}
                         </button>
                       )}
-
-                      {state.url && (
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          ✓ Link pronto
-                        </span>
-                      )}
                     </div>
 
-                    {/* Copy row — shown after invite generated */}
-                    {state.url && (
-                      <div className="flex items-center gap-2">
-                        <input
-                          readOnly
-                          value={state.url}
-                          className="flex-1 rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground truncate focus:outline-none"
-                        />
+                    {/* Inline feedback after invite sent */}
+                    {state.sent && (
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="text-sm text-muted-foreground">
+                          ✓ <span className="font-medium text-foreground">{person.name}</span>{' '}
+                          riceverà il tuo invito
+                        </p>
                         <button
-                          onClick={() => handleCopy(person.id, state.url!)}
-                          className="shrink-0 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted transition-colors"
+                          onClick={() => handleCopy(person.id)}
+                          className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
                         >
-                          {state.copied ? 'Copiato ✓' : 'Copia'}
+                          Copia link
                         </button>
                       </div>
                     )}
 
                     {state.error && (
-                      <p className="text-xs text-destructive">{state.error}</p>
+                      <p className="mt-2 text-xs text-destructive">{state.error}</p>
                     )}
                   </div>
                 )
@@ -170,7 +187,7 @@ function InviteForm() {
 
           <div className="space-y-3 pt-6">
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={handleDone}
               className="w-full rounded-full bg-foreground text-background py-4 text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all"
             >
               {anyInvited ? 'Vai alla dashboard' : 'Salta per ora'}
@@ -180,13 +197,5 @@ function InviteForm() {
         </div>
       </div>
     </main>
-  )
-}
-
-export default function InvitePage() {
-  return (
-    <Suspense>
-      <InviteForm />
-    </Suspense>
   )
 }

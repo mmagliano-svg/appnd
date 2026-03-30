@@ -10,7 +10,8 @@ export default function TriggerPage() {
   function handleContinue() {
     const trimmed = value.trim()
     if (trimmed.length < 3) return
-    router.push(`/onboarding/create?title=${encodeURIComponent(trimmed)}`)
+    sessionStorage.setItem('onboarding_title', trimmed)
+    router.push('/onboarding/create')
   }
 
   return (

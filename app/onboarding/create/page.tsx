@@ -1,20 +1,31 @@
 'use client'
 
-import { Suspense, useState } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { createMemoryReturnId } from '@/actions/memories'
 
-function CreateForm() {
-  const params = useSearchParams()
+export default function CreatePage() {
   const router = useRouter()
 
-  const [title, setTitle] = useState(params.get('title') ?? '')
+  const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [location, setLocation] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [ready, setReady] = useState(false)
 
   const today = new Date().toISOString().split('T')[0]
+
+  // Hydrate from sessionStorage; redirect back if nothing to work with
+  useEffect(() => {
+    const stored = sessionStorage.getItem('onboarding_title') ?? ''
+    if (!stored) {
+      router.replace('/onboarding')
+      return
+    }
+    setTitle(stored)
+    setReady(true)
+  }, [router])
 
   async function handleSave() {
     const trimmedTitle = title.trim()
@@ -29,12 +40,17 @@ function CreateForm() {
         categories: [],
         tags: [],
       })
-      router.push(`/onboarding/enrich?memoryId=${memoryId}`)
+      // Update stored title with final (possibly edited) value
+      sessionStorage.setItem('onboarding_title', trimmedTitle)
+      sessionStorage.setItem('onboarding_memoryId', memoryId)
+      router.push('/onboarding/enrich')
     } catch {
       setError('Qualcosa è andato storto. Riprova.')
       setLoading(false)
     }
   }
+
+  if (!ready) return null
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
@@ -120,13 +136,5 @@ function CreateForm() {
         </div>
       </div>
     </main>
-  )
-}
-
-export default function CreatePage() {
-  return (
-    <Suspense>
-      <CreateForm />
-    </Suspense>
   )
 }
