@@ -62,12 +62,11 @@ function buildPeriodTitle(group: TimelineMemory[]): string {
   const season    = italianSeason(month, year)
 
   if (dominantLoc) {
-    // "Estate a Roma" — drop year since location is more specific
-    const seasonName = season.split(' ')[0]  // "Estate", "Inverno", etc.
-    return `${seasonName} a ${dominantLoc}`
+    // "Roma · Estate 2023" — location anchors, season + year give temporal context
+    return `${dominantLoc} · ${season}`
   }
 
-  // No dominant location — use full season label (includes year for disambiguation)
+  // No dominant location — season already includes year (e.g. "Estate 2023")
   return season
 }
 
