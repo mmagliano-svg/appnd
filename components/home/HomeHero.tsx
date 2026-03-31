@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TransitionLink } from '@/components/ui/transition-link'
 import { formatMemoryDate } from '@/lib/utils/dates'
 
 export interface HeroMemory {
@@ -37,7 +38,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
 
   return (
     <div className="px-4">
-      <Link
+      <TransitionLink
         href={`/memories/${memory.id}`}
         className="relative block w-full aspect-[3/4] max-h-[56vh] rounded-3xl overflow-hidden bg-muted"
         style={{ boxShadow: '0 20px 56px rgba(0,0,0,0.08)' }}
@@ -80,7 +81,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
             {memory.location_name && <span> · {memory.location_name}</span>}
           </p>
         </div>
-      </Link>
+      </TransitionLink>
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { TransitionLink } from '@/components/ui/transition-link'
 import { formatMemoryDate } from '@/lib/utils/dates'
 
 export interface StoryMemory {
@@ -31,7 +31,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
           {memories.map((memory, i) => {
             const isFirst = i === 0
             return (
-              <Link
+              <TransitionLink
                 key={memory.id}
                 href={`/memories/${memory.id}`}
                 className={[
@@ -71,7 +71,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                     {formatMemoryDate(memory.start_date, memory.end_date)}
                   </p>
                 </div>
-              </Link>
+              </TransitionLink>
             )
           })}
         </div>

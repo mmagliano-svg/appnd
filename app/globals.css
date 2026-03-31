@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── View Transitions: card → detail page ───────────────────────────────────
+ * Runs only when the browser supports the View Transitions API and the user
+ * has not requested reduced motion.
+ * ────────────────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) {
+    animation: 160ms ease-in both vt-fade-out;
+  }
+  ::view-transition-new(root) {
+    animation: 240ms cubic-bezier(0.22, 1, 0.36, 1) both vt-scale-in;
+  }
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -111,5 +124,18 @@
   }
   .animate-hero-zoom {
     animation: hero-ken-burns 9s ease-in-out infinite alternate;
+  }
+
+  /* ── Page transitions (View Transitions API) ──────────────────────────────
+   * Old page: fades out quickly — gets out of the way.
+   * New page: fades in with a 1.5% scale lift — sub-perceptual as motion,
+   * reads emotionally as the card opening forward into the next screen.
+   * Guarded by prefers-reduced-motion so it degrades gracefully.
+   * ────────────────────────────────────────────────────────────────────── */
+  @keyframes vt-fade-out {
+    to { opacity: 0; }
+  }
+  @keyframes vt-scale-in {
+    from { opacity: 0; transform: scale(0.985); }
   }
 }
