@@ -32,13 +32,12 @@ export function MemoryScrollEffects() {
       const p = Math.min(scrollY / (heroH * 0.65), 1)
 
       if (heroText) {
-        heroText.style.opacity = String(Math.max(0, 1 - p * 1.4))
+        heroText.style.opacity = String(Math.max(0, 1 - p * 1.1))
       }
 
       if (heroImg) {
-        const brightness = 1 - p * 0.07   // 1.0 → ~0.93
-        const contrast   = 1 - p * 0.05   // 1.0 → ~0.95
-        heroImg.style.filter = `brightness(${brightness}) contrast(${contrast})`
+        const brightness = 1 - p * 0.03   // 1.0 → ~0.97 — barely perceptible softening
+        heroImg.style.filter = `brightness(${brightness})`
       }
 
       if (heroGrad) {
@@ -82,8 +81,8 @@ export function MemoryScrollEffects() {
 
     targets.forEach((el) => {
       el.style.opacity    = '0'
-      el.style.transform  = 'translateY(10px)'
-      el.style.transition = 'opacity 480ms ease, transform 480ms ease'
+      el.style.transform  = 'translateY(4px)'
+      el.style.transition = 'opacity 340ms ease-out, transform 340ms ease-out'
       observer.observe(el)
     })
 

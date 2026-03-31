@@ -2,9 +2,10 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
 import { getTopPeople } from '@/actions/persons'
-import { getUpcomingMoments } from '@/actions/home'
+import { getUpcomingMoments, getHomeNudge } from '@/actions/home'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
+import { HomeNudge } from '@/components/home/HomeNudge'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
 import { UpcomingMoments } from '@/components/home/UpcomingMoments'
@@ -20,10 +21,11 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const [memoriesRaw, peopleRaw, upcomingMoments] = await Promise.all([
+  const [memoriesRaw, peopleRaw, upcomingMoments, nudge] = await Promise.all([
     getUserMemories(),
     getTopPeople(9),
     getUpcomingMoments(30),
+    getHomeNudge(),
   ])
 
   if (memoriesRaw.length === 0) redirect('/onboarding')
@@ -123,6 +125,8 @@ export default async function DashboardPage() {
         <div className="space-y-8 pt-1">
 
           <HomeHero memory={heroMemory} displayName={displayName} />
+
+          {nudge && <HomeNudge nudge={nudge} />}
 
           {continueMemories.length > 0 && (
             <ContinueStory memories={continueMemories} />

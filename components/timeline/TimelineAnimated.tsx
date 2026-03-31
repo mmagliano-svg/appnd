@@ -702,9 +702,11 @@ function DaysView({
 
 interface Props {
   memories: TimelineMemory[]
+  /** When set, the timeline is in anchor-filter mode: custom title, subtitle, no category chips */
+  anchorLabel?: string
 }
 
-export function TimelineAnimated({ memories }: Props) {
+export function TimelineAnimated({ memories, anchorLabel }: Props) {
   const [level,           setLevel]           = useState<Level>('years')
   const [selectedYear,    setSelectedYear]    = useState<number | null>(null)
   const [selectedMonth,   setSelectedMonth]   = useState<number | null>(null)
@@ -810,7 +812,7 @@ export function TimelineAnimated({ memories }: Props) {
   // ── Header text ────────────────────────────────────────────────────────
 
   const title =
-    level === 'years'  ? 'Timeline'
+    level === 'years'  ? (anchorLabel ?? 'Timeline')
     : level === 'months' ? String(selectedYear)
     : MONTHS_IT[(selectedMonth ?? 1) - 1]
 
@@ -873,9 +875,11 @@ export function TimelineAnimated({ memories }: Props) {
                 transition={{ duration: 0.14 }}
                 className="text-sm text-muted-foreground mt-1.5"
               >
-                {activeCategory
-                  ? `${usedCategories.find(c => c.value === activeCategory)?.label ?? activeCategory} · filtrando`
-                  : 'La tua storia nel tempo.'}
+                {anchorLabel
+                  ? 'I ricordi che tornano in questo momento.'
+                  : activeCategory
+                    ? `${usedCategories.find(c => c.value === activeCategory)?.label ?? activeCategory} · filtrando`
+                    : 'La tua storia nel tempo.'}
               </motion.p>
             )}
             {level === 'months' && (
@@ -948,7 +952,7 @@ export function TimelineAnimated({ memories }: Props) {
 
       {/* ── Category filter chips — years level only ─────────────────────── */}
       <AnimatePresence>
-        {level === 'years' && usedCategories.length >= 2 && (
+        {level === 'years' && !anchorLabel && usedCategories.length >= 2 && (
           <motion.div
             key="cat-filters"
             initial={{ opacity: 0, y: -6 }}
@@ -998,12 +1002,25 @@ export function TimelineAnimated({ memories }: Props) {
             {...vars}
             transition={{ duration: VIEW_DURATION, ease: EASE_ZOOM }}
           >
-            <YearsView
-              groups={yearGroups}
-              periods={allPeriods}
-              allEvents={allEvents}
-              onSelect={goToYear}
-            />
+            {anchorLabel && yearGroups.length === 0 ? (
+              <div className="flex flex-col items-center justify-center pt-16 pb-8 text-center gap-3">
+                <p className="text-muted-foreground text-sm">Ancora nessun ricordo.</p>
+                <p className="text-muted-foreground/50 text-xs">Questo momento può iniziare da qui.</p>
+                <Link
+                  href="/memories/new"
+                  className="mt-2 rounded-full border border-border px-5 py-2 text-sm font-medium text-foreground hover:bg-foreground/[0.05] transition-colors"
+                >
+                  Crea un ricordo
+                </Link>
+              </div>
+            ) : (
+              <YearsView
+                groups={yearGroups}
+                periods={allPeriods}
+                allEvents={allEvents}
+                onSelect={goToYear}
+              />
+            )}
           </motion.div>
         )}
 
