@@ -32,18 +32,25 @@ export interface PersonBirthRef {
 
 // ── Fixed calendar anchors ────────────────────────────────────────────────
 
-/**
- * MM-DD → Italian label.
- * Extend here to add new occasions — no other code changes needed.
- */
-export const FIXED_CALENDAR_ANCHORS: Record<string, string> = {
-  '12-24': 'Vigilia di Natale',
-  '12-25': 'Natale',
-  '12-31': 'Capodanno',
-  '01-01': "Primo dell'anno",
-  '05-01': 'Primo Maggio',
-  '08-15': 'Ferragosto',
+export type FixedCalendarAnchor = {
+  id: string
+  label: string
+  month: number
+  day: number
 }
+
+/**
+ * System-defined annual anchors.
+ * Wave 1: fixed-day moments only.
+ * Add new occasions here — no other changes needed.
+ */
+export const FIXED_CALENDAR_ANCHORS: FixedCalendarAnchor[] = [
+  { id: 'vigilia_natale', label: 'Vigilia di Natale', month: 12, day: 24 },
+  { id: 'natale',         label: 'Natale',             month: 12, day: 25 },
+  { id: 'capodanno',      label: 'Capodanno',           month:  1, day:  1 },
+  { id: 'primo_maggio',   label: 'Primo Maggio',        month:  5, day:  1 },
+  { id: 'ferragosto',     label: 'Ferragosto',          month:  8, day: 15 },
+]
 
 // ── Extraction helpers ────────────────────────────────────────────────────
 
@@ -95,6 +102,31 @@ export function formatBirthDate(birthDate: string): string {
     return `${day} ${MONTHS[month] ?? ''} ${year}`
   }
   return birthDate
+}
+
+// ── Fixed anchor helpers ──────────────────────────────────────────────────
+
+/**
+ * Days from `today` until the next occurrence of a fixed calendar anchor.
+ * Returns 0 if today is the anchor date. Handles year wrap-around.
+ */
+export function daysUntilFixedAnchor(anchor: FixedCalendarAnchor, today: Date = new Date()): number {
+  const y = today.getFullYear()
+  const todayMidnight = new Date(y, today.getMonth(), today.getDate())
+  const thisYear      = new Date(y,     anchor.month - 1, anchor.day)
+  const nextYear      = new Date(y + 1, anchor.month - 1, anchor.day)
+  const diffThis = Math.round((thisYear.getTime() - todayMidnight.getTime()) / 86_400_000)
+  return diffThis >= 0 ? diffThis : Math.round((nextYear.getTime() - todayMidnight.getTime()) / 86_400_000)
+}
+
+/**
+ * Returns true if the memory's start_date falls on the same day/month as the anchor.
+ * Year is ignored — pure day/month match.
+ */
+export function isMemoryMatchingFixedAnchor(memoryDate: string, anchor: FixedCalendarAnchor): boolean {
+  const mm_dd      = dayMonthFromDate(memoryDate)
+  const anchorMmDd = `${String(anchor.month).padStart(2, '0')}-${String(anchor.day).padStart(2, '0')}`
+  return mm_dd === anchorMmDd
 }
 
 // ── Upcoming birthday ─────────────────────────────────────────────────────
@@ -156,13 +188,15 @@ export function detectAnchors(
   people: PersonBirthRef[],
 ): MemoryAnchor[] {
   const anchors: MemoryAnchor[] = []
-  const mm_dd = dayMonthFromDate(memoryDate)
 
   // Fixed calendar moments
-  const fixedLabel = FIXED_CALENDAR_ANCHORS[mm_dd]
-  if (fixedLabel) {
-    anchors.push({ type: 'fixed', key: `fixed:${mm_dd}`, label: fixedLabel })
+  for (const anchor of FIXED_CALENDAR_ANCHORS) {
+    if (isMemoryMatchingFixedAnchor(memoryDate, anchor)) {
+      anchors.push({ type: 'fixed', key: `fixed:${anchor.id}`, label: anchor.label })
+    }
   }
+
+  const mm_dd = dayMonthFromDate(memoryDate)
 
   // Birthday matches
   for (const person of people) {

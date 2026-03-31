@@ -1,12 +1,13 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
-import { getTopPeople, getUpcomingBirthdayPerson } from '@/actions/persons'
+import { getTopPeople } from '@/actions/persons'
+import { getUpcomingMoments } from '@/actions/home'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
-import { UpcomingBirthday } from '@/components/home/UpcomingBirthday'
+import { UpcomingMoments } from '@/components/home/UpcomingMoments'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -19,10 +20,10 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const [memoriesRaw, peopleRaw, upcomingBirthday] = await Promise.all([
+  const [memoriesRaw, peopleRaw, upcomingMoments] = await Promise.all([
     getUserMemories(),
     getTopPeople(9),
-    getUpcomingBirthdayPerson(30),
+    getUpcomingMoments(30),
   ])
 
   if (memoriesRaw.length === 0) redirect('/onboarding')
@@ -127,9 +128,7 @@ export default async function DashboardPage() {
             <ContinueStory memories={continueMemories} />
           )}
 
-          {upcomingBirthday && (
-            <UpcomingBirthday data={upcomingBirthday} />
-          )}
+          <UpcomingMoments moments={upcomingMoments} />
 
           <LifeClusters
             people={peopleClusters}
