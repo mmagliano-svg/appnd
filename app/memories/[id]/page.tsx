@@ -10,6 +10,7 @@ import { MemoryChat } from '@/components/memory/MemoryChat'
 import { MemoryActions } from '@/components/memory/MemoryActions'
 import { RemoveParticipantButton } from '@/components/memory/RemoveParticipantButton'
 import { ScrollToTop } from '@/components/memory/ScrollToTop'
+import { MemoryScrollEffects } from '@/components/memory/MemoryScrollEffects'
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -278,7 +279,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
                   if (c.content_type === 'photo' && c.media_url) {
                     return (
-                      <div key={c.id} className="-mx-4">
+                      <div key={c.id} data-fade-in className="-mx-4">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={c.media_url}
@@ -330,22 +331,23 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   return (
     <main className="min-h-screen bg-background">
       <ScrollToTop />
+      <MemoryScrollEffects />
 
       {/* ── Hero block ── */}
-      <div className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'pt-14'} bg-muted overflow-hidden`}>
+      <div id="memory-hero" className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'pt-14'} bg-muted overflow-hidden`}>
         {heroPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={heroPhoto}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover"
+            id="memory-hero-img" className="absolute inset-0 w-full h-full object-cover"
             loading="eager"
           />
         ) : null}
 
         {/* Gradient overlay (always — stronger when no photo) */}
         <div
-          className="absolute inset-0"
+          id="memory-hero-gradient" className="absolute inset-0"
           style={{
             background: heroPhoto
               ? 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 32%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.86) 100%)'
@@ -387,7 +389,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* Hero caption — bottom of hero when photo exists */}
         {heroPhoto && (
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 z-10">
+          <div id="memory-hero-text" className="absolute bottom-0 left-0 right-0 px-5 pb-7 z-10">
             {memoryCats.length > 0 && (
               <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1.5">
                 {memoryCats.map((cv) => {
@@ -522,7 +524,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* ── Description ── */}
         {memory.description && (
-          <div className={`${heroPhoto ? 'pt-8' : 'pt-5'} pb-5 border-b border-border/50`}>
+          <div data-fade-in className={`${heroPhoto ? 'pt-6' : 'pt-5'} pb-3`}>
             <p className="text-base text-foreground/80 leading-[1.8] whitespace-pre-wrap">
               {memory.description}
             </p>
@@ -757,7 +759,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 /* ── Text contribution — journal style ── */
                 if (c.content_type === 'text' && c.text_content) {
                   return (
-                    <div key={c.id} className="space-y-3">
+                    <div key={c.id} data-fade-in className="space-y-3">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center text-xs font-bold text-background shrink-0">
                           {ini}
@@ -781,7 +783,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 /* ── Note contribution — distinct bg ── */
                 if (c.content_type === 'note' && c.text_content) {
                   return (
-                    <div key={c.id} className="rounded-2xl bg-muted/50 border border-border/40 px-5 py-4 space-y-2.5">
+                    <div key={c.id} data-fade-in className="rounded-2xl bg-muted/50 border border-border/40 px-5 py-4 space-y-2.5">
                       <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap italic">
                         {c.text_content}
                       </p>
