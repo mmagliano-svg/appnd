@@ -6,6 +6,7 @@ import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { TimelineMemory } from '@/actions/memories'
 import { CATEGORIES } from '@/lib/constants/categories'
 import { formatPeriodDisplay } from '@/lib/utils/dates'
+import { getTimelinePeriods } from '@/lib/utils/timeline-periods'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -530,9 +531,11 @@ function MonthsView({
 function DaysView({
   monthGroup,
   year,
+  memIdToPeriod,
 }: {
   monthGroup: MonthGroup
   year: number
+  memIdToPeriod: Map<string, string>
 }) {
   const heroUrl = monthGroup.previewUrls[0] ?? null
 
@@ -564,13 +567,24 @@ function DaysView({
         initial="hidden"
         animate="show"
       >
-        {monthGroup.dayGroups.map(({ day, memories }) => {
+        {(() => {
+          let lastPeriodTitle = ''
+          return monthGroup.dayGroups.map(({ day, memories }) => {
           const date        = new Date(year, monthGroup.month - 1, day)
           const dayOfWeek   = DAYS_FULL[date.getDay()]
           const monthName   = MONTHS_IT[monthGroup.month - 1].toLowerCase()
 
+          const periodTitle  = memIdToPeriod.get(memories[0]?.id ?? '')
+          const showPeriodHeader = !!periodTitle && periodTitle !== lastPeriodTitle
+          if (periodTitle) lastPeriodTitle = periodTitle
+
           return (
             <motion.div key={day} variants={staggerItem}>
+              {showPeriodHeader && (
+                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-5">
+                  {periodTitle}
+                </p>
+              )}
               <div className="flex items-baseline gap-2 mb-5">
                 <span className="text-2xl font-bold tabular-nums leading-none">{day}</span>
                 <span className="text-sm text-muted-foreground font-medium">
@@ -692,7 +706,8 @@ function DaysView({
               </div>
             </motion.div>
           )
-        })}
+        })
+        })()}
       </motion.div>
     </div>
   )
@@ -762,6 +777,15 @@ export function TimelineAnimated({ memories, anchorLabel }: Props) {
   const yearGroups   = useMemo(() => groupMemories(filteredEvents), [filteredEvents])
   const currentYear  = yearGroups.find((y) => y.year === selectedYear) ?? null
   const currentMonth = currentYear?.monthGroups.find((m) => m.month === selectedMonth) ?? null
+
+  // Narrative period labels — memoryId → periodTitle, for DaysView injection
+  const memIdToPeriod = useMemo<Map<string, string>>(() => {
+    const map = new Map<string, string>()
+    for (const p of getTimelinePeriods(filteredEvents)) {
+      for (const id of p.memoryIds) map.set(id, p.title)
+    }
+    return map
+  }, [filteredEvents])
 
   // ── Navigation ─────────────────────────────────────────────────────────
 
@@ -1040,7 +1064,7 @@ export function TimelineAnimated({ memories, anchorLabel }: Props) {
             {...vars}
             transition={{ duration: VIEW_DURATION, ease: EASE_ZOOM }}
           >
-            <DaysView monthGroup={currentMonth} year={selectedYear} />
+            <DaysView monthGroup={currentMonth} year={selectedYear} memIdToPeriod={memIdToPeriod} />
           </motion.div>
         )}
       </AnimatePresence>
