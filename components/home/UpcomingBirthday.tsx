@@ -11,7 +11,11 @@ export function UpcomingBirthday({ data }: UpcomingBirthdayProps) {
   const headline =
     daysUntil === 0
       ? `Oggi è il compleanno di ${personName}`
-      : `Tra poco è il compleanno di ${personName}`
+      : daysUntil <= 5
+        ? `Sta tornando il compleanno di ${personName}`
+        : daysUntil <= 15
+          ? `Tra pochi giorni è il compleanno di ${personName}`
+          : `È di nuovo quel momento dell'anno — ${personName}`
 
   const sub =
     birthdayMemoryCount > 0

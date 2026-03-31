@@ -238,16 +238,21 @@ function NewMemoryForm() {
             />
 
             {/* Title */}
-            <input
-              ref={titleRef}
-              id="title"
-              name="title"
-              type="text"
-              placeholder="Come vuoi ricordarlo?"
-              required
-              autoFocus
-              className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/35 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
-            />
+            <div>
+              <input
+                ref={titleRef}
+                id="title"
+                name="title"
+                type="text"
+                placeholder="Vuoi fermare questo momento?"
+                required
+                autoFocus
+                className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/35 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
+              />
+              <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
+                Anche un piccolo momento può diventare importante nel tempo.
+              </p>
+            </div>
 
             {/* Date */}
             <div className="space-y-3">
