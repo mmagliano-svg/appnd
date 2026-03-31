@@ -531,7 +531,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* ── Tags ── */}
         {tags.length > 0 && (
-          <div className="py-4 border-b border-border/50">
+          <div className="py-3">
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
                 <Link
@@ -704,7 +704,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               )}
             </div>
           ) : (
-            <div className="space-y-10">
+            <div className="space-y-6">
               {contributions.map((c) => {
                 // Skip hero photo — already shown as the page hero above
                 if (c.id === heroContribution?.id) return null
@@ -725,11 +725,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                         src={c.media_url}
                         alt={c.caption ?? ''}
                         className="w-full object-cover"
-                        style={{ maxHeight: '480px' }}
+                        style={{ maxHeight: '480px', WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 5%)', maskImage: 'linear-gradient(to bottom, transparent 0%, black 5%)' }}
                         loading="lazy"
                         draggable={false}
                       />
-                      <div className="px-4 pt-3 flex items-start justify-between gap-3">
+                      <div className="px-4 pt-2 flex items-start justify-between gap-3">
                         <div>
                           {c.caption && (
                             <p className="text-sm text-foreground/80 italic leading-relaxed">
