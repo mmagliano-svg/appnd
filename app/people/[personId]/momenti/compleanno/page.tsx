@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getBirthdayMemories } from '@/actions/persons'
-import { formatBirthDate } from '@/lib/utils/anchors'
 import { getCategoryByValue } from '@/lib/constants/categories'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ export default async function BirthdayMemoriesPage({
   // If person doesn't exist or has no birth date, 404
   if (!result.personName) notFound()
 
-  const { personName, birthDate, memories } = result
+  const { personName, memories } = result
 
   return (
     <main className="min-h-screen bg-background">
@@ -99,34 +98,22 @@ export default async function BirthdayMemoriesPage({
 
         {/* Header */}
         <div className="pt-8 pb-10">
-          <p className="text-2xl mb-2 select-none" aria-hidden>🎂</p>
           <h1 className="text-2xl font-bold tracking-tight leading-tight">
             Compleanni con {personName}
           </h1>
-          {birthDate && (
-            <p className="text-sm text-muted-foreground/60 mt-1">
-              {formatBirthDate(birthDate)}
-            </p>
-          )}
         </div>
 
         {/* Content */}
         {memories.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-sm text-muted-foreground/50 italic">
-              Qui compariranno i ricordi di compleanno.
-            </p>
+          <div className="text-center py-16 space-y-1">
+            <p className="text-sm text-muted-foreground/60">La tua storia inizia qui.</p>
+            <p className="text-sm text-muted-foreground/40">Aggiungi un ricordo per questo momento.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {memories.map((m) => (
               <MemoryRow key={m.id} memory={m} />
             ))}
-            <p className="text-center text-xs text-muted-foreground/30 italic pt-6">
-              {memories.length === 1
-                ? 'Un compleanno ricordato insieme.'
-                : `${memories.length} compleanni ricordati insieme.`}
-            </p>
           </div>
         )}
 

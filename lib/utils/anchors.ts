@@ -97,6 +97,30 @@ export function formatBirthDate(birthDate: string): string {
   return birthDate
 }
 
+// ── Edit-form helpers ─────────────────────────────────────────────────────
+
+/**
+ * Parse a stored birth_date value into independent edit-form fields.
+ * Accepts 'MM-DD' (year unknown) or 'YYYY-MM-DD' (year known).
+ * Always returns strings — empty string means "not set".
+ */
+export function parseBirthDate(birthDate: string): { day: string; month: string; year: string } {
+  if (!birthDate) return { day: '', month: '', year: '' }
+  const parts = birthDate.trim().split('-')
+  if (parts.length === 2) return { month: parts[0], day: parts[1], year: '' }  // MM-DD
+  if (parts.length === 3) return { year: parts[0], month: parts[1], day: parts[2] }  // YYYY-MM-DD
+  return { day: '', month: '', year: '' }
+}
+
+/**
+ * Assemble edit-form fields back into a storable birth_date value.
+ * Returns null if day or month is missing (incomplete = no date set).
+ */
+export function assembleBirthDate(day: string, month: string, year: string): string | null {
+  if (!day || !month) return null
+  return year ? `${year}-${month}-${day}` : `${month}-${day}`
+}
+
 // ── Core detection ────────────────────────────────────────────────────────
 
 /**

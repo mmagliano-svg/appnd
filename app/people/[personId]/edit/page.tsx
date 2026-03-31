@@ -3,6 +3,7 @@
 import { useState, useEffect, useTransition, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { getPersonById, updatePerson, type RelationshipType } from '@/actions/persons'
+import { parseBirthDate, assembleBirthDate } from '@/lib/utils/anchors'
 import { getUserGroups, type GroupSummary } from '@/actions/groups'
 import { createClient } from '@/lib/supabase/client'
 import { NicknameInput } from '@/components/people/NicknameInput'
@@ -110,19 +111,11 @@ export default function EditPersonPage() {
         setFirstName(p.firstName ?? '')
         setLastName(p.lastName ?? '')
         setNicknames(p.nicknames)
-        // Parse stored birth_date into component parts
         if (p.birthDate) {
-          const parts = p.birthDate.split('-')
-          if (parts.length === 2) {
-            // MM-DD (no year)
-            setBirthMonth(parts[0])
-            setBirthDay(parts[1])
-          } else if (parts.length === 3) {
-            // YYYY-MM-DD
-            setBirthYear(parts[0])
-            setBirthMonth(parts[1])
-            setBirthDay(parts[2])
-          }
+          const { day, month, year } = parseBirthDate(p.birthDate)
+          setBirthDay(day)
+          setBirthMonth(month)
+          setBirthYear(year)
         }
         setCurrentAvatarUrl(p.avatarUrl)
         setRelationshipType(p.relationshipType)
@@ -191,10 +184,7 @@ export default function EditPersonPage() {
           newAvatarUrl = publicUrl
         }
 
-        // Assemble birth_date: 'YYYY-MM-DD' if year set, 'MM-DD' if not, null if empty
-        const computedBirthDate = (birthDay && birthMonth)
-          ? (birthYear ? `${birthYear}-${birthMonth}-${birthDay}` : `${birthMonth}-${birthDay}`)
-          : null
+        const computedBirthDate = assembleBirthDate(birthDay, birthMonth, birthYear)
 
         await updatePerson(personId, {
           name,
@@ -355,13 +345,13 @@ export default function EditPersonPage() {
             </div>
 
             {/* Birthday */}
-            <div>
+            <div className="space-y-2">
               <FieldLabel hint="facoltativo">Compleanno</FieldLabel>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <select
                   value={birthDay}
                   onChange={(e) => setBirthDay(e.target.value)}
-                  className="w-20 rounded-2xl border border-input bg-background px-3 py-3.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-[4.5rem] rounded-2xl border border-input bg-background px-3 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">G</option>
                   {Array.from({ length: 31 }, (_, i) => {
@@ -372,7 +362,7 @@ export default function EditPersonPage() {
                 <select
                   value={birthMonth}
                   onChange={(e) => setBirthMonth(e.target.value)}
-                  className="flex-1 rounded-2xl border border-input bg-background px-3 py-3.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex-1 rounded-2xl border border-input bg-background px-3 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">Mese</option>
                   {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
@@ -387,14 +377,14 @@ export default function EditPersonPage() {
                   placeholder="Anno"
                   min={1900}
                   max={2030}
-                  className="w-24 rounded-2xl border border-input bg-background px-3 py-3.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-20 rounded-2xl border border-input bg-background px-3 py-3 text-sm text-muted-foreground/70 placeholder:text-muted-foreground/35 focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               {(birthDay && birthMonth) && (
                 <button
                   type="button"
                   onClick={() => { setBirthDay(''); setBirthMonth(''); setBirthYear('') }}
-                  className="text-xs text-muted-foreground/40 mt-2 hover:text-rose-400 transition-colors"
+                  className="text-xs text-muted-foreground/35 hover:text-muted-foreground/60 transition-colors"
                 >
                   Rimuovi data
                 </button>

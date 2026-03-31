@@ -348,22 +348,21 @@ async function PersonEntityView({ id }: { id: string }) {
               <SectionTitle>Momenti importanti</SectionTitle>
               <Link
                 href={`/people/${id}/momenti/compleanno`}
-                className="flex items-center justify-between gap-4 py-2 group"
+                className="flex items-center justify-between min-h-[44px] py-1 group"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-xl leading-none select-none">🎂</span>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm select-none" aria-hidden>🎂</span>
                   <div>
-                    <p className="text-sm font-medium leading-snug">Compleanno</p>
-                    <p className="text-xs text-muted-foreground/60 mt-0.5">
-                      {formatBirthDate(person.birthDate!)}
-                      {birthdayCount > 0 && (
-                        <span> · {birthdayCount} ricord{birthdayCount === 1 ? 'o' : 'i'}</span>
-                      )}
+                    <p className="text-sm font-medium">
+                      Compleanno · {formatBirthDate(person.birthDate!)}
+                    </p>
+                    <p className="text-xs text-muted-foreground/50 mt-0.5">
+                      {birthdayCount} ricord{birthdayCount === 1 ? 'o' : 'i'}
                     </p>
                   </div>
                 </div>
                 <svg
-                  className="w-4 h-4 text-muted-foreground/25 group-hover:text-muted-foreground/50 transition-colors shrink-0"
+                  className="w-4 h-4 text-muted-foreground/20 group-hover:text-muted-foreground/45 transition-colors shrink-0"
                   fill="none" stroke="currentColor" viewBox="0 0 24 24"
                 >
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 18l6-6-6-6" />
