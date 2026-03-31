@@ -3,7 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { RelationshipType } from '@/lib/supabase/types'
-import { dayMonthFromDate, dayMonthFromBirthDate } from '@/lib/utils/anchors'
+import { dayMonthFromDate, dayMonthFromBirthDate, daysUntilBirthday } from '@/lib/utils/anchors'
 export type { RelationshipType }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -514,5 +514,59 @@ export async function getBirthdayMemories(
     personName: detail.name,
     birthDate: detail.birthDate,
     memories: birthdayMemories,
+  }
+}
+
+// ── getUpcomingBirthdayPerson ──────────────────────────────────────────────
+
+export interface UpcomingBirthdayResult {
+  personId: string
+  personName: string
+  daysUntil: number
+  birthdayMemoryCount: number
+}
+
+/**
+ * Returns the single person whose next birthday is nearest and within
+ * `windowDays` from today. Null if nobody qualifies.
+ * Used by Home to surface the "Momenti che tornano" block.
+ */
+export async function getUpcomingBirthdayPerson(
+  windowDays = 30,
+): Promise<UpcomingBirthdayResult | null> {
+  const { supabase, user } = await authedClient()
+
+  const { data: people } = await supabase
+    .from('people')
+    .select('id, name, birth_date')
+    .eq('owner_id', user.id)
+    .not('birth_date', 'is', null)
+
+  if (!people || people.length === 0) return null
+
+  const today = new Date()
+
+  // Find nearest upcoming birthday within the window
+  let best: { id: string; name: string; daysUntil: number } | null = null
+
+  for (const p of people) {
+    if (!p.birth_date) continue
+    const days = daysUntilBirthday(p.birth_date, today)
+    if (days > windowDays) continue
+    if (!best || days < best.daysUntil) {
+      best = { id: p.id, name: p.name, daysUntil: days }
+    }
+  }
+
+  if (!best) return null
+
+  // Count birthday memories for the winner only
+  const { memories } = await getBirthdayMemories(best.id)
+
+  return {
+    personId: best.id,
+    personName: best.name,
+    daysUntil: best.daysUntil,
+    birthdayMemoryCount: memories.length,
   }
 }

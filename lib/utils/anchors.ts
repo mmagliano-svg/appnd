@@ -97,6 +97,27 @@ export function formatBirthDate(birthDate: string): string {
   return birthDate
 }
 
+// ── Upcoming birthday ─────────────────────────────────────────────────────
+
+/**
+ * Days from `today` until the next occurrence of this person's birthday.
+ * Returns 0 if today is the birthday, 1–364 otherwise.
+ * Returns Infinity if birth_date is unrecognised.
+ */
+export function daysUntilBirthday(birthDate: string, today: Date = new Date()): number {
+  const mmDd = dayMonthFromBirthDate(birthDate)
+  if (!mmDd) return Infinity
+  const [mm, dd] = mmDd.split('-').map(Number)
+
+  const y = today.getFullYear()
+  const todayMidnight = new Date(y, today.getMonth(), today.getDate())
+  const thisYear      = new Date(y,     mm - 1, dd)
+  const nextYear      = new Date(y + 1, mm - 1, dd)
+
+  const diffThis = Math.round((thisYear.getTime() - todayMidnight.getTime()) / 86_400_000)
+  return diffThis >= 0 ? diffThis : Math.round((nextYear.getTime() - todayMidnight.getTime()) / 86_400_000)
+}
+
 // ── Edit-form helpers ─────────────────────────────────────────────────────
 
 /**
