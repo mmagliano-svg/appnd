@@ -73,6 +73,11 @@ export default function EditPersonPage() {
   const [lastName, setLastName]   = useState('')
   const [nicknames, setNicknames] = useState<string[]>([])
 
+  // Birthday
+  const [birthDay,   setBirthDay]   = useState('')   // '01'–'31'
+  const [birthMonth, setBirthMonth] = useState('')   // '01'–'12'
+  const [birthYear,  setBirthYear]  = useState('')   // '1990' or ''
+
   // Avatar
   const [currentAvatarUrl, setCurrentAvatarUrl] = useState<string | null>(null)
   const [avatarFile, setAvatarFile]             = useState<File | null>(null)
@@ -105,6 +110,20 @@ export default function EditPersonPage() {
         setFirstName(p.firstName ?? '')
         setLastName(p.lastName ?? '')
         setNicknames(p.nicknames)
+        // Parse stored birth_date into component parts
+        if (p.birthDate) {
+          const parts = p.birthDate.split('-')
+          if (parts.length === 2) {
+            // MM-DD (no year)
+            setBirthMonth(parts[0])
+            setBirthDay(parts[1])
+          } else if (parts.length === 3) {
+            // YYYY-MM-DD
+            setBirthYear(parts[0])
+            setBirthMonth(parts[1])
+            setBirthDay(parts[2])
+          }
+        }
         setCurrentAvatarUrl(p.avatarUrl)
         setRelationshipType(p.relationshipType)
         setRelationLabel(p.relationLabel ?? '')
@@ -172,12 +191,18 @@ export default function EditPersonPage() {
           newAvatarUrl = publicUrl
         }
 
+        // Assemble birth_date: 'YYYY-MM-DD' if year set, 'MM-DD' if not, null if empty
+        const computedBirthDate = (birthDay && birthMonth)
+          ? (birthYear ? `${birthYear}-${birthMonth}-${birthDay}` : `${birthMonth}-${birthDay}`)
+          : null
+
         await updatePerson(personId, {
           name,
           firstName:        firstName    || null,
           lastName:         lastName     || null,
           nicknames:        nicknames,
           avatarUrl:        newAvatarUrl,
+          birthDate:        computedBirthDate,
           relationshipType: relationshipType,
           relationLabel:    relationLabel || null,
           shortBio:         shortBio     || null,
@@ -327,6 +352,53 @@ export default function EditPersonPage() {
                 onChange={setNicknames}
                 placeholder="Marko, il Prof, Gio…"
               />
+            </div>
+
+            {/* Birthday */}
+            <div>
+              <FieldLabel hint="facoltativo">Compleanno</FieldLabel>
+              <div className="flex gap-2">
+                <select
+                  value={birthDay}
+                  onChange={(e) => setBirthDay(e.target.value)}
+                  className="w-20 rounded-2xl border border-input bg-background px-3 py-3.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">G</option>
+                  {Array.from({ length: 31 }, (_, i) => {
+                    const d = String(i + 1).padStart(2, '0')
+                    return <option key={d} value={d}>{i + 1}</option>
+                  })}
+                </select>
+                <select
+                  value={birthMonth}
+                  onChange={(e) => setBirthMonth(e.target.value)}
+                  className="flex-1 rounded-2xl border border-input bg-background px-3 py-3.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="">Mese</option>
+                  {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno',
+                    'Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'].map((m, i) => (
+                    <option key={m} value={String(i + 1).padStart(2, '0')}>{m}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  value={birthYear}
+                  onChange={(e) => setBirthYear(e.target.value)}
+                  placeholder="Anno"
+                  min={1900}
+                  max={2030}
+                  className="w-24 rounded-2xl border border-input bg-background px-3 py-3.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              {(birthDay && birthMonth) && (
+                <button
+                  type="button"
+                  onClick={() => { setBirthDay(''); setBirthMonth(''); setBirthYear('') }}
+                  className="text-xs text-muted-foreground/40 mt-2 hover:text-rose-400 transition-colors"
+                >
+                  Rimuovi data
+                </button>
+              )}
             </div>
           </section>
 

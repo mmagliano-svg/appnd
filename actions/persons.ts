@@ -3,6 +3,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { RelationshipType } from '@/lib/supabase/types'
+import { dayMonthFromDate, dayMonthFromBirthDate } from '@/lib/utils/anchors'
 export type { RelationshipType }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -44,6 +45,8 @@ export interface PersonDetail {
   lastName: string | null
   nicknames: string[]
   avatarUrl: string | null
+  /** 'MM-DD' (year unknown) or 'YYYY-MM-DD' (year known). null if not set. */
+  birthDate: string | null
   relationLabel: string | null
   shortBio: string | null
   howWeMet: string | null
@@ -220,7 +223,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
   // Verify ownership
   const { data: person } = await supabase
     .from('people')
-    .select('id, name, first_name, last_name, nicknames, avatar_url, relation_label, short_bio, how_we_met, shared_context, relationship_type, claim_status, status, linked_user_id, group_ids')
+    .select('id, name, first_name, last_name, nicknames, avatar_url, birth_date, relation_label, short_bio, how_we_met, shared_context, relationship_type, claim_status, status, linked_user_id, group_ids')
     .eq('id', personId)
     .eq('owner_id', user.id)
     .maybeSingle()
@@ -254,6 +257,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
       lastName: person.last_name ?? null,
       nicknames: (person.nicknames as string[] | null) ?? [],
       avatarUrl: person.avatar_url ?? null,
+      birthDate: (person.birth_date as string | null) ?? null,
       relationLabel: person.relation_label ?? null,
       shortBio: person.short_bio ?? null,
       howWeMet: person.how_we_met ?? null,
@@ -302,6 +306,7 @@ export async function getPersonDetail(personId: string): Promise<PersonDetail | 
     lastName: person.last_name ?? null,
     nicknames: (person.nicknames as string[] | null) ?? [],
     avatarUrl: person.avatar_url ?? null,
+    birthDate: (person.birth_date as string | null) ?? null,
     relationLabel: person.relation_label ?? null,
     shortBio: person.short_bio ?? null,
     howWeMet: person.how_we_met ?? null,
@@ -430,6 +435,8 @@ export interface UpdatePersonInput {
   lastName?: string | null
   nicknames?: string[]
   avatarUrl?: string | null
+  /** 'MM-DD' (year unknown) or 'YYYY-MM-DD' (year known). null to clear. */
+  birthDate?: string | null
   relationshipType?: RelationshipType | null
   relationLabel?: string | null
   shortBio?: string | null
@@ -452,6 +459,7 @@ export async function updatePerson(
   if (input.lastName         !== undefined) patch.last_name         = input.lastName?.trim()         || null
   if (input.nicknames        !== undefined) patch.nicknames         = input.nicknames
   if (input.avatarUrl        !== undefined) patch.avatar_url        = input.avatarUrl
+  if (input.birthDate        !== undefined) patch.birth_date        = input.birthDate                || null
   if (input.relationshipType !== undefined) patch.relationship_type = input.relationshipType
   if (input.relationLabel    !== undefined) patch.relation_label    = input.relationLabel?.trim()    || null
   if (input.shortBio         !== undefined) patch.short_bio         = input.shortBio?.trim()         || null
@@ -467,4 +475,44 @@ export async function updatePerson(
     .eq('owner_id', user.id)
 
   if (error) throw new Error(`Impossibile aggiornare persona: ${error.message}`)
+}
+
+// ── getBirthdayMemories ────────────────────────────────────────────────────
+
+export interface BirthdayMemoriesResult {
+  personName: string
+  birthDate: string | null
+  memories: PersonMemory[]
+}
+
+/**
+ * Returns all memories with this person whose date falls on their birthday (MM-DD match).
+ * Sorted newest first. Returns empty list if the person has no birth_date set.
+ */
+export async function getBirthdayMemories(
+  personId: string,
+): Promise<BirthdayMemoriesResult> {
+  const detail = await getPersonDetail(personId)
+
+  const empty: BirthdayMemoriesResult = {
+    personName: detail?.name ?? '',
+    birthDate: detail?.birthDate ?? null,
+    memories: [],
+  }
+
+  if (!detail || !detail.birthDate) return empty
+
+  const birthMmDd = dayMonthFromBirthDate(detail.birthDate)
+  if (!birthMmDd) return empty
+
+  const birthdayMemories = detail.memories
+    .filter((m) => dayMonthFromDate(m.start_date) === birthMmDd)
+    .slice()
+    .reverse()  // newest first
+
+  return {
+    personName: detail.name,
+    birthDate: detail.birthDate,
+    memories: birthdayMemories,
+  }
 }

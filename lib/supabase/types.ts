@@ -26,6 +26,7 @@ export interface Database {
           nickname: string | null
           nicknames: string[]
           avatar_url: string | null
+          birth_date: string | null
           relation_label: string | null
           short_bio: string | null
           how_we_met: string | null
@@ -47,6 +48,7 @@ export interface Database {
           nickname?: string | null
           nicknames?: string[]
           avatar_url?: string | null
+          birth_date?: string | null
           relation_label?: string | null
           short_bio?: string | null
           how_we_met?: string | null
@@ -68,6 +70,7 @@ export interface Database {
           nickname?: string | null
           nicknames?: string[]
           avatar_url?: string | null
+          birth_date?: string | null
           relation_label?: string | null
           short_bio?: string | null
           how_we_met?: string | null

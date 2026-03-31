@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getPersonDetail, type RelationshipType } from '@/actions/persons'
 import { getSharedMemoriesWithUser } from '@/actions/people'
 import { getCategoryByValue } from '@/lib/constants/categories'
+import { dayMonthFromDate, dayMonthFromBirthDate, formatBirthDate } from '@/lib/utils/anchors'
 
 const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   family:       'Famiglia',
@@ -335,7 +336,44 @@ async function PersonEntityView({ id }: { id: string }) {
           </div>
         )}
 
-        {/* ══ SECTION 4 — LA VOSTRA STORIA ══════════════════════════════════ */}
+        {/* ══ SECTION 4 — MOMENTI IMPORTANTI ══════════════════════════════ */}
+        {person.birthDate && (() => {
+          const birthMmDd = dayMonthFromBirthDate(person.birthDate!)
+          const birthdayCount = birthMmDd
+            ? person.memories.filter((m) => dayMonthFromDate(m.start_date) === birthMmDd).length
+            : 0
+          return (
+            <div className="px-4 pb-10">
+              <div className="border-t border-border/30 mb-6" />
+              <SectionTitle>Momenti importanti</SectionTitle>
+              <Link
+                href={`/people/${id}/momenti/compleanno`}
+                className="flex items-center justify-between gap-4 py-2 group"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-xl leading-none select-none">🎂</span>
+                  <div>
+                    <p className="text-sm font-medium leading-snug">Compleanno</p>
+                    <p className="text-xs text-muted-foreground/60 mt-0.5">
+                      {formatBirthDate(person.birthDate!)}
+                      {birthdayCount > 0 && (
+                        <span> · {birthdayCount} ricord{birthdayCount === 1 ? 'o' : 'i'}</span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <svg
+                  className="w-4 h-4 text-muted-foreground/25 group-hover:text-muted-foreground/50 transition-colors shrink-0"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 18l6-6-6-6" />
+                </svg>
+              </Link>
+            </div>
+          )
+        })()}
+
+        {/* ══ SECTION 5 — LA VOSTRA STORIA ══════════════════════════════════ */}
         <div className="px-4">
           <div className="border-t border-border/30 mb-6" />
 
