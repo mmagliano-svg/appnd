@@ -11,12 +11,9 @@ import {
 import { getExploreData } from '@/actions/memories'
 import { ExploreSearch } from '@/components/explore/ExploreSearch'
 import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
+import type { Person } from '@/actions/persons'
 
 // ── Shared helpers ─────────────────────────────────────────────────────────
-
-function plural(n: number) {
-  return `${n} ${n === 1 ? 'momento' : 'momenti'}`
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -32,6 +29,29 @@ function ChevronRight() {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
     </svg>
   )
+}
+
+/** Derives a soft contextual insight from a person's memory history. */
+function personInsight(person: Person): string {
+  if (!person.lastMemoryDate) return 'presente nella tua storia'
+  const year = parseInt(person.lastMemoryDate.split('-')[0])
+  const currentYear = new Date().getFullYear()
+  if (year === currentYear) return "presente quest'anno"
+  return `più presente nel ${year}`
+}
+
+/** Primary meaning label for a place card. */
+function placeLabel(index: number): string {
+  if (index === 0) return 'Il tuo posto principale'
+  return 'Dove torni spesso'
+}
+
+/** Contextual line for a recurring moment, based on count. */
+function recurringContext(count: number): string {
+  if (count >= 3) return 'Lo vivi ogni anno'
+  if (count === 2) return 'Sta iniziando a tornare'
+  if (count === 1) return "L'hai vissuto una volta"
+  return 'Potrebbe essere il primo'
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -62,9 +82,38 @@ export default async function ExplorePage() {
     month: 'long',
   })
 
-  // Show all recurring moments (count 0 included), capped at 8
-  // Already sorted: count > 0 desc, then count = 0 alphabetical
   const shownMoments = recurringMoments.slice(0, 8)
+
+  // ── Hero insights: computed from already-fetched data (no extra DB calls) ──
+  const heroInsights: Array<{ subject: string; text: string; href: string }> = []
+
+  const topRecurring = recurringMoments.find((m) => m.count >= 2)
+  if (topRecurring) {
+    heroInsights.push({
+      subject: topRecurring.label,
+      text: 'Un momento che si ripete, anno dopo anno',
+      href: topRecurring.href,
+    })
+  }
+
+  if (topPlaces.length > 0) {
+    const { place, count } = topPlaces[0]
+    heroInsights.push({
+      subject: place,
+      text: count >= 3 ? 'Il posto che torna di più nella tua storia' : 'Un luogo che compare spesso',
+      href: `/places/${encodeURIComponent(place)}`,
+    })
+  }
+
+  if (connections.length > 0) {
+    heroInsights.push({
+      subject: connections[0].title,
+      text: connections[0].subtitle,
+      href: connections[0].href,
+    })
+  }
+
+  const shownInsights = heroInsights.slice(0, 3)
 
   return (
     <main className="min-h-screen bg-background">
@@ -73,13 +122,39 @@ export default async function ExplorePage() {
         {/* ── Header ── */}
         <div className="pt-10 pb-6">
           <h1 className="text-3xl font-bold tracking-tight mb-1">Esplora</h1>
-          <p className="text-sm text-muted-foreground/50">Ci sono cose che tornano nella tua vita.</p>
+          <p className="text-sm text-muted-foreground/50">
+            Ci sono storie che si ripetono, anche senza accorgertene.
+          </p>
         </div>
 
         {/* ── 1. SEARCH ── */}
         <ExploreSearch memories={searchMemories} />
 
-        {/* ── 2. PERSONE ── */}
+        {/* ── 2. PATTERN CHE EMERGONO (Hero Insights) ── */}
+        {shownInsights.length > 0 && (
+          <section className="mb-10">
+            <SectionTitle>Pattern che emergono</SectionTitle>
+            <div className="space-y-3">
+              {shownInsights.map((insight, i) => (
+                <Link
+                  key={i}
+                  href={insight.href}
+                  className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-5 py-4 group"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold leading-snug truncate">{insight.subject}</p>
+                    <p className="text-xs text-muted-foreground/55 mt-0.5 leading-relaxed">{insight.text}</p>
+                  </div>
+                  <span className="text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors shrink-0">
+                    <ChevronRight />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── 3. PERSONE ── */}
         {people.length > 0 && (
           <section className="mb-10">
             <div className="flex items-center justify-between mb-4">
@@ -123,7 +198,7 @@ export default async function ExplorePage() {
                     <div className="text-center">
                       <p className="text-xs font-medium leading-none">{firstName}</p>
                       <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-                        {plural(person.memoryCount)}
+                        {personInsight(person)}
                       </p>
                     </div>
                   </Link>
@@ -133,7 +208,7 @@ export default async function ExplorePage() {
           </section>
         )}
 
-        {/* ── RIVIVI OGGI (optional, shown only when matches exist) ── */}
+        {/* ── RIVIVI OGGI (shown only when matches exist) ── */}
         {onThisDay.length > 0 && (
           <div className="mb-10">
             <OnThisDayCarousel
@@ -143,7 +218,7 @@ export default async function ExplorePage() {
           </div>
         )}
 
-        {/* ── 3. LUOGHI ── */}
+        {/* ── 4. LUOGHI ── */}
         {topPlaces.length > 0 && (
           <section className="mb-10">
             <SectionTitle>Luoghi</SectionTitle>
@@ -151,24 +226,27 @@ export default async function ExplorePage() {
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {topPlaces.slice(0, 5).map(({ place, count }) => (
+              {topPlaces.slice(0, 5).map(({ place, count }, i) => (
                 <Link
                   key={place}
                   href={`/places/${encodeURIComponent(place)}`}
-                  className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 pt-4 pb-3.5 min-w-[130px] max-w-[170px] border border-foreground/[0.05]"
+                  className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 pt-4 pb-3.5 min-w-[140px] max-w-[180px] border border-foreground/[0.05]"
                 >
                   <p className="text-sm font-semibold leading-snug truncate">{place}</p>
-                  <p className="text-[10px] text-muted-foreground/50 mt-1.5">{plural(count)}</p>
+                  <p className="text-[10px] text-muted-foreground/60 mt-1.5">{placeLabel(i)}</p>
+                  <p className="text-[10px] text-muted-foreground/30 mt-0.5">
+                    {count} {count === 1 ? 'momento' : 'momenti'}
+                  </p>
                 </Link>
               ))}
             </div>
           </section>
         )}
 
-        {/* ── 4. MOMENTI CHE TORNANO ── */}
+        {/* ── 5. COSE CHE TORNANO ── */}
         {shownMoments.length > 0 && (
           <section className="mb-10">
-            <SectionTitle>Momenti che tornano</SectionTitle>
+            <SectionTitle>Cose che tornano</SectionTitle>
             <div
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
@@ -181,9 +259,7 @@ export default async function ExplorePage() {
                 >
                   <p className="text-sm font-medium leading-snug line-clamp-2">{m.label}</p>
                   <p className="text-[10px] text-muted-foreground/50 mt-1">
-                    {m.count === 0
-                      ? 'Potrebbe essere il primo'
-                      : `${m.count} ricord${m.count === 1 ? 'o' : 'i'} nel tempo`}
+                    {recurringContext(m.count)}
                   </p>
                 </Link>
               ))}
@@ -191,7 +267,7 @@ export default async function ExplorePage() {
           </section>
         )}
 
-        {/* ── 5. CONNESSIONI ── */}
+        {/* ── 6. CONNESSIONI ── */}
         {connections.length > 0 && (
           <section className="mb-10">
             <SectionTitle>Connessioni</SectionTitle>
@@ -200,9 +276,12 @@ export default async function ExplorePage() {
                 <Link
                   key={i}
                   href={c.href}
-                  className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-3.5 group"
+                  className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-5 py-4 group"
                 >
-                  <p className="text-sm font-medium leading-snug">{c.label}</p>
+                  <div className="min-w-0">
+                    <p className="text-[15px] font-semibold leading-snug truncate">{c.title}</p>
+                    <p className="text-xs text-muted-foreground/55 mt-0.5">{c.subtitle}</p>
+                  </div>
                   <span className="text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors shrink-0">
                     <ChevronRight />
                   </span>

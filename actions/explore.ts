@@ -112,7 +112,8 @@ export async function getRecurringMoments(): Promise<RecurringMomentItem[]> {
 // ── Connections (clusters) ─────────────────────────────────────────────────
 
 export interface ExploreCluster {
-  label: string
+  title: string      // e.g. "Lalli × Brescia"
+  subtitle: string   // e.g. "Il tuo pattern più forte"
   count: number
   href: string
 }
@@ -173,18 +174,22 @@ export async function getExploreConnections(): Promise<ExploreCluster[]> {
       else        { plMap.set(key, { personId: l.person_id as string, location: mem.location, count: 1, years: new Set([mem.year]) }) }
     }
 
-    const currentYear = new Date().getFullYear()
     const plClusters: ExploreCluster[] = Array.from(plMap.values())
       .filter((c) => c.count >= 2)
       .sort((a, b) => b.count - a.count)
       .slice(0, 3)
       .map((c) => {
-        const name       = personNameMap.get(c.personId) ?? 'qualcuno'
-        const timeLabel  = (c.years.size === 1 && c.years.has(currentYear)) ? 'quest\'anno' : 'nel tempo'
+        const name = personNameMap.get(c.personId) ?? 'qualcuno'
+        const sub  = (c.count >= 5 || c.years.size >= 3)
+          ? 'Il tuo pattern più forte'
+          : c.count >= 3
+          ? 'Momenti ricorrenti'
+          : 'Connessione in crescita'
         return {
-          label: `${name} e ${c.location} — ${c.count} moment${c.count === 1 ? 'o' : 'i'} ${timeLabel}`,
-          count: c.count,
-          href:  `/people/${c.personId}`,
+          title:    `${name} × ${c.location}`,
+          subtitle: sub,
+          count:    c.count,
+          href:     `/people/${c.personId}`,
         }
       })
 
@@ -213,11 +218,17 @@ export async function getExploreConnections(): Promise<ExploreCluster[]> {
     .filter(([, years]) => years.size >= 2)
     .sort(([, a], [, b]) => b.size - a.size)
     .slice(0, 3 - clusters.length)
-    .map(([loc, years]) => ({
-      label: `${years.size} ritorni a ${loc}`,
-      count: years.size,
-      href:  `/places/${encodeURIComponent(loc)}`,
-    }))
+    .map(([loc, years]) => {
+      const sub = years.size >= 4 ? 'Un ritorno costante'
+        : years.size >= 3 ? 'Ci torni spesso'
+        : 'Un posto che torna'
+      return {
+        title:    loc,
+        subtitle: sub,
+        count:    years.size,
+        href:     `/places/${encodeURIComponent(loc)}`,
+      }
+    })
 
   return [...clusters, ...recurringLoc].slice(0, 3)
 }
