@@ -51,7 +51,7 @@ export function InlineContribute({ memoryId }: InlineContributeProps) {
   }
 
   return (
-    <div className="mt-10 pt-6 border-t border-border/30">
+    <div className="mt-10 pt-5 border-t border-border/20">
       <p className="text-sm font-medium text-foreground/80 mb-4">
         Come lo ricordi tu?
       </p>
@@ -78,7 +78,7 @@ export function InlineContribute({ memoryId }: InlineContributeProps) {
 
       <form onSubmit={handleSubmit}>
         {/* Chat-style input row */}
-        <div className="flex items-center gap-2 bg-foreground/[0.04] rounded-full px-4 py-2">
+        <div className="flex items-center gap-3 rounded-full bg-foreground/[0.06] px-4 py-3">
           <input
             ref={inputRef}
             type="text"
@@ -86,12 +86,12 @@ export function InlineContribute({ memoryId }: InlineContributeProps) {
             onChange={(e) => setText(e.target.value)}
             placeholder="Cosa ti ricordi di questo momento?"
             disabled={isPending}
-            className="flex-1 bg-transparent border-none outline-none text-sm text-foreground/90 placeholder:text-muted-foreground/40 min-w-0"
+            className="flex-1 bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground/70 min-w-0"
           />
           <button
             type="submit"
             disabled={!canSubmit || isPending}
-            className="w-8 h-8 shrink-0 rounded-full bg-black text-white flex items-center justify-center disabled:opacity-25 hover:opacity-80 active:scale-95 transition-all"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white disabled:opacity-25 hover:opacity-80 active:scale-95 transition-all"
           >
             {isPending ? (
               <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
