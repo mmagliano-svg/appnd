@@ -44,6 +44,9 @@ export function AddContributionForm({ sharedMemoryId, fromMemoryId }: Props) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <p className="text-sm text-muted-foreground/70 mb-3">
+        Qui potete continuare questo momento insieme
+      </p>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
