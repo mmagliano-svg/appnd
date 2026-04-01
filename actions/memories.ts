@@ -20,6 +20,7 @@ export interface CreateMemoryInput {
   is_first_time?: boolean
   group_id?: string | null
   sharing_status?: 'private' | 'shared'
+  anchor_id?: string | null
 }
 
 export interface UpdateMemoryInput {
@@ -63,6 +64,7 @@ export async function createMemoryReturnId(input: CreateMemoryInput): Promise<st
       created_by: user!.id,
       group_id: input.group_id ?? null,
       sharing_status: input.sharing_status ?? 'private',
+      anchor_id: input.anchor_id ?? null,
     })
     .select('id')
     .single()

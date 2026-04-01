@@ -294,6 +294,8 @@ export interface Database {
           updated_at: string
           group_id: string | null
           sharing_status: 'private' | 'shared'
+          anchor_id: string | null
+          shared_memory_id: string | null
         }
         Insert: {
           id?: string
@@ -314,6 +316,8 @@ export interface Database {
           updated_at?: string
           group_id?: string | null
           sharing_status?: 'private' | 'shared'
+          anchor_id?: string | null
+          shared_memory_id?: string | null
         }
         Update: {
           id?: string
@@ -334,6 +338,8 @@ export interface Database {
           updated_at?: string
           group_id?: string | null
           sharing_status?: 'private' | 'shared'
+          anchor_id?: string | null
+          shared_memory_id?: string | null
         }
         Relationships: [
           {
@@ -524,6 +530,87 @@ export interface Database {
           opened_at?: string | null
           accepted_at?: string | null
           expires_at?: string | null
+        }
+        Relationships: []
+      }
+      shared_memories: {
+        Row: {
+          id: string
+          owner_user_id: string
+          title: string
+          start_date: string
+          end_date: string | null
+          location_name: string | null
+          anchor_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_user_id: string
+          title: string
+          start_date: string
+          end_date?: string | null
+          location_name?: string | null
+          anchor_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          title?: string
+          end_date?: string | null
+          location_name?: string | null
+          anchor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shared_memory_participants: {
+        Row: {
+          id: string
+          shared_memory_id: string
+          person_id: string
+          linked_user_id: string | null
+          role: 'owner' | 'participant'
+          invite_status: 'pending' | 'accepted' | 'declined'
+          added_by_user_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          shared_memory_id: string
+          person_id: string
+          linked_user_id?: string | null
+          role?: 'owner' | 'participant'
+          invite_status?: 'pending' | 'accepted' | 'declined'
+          added_by_user_id: string
+          created_at?: string
+        }
+        Update: {
+          invite_status?: 'pending' | 'accepted' | 'declined'
+        }
+        Relationships: []
+      }
+      shared_memory_contributions: {
+        Row: {
+          id: string
+          shared_memory_id: string
+          author_user_id: string
+          body: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          shared_memory_id: string
+          author_user_id: string
+          body: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          updated_at?: string
         }
         Relationships: []
       }

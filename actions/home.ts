@@ -203,3 +203,138 @@ export async function getHomeNudge(): Promise<HomeNudge | null> {
 
   return null
 }
+
+// ── Memory Signals ─────────────────────────────────────────────────────────
+
+export interface MemorySignal {
+  text: string
+  href: string
+}
+
+export interface MemorySignalsResult {
+  newContribution: MemorySignal | null
+  incompleteMemory: MemorySignal | null
+  memoryRecall: MemorySignal | null
+}
+
+/**
+ * Returns up to three in-app signals for the Home screen.
+ * Priority (for display): newContribution → incompleteMemory → memoryRecall.
+ * All signals are recomputed on each call — no persistence.
+ */
+export async function getMemorySignals(): Promise<MemorySignalsResult> {
+  const { supabase, user } = await authedClient()
+  const today = new Date()
+
+  let newContribution: MemorySignal | null = null
+  let incompleteMemory: MemorySignal | null = null
+  let memoryRecall: MemorySignal | null = null
+
+  // ── Shared memory ids where current user is a participant ─────────────────
+  const { data: participantRows } = await supabase
+    .from('shared_memory_participants')
+    .select('shared_memory_id')
+    .eq('linked_user_id', user.id)
+
+  const smIds = (participantRows ?? []).map((r) => r.shared_memory_id)
+
+  if (smIds.length > 0) {
+    // ── Signal 1: new contribution from others in last 48h ──────────────────
+    const cutoff = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+
+    const { data: contribRows } = await supabase
+      .from('shared_memory_contributions')
+      .select('id, shared_memory_id, author_user_id')
+      .in('shared_memory_id', smIds)
+      .neq('author_user_id', user.id)
+      .gte('created_at', cutoff)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    const latest = contribRows?.[0] ?? null
+    if (latest) {
+      const { data: authorRow } = await supabase
+        .from('users')
+        .select('display_name, email')
+        .eq('id', latest.author_user_id)
+        .maybeSingle()
+      const name =
+        authorRow?.display_name ??
+        authorRow?.email?.split('@')[0] ??
+        'Qualcuno'
+      newContribution = {
+        text: `${name} ha aggiunto qualcosa`,
+        href: `/shared/${latest.shared_memory_id}`,
+      }
+    }
+
+    // ── Signal 2: incomplete shared memory (participants ≥ 2, contributions ≤ 1) ─
+    const [{ data: partRows }, { data: allContribRows }] = await Promise.all([
+      supabase
+        .from('shared_memory_participants')
+        .select('shared_memory_id')
+        .in('shared_memory_id', smIds),
+      supabase
+        .from('shared_memory_contributions')
+        .select('shared_memory_id')
+        .in('shared_memory_id', smIds),
+    ])
+
+    const partCounts = new Map<string, number>()
+    for (const r of partRows ?? []) {
+      partCounts.set(r.shared_memory_id, (partCounts.get(r.shared_memory_id) ?? 0) + 1)
+    }
+    const contribCounts = new Map<string, number>()
+    for (const r of allContribRows ?? []) {
+      contribCounts.set(r.shared_memory_id, (contribCounts.get(r.shared_memory_id) ?? 0) + 1)
+    }
+
+    const incompleteId = smIds.find(
+      (id) => (partCounts.get(id) ?? 0) >= 2 && (contribCounts.get(id) ?? 0) <= 1,
+    ) ?? null
+
+    if (incompleteId) {
+      incompleteMemory = {
+        text: 'Manca ancora qualcuno',
+        href: `/shared/${incompleteId}`,
+      }
+    }
+  }
+
+  // ── Signal 3: memory recall ───────────────────────────────────────────────
+  // Fixed anchor within next 5 days
+  const closestAnchor = FIXED_CALENDAR_ANCHORS
+    .map((anchor) => ({ anchor, days: daysUntilFixedAnchor(anchor, today) }))
+    .filter(({ days }) => days <= 5)
+    .sort((a, b) => a.days - b.days)[0] ?? null
+
+  if (closestAnchor) {
+    memoryRecall = {
+      text: 'Questo momento torna',
+      href: `/timeline?anchor=${closestAnchor.anchor.id}`,
+    }
+  } else {
+    // Past memory with same day/month as today
+    const mm = today.getMonth() + 1
+    const dd = today.getDate()
+    const { data: memRows } = await supabase
+      .from('memories')
+      .select('id, start_date')
+      .eq('created_by', user.id)
+      .is('end_date', null)
+
+    const sameDay = (memRows ?? []).find((m) => {
+      const parts = m.start_date.split('-')
+      return parseInt(parts[1]) === mm && parseInt(parts[2]) === dd
+    }) ?? null
+
+    if (sameDay) {
+      memoryRecall = {
+        text: 'Questo momento torna',
+        href: `/memories/${sameDay.id}`,
+      }
+    }
+  }
+
+  return { newContribution, incompleteMemory, memoryRecall }
+}

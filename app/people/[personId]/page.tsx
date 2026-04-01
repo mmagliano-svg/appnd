@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getPersonDetail, type RelationshipType } from '@/actions/persons'
 import { getSharedMemoriesWithUser } from '@/actions/people'
+import { getSharedMemoriesForPerson } from '@/actions/shared-memories'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { dayMonthFromDate, dayMonthFromBirthDate, formatBirthDate } from '@/lib/utils/anchors'
 
@@ -175,6 +176,8 @@ function TimelineByYear<T extends { id: string; start_date: string }>({
 async function PersonEntityView({ id }: { id: string }) {
   const person = await getPersonDetail(id)
   if (!person) return null
+
+  const sharedMoments = await getSharedMemoriesForPerson(id)
 
   const ini = initials(person.name)
   const sorted = person.memories  // ascending by start_date
@@ -419,6 +422,41 @@ async function PersonEntityView({ id }: { id: string }) {
             emptyNote={`Ancora nessun ricordo con ${person.name}. Crea un momento e aggiungilo nella sezione "Con chi eri?".`}
           />
         </div>
+
+        {/* ══ SECTION 6 — MOMENTI CONDIVISI ════════════════════════════════ */}
+        {sharedMoments.length > 0 && (
+          <div className="px-4 pt-2 pb-10">
+            <div className="border-t border-border/30 mb-6" />
+            <SectionTitle>Momenti condivisi</SectionTitle>
+            <div className="space-y-3">
+              {sharedMoments.map((sm) => (
+                <Link
+                  key={sm.id}
+                  href={`/shared/${sm.id}`}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-muted/30 border border-border/40 hover:border-foreground/15 hover:bg-muted/50 px-4 py-3.5 transition-all group active:scale-[0.99]"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-snug line-clamp-1">{sm.title}</p>
+                    <p className="text-xs text-muted-foreground/55 mt-0.5">
+                      {formatDayMonth(sm.start_date)}
+                      {sm.contribution_count > 0 && (
+                        <span className="ml-2 text-muted-foreground/40">
+                          · {sm.contribution_count} version{sm.contribution_count === 1 ? 'e' : 'i'}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <svg
+                    className="w-4 h-4 text-muted-foreground/20 group-hover:text-muted-foreground/45 transition-colors shrink-0"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 18l6-6-6-6" />
+                  </svg>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
     </main>

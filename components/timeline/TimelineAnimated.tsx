@@ -569,21 +569,27 @@ function DaysView({
       >
         {(() => {
           let lastPeriodTitle = ''
+          let isFirstPeriod   = true
           return monthGroup.dayGroups.map(({ day, memories }) => {
           const date        = new Date(year, monthGroup.month - 1, day)
           const dayOfWeek   = DAYS_FULL[date.getDay()]
           const monthName   = MONTHS_IT[monthGroup.month - 1].toLowerCase()
 
-          const periodTitle  = memIdToPeriod.get(memories[0]?.id ?? '')
+          const periodTitle      = memIdToPeriod.get(memories[0]?.id ?? '')
           const showPeriodHeader = !!periodTitle && periodTitle !== lastPeriodTitle
           if (periodTitle) lastPeriodTitle = periodTitle
+          const isFirst = isFirstPeriod
+          if (showPeriodHeader) isFirstPeriod = false
 
           return (
             <motion.div key={day} variants={staggerItem}>
               {showPeriodHeader && (
-                <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 mb-5">
-                  {periodTitle}
-                </p>
+                <div className={isFirst ? 'mb-5' : 'mt-12 mb-5'}>
+                  <div className="w-full h-px bg-foreground/10 mb-3" />
+                  <p className="text-xs font-semibold tracking-wide text-foreground/80">
+                    {periodTitle}
+                  </p>
+                </div>
               )}
               <div className="flex items-baseline gap-2 mb-5">
                 <span className="text-2xl font-bold tabular-nums leading-none">{day}</span>

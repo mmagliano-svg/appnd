@@ -38,7 +38,7 @@ function ClusterCard({ item }: { item: ClusterItem }) {
           {item.label}
         </p>
         <p className="text-[10px] text-muted-foreground/50 mt-0.5">
-          {item.count} moment{item.count !== 1 ? 'i' : 'o'}
+          {item.count} moment{item.count !== 1 ? 'i' : 'o'} insieme
         </p>
       </div>
     </Link>
@@ -55,7 +55,7 @@ export function LifeClusters({ people, places, chapters }: LifeClustersProps) {
   return (
     <section className="pt-2 space-y-3">
       <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
-        I tuoi mondi
+        Le persone della tua storia
       </p>
       <div
         className="overflow-x-auto pb-3"

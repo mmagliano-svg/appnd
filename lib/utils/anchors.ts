@@ -174,6 +174,36 @@ export function assembleBirthDate(day: string, month: string, year: string): str
   return year ? `${year}-${month}-${day}` : `${month}-${day}`
 }
 
+// ── User-selectable anchor labels (v1 fixed list) ────────────────────────
+
+/**
+ * Maps user-selected anchor_id values (stored on memories) to Italian labels.
+ * Keep in sync with the ANCHORS constant in app/memories/new/page.tsx.
+ */
+const ANCHOR_LABEL_MAP: Record<string, string> = {
+  birthday:        'Compleanno',
+  christmas:       'Natale',
+  new_year:        'Capodanno',
+  travel:          'Viaggio',
+  party:           'Festa',
+  family_time:     'In famiglia',
+  friends_time:    'Con amici',
+  first_time:      'Prima volta',
+  easter:          'Pasqua',
+  summer:          'Estate',
+  summer_holidays: 'Vacanze estive',
+  weekend:         'Weekend',
+}
+
+/**
+ * Returns the Italian display label for a stored anchor_id.
+ * Returns null if anchor_id is null, empty, or unrecognised.
+ */
+export function getAnchorLabel(anchorId: string | null | undefined): string | null {
+  if (!anchorId) return null
+  return ANCHOR_LABEL_MAP[anchorId] ?? null
+}
+
 // ── Core detection ────────────────────────────────────────────────────────
 
 /**

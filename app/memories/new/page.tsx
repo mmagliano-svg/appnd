@@ -6,12 +6,28 @@ import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummar
 import { getUserGroups, type GroupSummary } from '@/actions/groups'
 import { addMediaContribution } from '@/actions/contributions'
 import { setMemoryPeople } from '@/actions/persons'
+import { createSharedMemory } from '@/actions/shared-memories'
 import { PeopleSelector } from '@/components/people/PeopleSelector'
 import type { SimplePerson } from '@/actions/persons'
 import { createClient } from '@/lib/supabase/client'
-import { CATEGORIES } from '@/lib/constants/categories'
 import { TagInput } from '@/components/memory/TagInput'
 import { getPromptForCategory } from '@/lib/constants/prompts'
+
+// ── Anchor system v1 — fixed list ────────────────────────────────────────────
+const ANCHORS = [
+  { id: 'birthday',        label: 'Compleanno' },
+  { id: 'christmas',       label: 'Natale' },
+  { id: 'new_year',        label: 'Capodanno' },
+  { id: 'travel',          label: 'Viaggio' },
+  { id: 'party',           label: 'Festa' },
+  { id: 'family_time',     label: 'In famiglia' },
+  { id: 'friends_time',    label: 'Con amici' },
+  { id: 'first_time',      label: 'Prima volta' },
+  { id: 'easter',          label: 'Pasqua' },
+  { id: 'summer',          label: 'Estate' },
+  { id: 'summer_holidays', label: 'Vacanze estive' },
+  { id: 'weekend',         label: 'Weekend' },
+]
 
 function NewMemoryForm() {
   const router = useRouter()
@@ -23,7 +39,9 @@ function NewMemoryForm() {
   const [uploadStep, setUploadStep] = useState('')
   const [error, setError] = useState('')
   const [tags, setTags] = useState<string[]>([])
-  const [categories, setCategories] = useState<string[]>([])
+  const [selectedAnchor, setSelectedAnchor] = useState<string | null>(null)
+  const [autoSuggested, setAutoSuggested] = useState(false)
+  const [makeShared, setMakeShared] = useState(false)
   const [allTags, setAllTags] = useState<string[]>([])
   const [periods, setPeriods] = useState<PeriodSummary[]>([])
   const [groups, setGroups] = useState<GroupSummary[]>([])
@@ -76,6 +94,22 @@ function NewMemoryForm() {
   const autoParentPeriodId: string | null =
     periodFromUrl ?? suggestedPeriod?.id ?? null
 
+  // Auto-suggest anchor based on date — only when user hasn't selected one yet
+  useEffect(() => {
+    if (selectedAnchor !== null) return
+    const parts = startDate.split('-')
+    const mm = parseInt(parts[1])
+    const dd = parseInt(parts[2])
+    let suggested: string | null = null
+    if (mm === 12 && dd >= 24 && dd <= 26)                         suggested = 'christmas'
+    else if ((mm === 12 && dd === 31) || (mm === 1 && dd === 1))   suggested = 'new_year'
+    else if (mm === 8 && dd >= 10 && dd <= 20)                     suggested = 'summer_holidays'
+    if (suggested) {
+      setSelectedAnchor(suggested)
+      setAutoSuggested(true)
+    }
+  }, [startDate]) // eslint-disable-line react-hooks/exhaustive-deps
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
@@ -114,8 +148,9 @@ function NewMemoryForm() {
         parent_period_id: memoryType === 'day' ? autoParentPeriodId : null,
         location_name: form.get('location_name') as string,
         description: form.get('description') as string,
-        categories,
+        categories: [],
         tags,
+        anchor_id: selectedAnchor,
         is_anniversary: isAnniversary,
         is_first_time: isFirstTime,
         group_id: memoryType === 'day' ? selectedGroupId : null,
@@ -123,6 +158,18 @@ function NewMemoryForm() {
 
       if (selectedPeople.length > 0) {
         await setMemoryPeople(memoryId, selectedPeople.map((p) => p.id))
+      }
+
+      if (makeShared && selectedPeople.length > 0) {
+        await createSharedMemory({
+          memoryId,
+          title: form.get('title') as string,
+          start_date: startDate,
+          location_name: (form.get('location_name') as string) || null,
+          anchor_id: selectedAnchor,
+          participantPersonIds: selectedPeople.map((p) => p.id),
+          creatorBody: (form.get('description') as string) || null,
+        })
       }
 
       if (mediaFile) {
@@ -351,6 +398,44 @@ function NewMemoryForm() {
                 </p>
               )}
             </div>
+
+            {/* ── Anchor — "Che momento era?" ── */}
+            <div className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                Che momento era?
+              </p>
+              <div
+                className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1"
+                style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+              >
+                {ANCHORS.map((anchor) => {
+                  const active = selectedAnchor === anchor.id
+                  return (
+                    <button
+                      key={anchor.id}
+                      type="button"
+                      onClick={() => {
+                        setAutoSuggested(false)
+                        setSelectedAnchor((prev) => prev === anchor.id ? null : anchor.id)
+                      }}
+                      className={`shrink-0 rounded-full px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
+                        active
+                          ? 'bg-foreground text-background'
+                          : 'bg-foreground/[0.05] text-foreground/55 hover:bg-foreground/[0.09] hover:text-foreground/80'
+                      }`}
+                    >
+                      {anchor.label}
+                    </button>
+                  )
+                })}
+              </div>
+              {autoSuggested && selectedAnchor && (
+                <p className="text-[10px] text-muted-foreground/50 px-1">
+                  Potrebbe essere questo
+                </p>
+              )}
+            </div>
+
           </div>
 
           {/* ── Divider ──────────────────────────────────────────── */}
@@ -367,6 +452,24 @@ function NewMemoryForm() {
                 Chi era con te?
               </p>
               <PeopleSelector onChange={setSelectedPeople} />
+              {selectedPeople.length > 0 && (
+                <div className="pl-0.5 -mt-1">
+                  {!makeShared ? (
+                    <button
+                      type="button"
+                      onClick={() => setMakeShared(true)}
+                      className="text-xs text-muted-foreground/40 hover:text-muted-foreground/65 transition-colors min-h-[44px] flex items-center"
+                    >
+                      Invita chi era con te a ricordarlo →
+                    </button>
+                  ) : (
+                    <p className="text-xs text-muted-foreground/60 min-h-[44px] flex items-center gap-1.5">
+                      <span className="text-foreground/35">✓</span>
+                      Potranno aggiungere il loro ricordo di questo momento.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Luogo */}
@@ -381,42 +484,6 @@ function NewMemoryForm() {
                 placeholder="Es. Roma, Trastevere"
                 className="w-full bg-transparent text-base placeholder:text-muted-foreground/40 focus:outline-none border-b border-border pb-2.5"
               />
-            </div>
-
-            {/* Categorie */}
-            <div className="space-y-3">
-              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-                Di che tipo è?
-              </p>
-              <div
-                className="flex gap-2 overflow-x-auto pb-1"
-                style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
-              >
-                {CATEGORIES.map((cat) => {
-                  const active = categories.includes(cat.value)
-                  return (
-                    <button
-                      key={cat.value}
-                      type="button"
-                      onClick={() =>
-                        setCategories((prev) =>
-                          prev.includes(cat.value)
-                            ? prev.filter((c) => c !== cat.value)
-                            : [...prev, cat.value],
-                        )
-                      }
-                      className={`shrink-0 flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition-all min-h-[44px] ${
-                        active
-                          ? 'border-foreground bg-foreground text-background'
-                          : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
-                      }`}
-                    >
-                      <span>{cat.emoji}</span>
-                      <span>{cat.label}</span>
-                    </button>
-                  )
-                })}
-              </div>
             </div>
 
             {/* Classification */}
@@ -466,7 +533,7 @@ function NewMemoryForm() {
               <textarea
                 id="description"
                 name="description"
-                placeholder={getPromptForCategory(categories[0] || null)}
+                placeholder={getPromptForCategory(null)}
                 rows={4}
                 className="w-full rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-base placeholder:text-muted-foreground/40 focus:outline-none focus:border-border focus:bg-background transition-colors resize-none leading-relaxed"
               />

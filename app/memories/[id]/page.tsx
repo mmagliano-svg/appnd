@@ -9,8 +9,11 @@ import { getLikeState } from '@/actions/likes'
 import { MemoryChat } from '@/components/memory/MemoryChat'
 import { MemoryActions } from '@/components/memory/MemoryActions'
 import { RemoveParticipantButton } from '@/components/memory/RemoveParticipantButton'
+import { InlineContribute } from '@/components/memory/InlineContribute'
 import { ScrollToTop } from '@/components/memory/ScrollToTop'
 import { MemoryScrollEffects } from '@/components/memory/MemoryScrollEffects'
+import { getAnchorLabel } from '@/lib/utils/anchors'
+import { getSharedMemoryDetail } from '@/actions/shared-memories'
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -102,6 +105,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   const memoryStartDate = (memory as { start_date?: string }).start_date ?? memory.happened_at
   const memoryParentPeriodId = (memory as { parent_period_id?: string | null }).parent_period_id ?? null
   const isPeriod = Boolean(memoryEndDate)
+  const anchorLabel = getAnchorLabel((memory as { anchor_id?: string | null }).anchor_id)
+  const memorySharedId = (memory as { shared_memory_id?: string | null }).shared_memory_id ?? null
 
   // Hero photo — first photo contribution chronologically
   const heroContribution = contributions.find(
@@ -130,6 +135,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         .eq('id', memoryParentPeriodId)
         .single()
         .then(({ data }) => data as { id: string; title: string; start_date: string; end_date: string } | null)
+    : null
+
+  // Fetch shared memory perspectives (if any)
+  const sharedMemory = !isPeriod && memorySharedId
+    ? await getSharedMemoryDetail(memorySharedId)
     : null
 
   // ── Period (chapter) layout ─────────────────────────────────────────────
@@ -415,6 +425,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                   <span className="text-xs text-white/65">{memory.location_name}</span>
                 </>
               )}
+              {anchorLabel && (
+                <>
+                  <span className="text-white/30">·</span>
+                  <span className="text-xs text-white/65">{anchorLabel}</span>
+                </>
+              )}
             </div>
             {/* Badges */}
             {(isFirstTime || isAnniversary || sharingStatus === 'shared') && (
@@ -510,6 +526,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                   {memory.location_name}
                 </span>
               )}
+              {anchorLabel && (
+                <span className="text-muted-foreground/70">{anchorLabel}</span>
+              )}
             </div>
           </div>
         )}
@@ -522,10 +541,10 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         )}
 
 
-        {/* ── Description ── */}
+        {/* ── Description (story) ── */}
         {memory.description && (
-          <div data-fade-in className={`${heroPhoto ? 'pt-6' : 'pt-5'} pb-3`}>
-            <p className="text-base text-foreground/80 leading-[1.8] whitespace-pre-wrap">
+          <div data-fade-in className={`${heroPhoto ? 'pt-8' : 'pt-7'} pb-8`}>
+            <p className="text-[15px] text-foreground/90 leading-[1.8] whitespace-pre-wrap">
               {memory.description}
             </p>
           </div>
@@ -533,13 +552,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* ── Tags ── */}
         {tags.length > 0 && (
-          <div className="py-3">
+          <div className="pb-4">
             <div className="flex flex-wrap gap-2">
               {tags.map((tag) => (
                 <Link
                   key={tag}
                   href={`/tags/${encodeURIComponent(tag)}`}
-                  className="inline-flex items-center rounded-full border border-border bg-background hover:bg-accent hover:border-foreground/20 px-3 py-1.5 text-xs font-medium text-foreground/70 hover:text-foreground transition-all"
+                  className="inline-flex items-center rounded-full border border-border/50 bg-transparent hover:bg-accent hover:border-foreground/20 px-3 py-1 text-xs text-muted-foreground/60 hover:text-foreground transition-all"
                 >
                   #{tag}
                 </Link>
@@ -549,16 +568,64 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         )}
 
         {/* ── Actions (like · chat · people) — after content ── */}
-        <MemoryActions
-          memoryId={params.id}
-          initialLikes={initialLikes}
-          participantCount={participants.length}
-        />
+        <div className="opacity-60">
+          <MemoryActions
+            memoryId={params.id}
+            initialLikes={initialLikes}
+            participantCount={participants.length}
+          />
+        </div>
+
+        {/* ── Shared perspectives ── */}
+        {sharedMemory && (
+          <div className="mt-10 pt-6 border-t border-border/30">
+            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">
+              Questo momento continua
+            </p>
+            {sharedMemory.contributions.length === 0 ? (
+              <p className="text-sm text-muted-foreground/50 pb-2">
+                Ancora nessuna versione aggiunta.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {sharedMemory.contributions.map((c) => (
+                  <details key={c.id} className="group">
+                    <summary className="flex items-center justify-between gap-3 cursor-pointer list-none min-h-[44px] py-1">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-6 h-6 rounded-full bg-foreground/[0.08] flex items-center justify-center text-[10px] font-semibold text-foreground/60 shrink-0">
+                          {c.author_name.slice(0, 1).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium">{c.author_name}</span>
+                          <p className="text-xs text-muted-foreground/60 truncate mt-0.5 group-open:hidden">
+                            {c.body.slice(0, 80)}{c.body.length > 80 ? '…' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <svg className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </summary>
+                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap pl-[34px] pb-3 pt-1">
+                      {c.body}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            )}
+            <Link
+              href={`/shared/${sharedMemory.id}?from=${params.id}`}
+              className="inline-flex items-center gap-1.5 mt-5 text-sm text-muted-foreground/55 hover:text-foreground/80 transition-colors min-h-[44px]"
+            >
+              Vedi tutto →
+            </Link>
+          </div>
+        )}
 
         {/* ── Parent period ── */}
         {parentPeriod && (
-          <div className="py-4 border-b border-border/50">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+          <div className="mt-10 py-4 border-b border-border/50">
+            <p className="text-xs font-medium text-foreground/55 uppercase tracking-wider mb-2">
               Parte di
             </p>
             <Link
@@ -686,6 +753,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </div>
         )}
 
+        {/* ── Inline contribute — main interaction ── */}
+        {!hasOwnContribution && (
+          <InlineContribute memoryId={params.id} />
+        )}
+
         {/* ── Contributions — narrative ── */}
         <div id="contributi" className="pt-8">
 
@@ -810,13 +882,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           )}
         </div>
 
-        {/* Soft nudge — no CTA, FAB handles it */}
-        {contributions.length > 0 && !hasOwnContribution && (
-          <div className="mt-10 text-center">
-            <p className="text-xs text-muted-foreground/60 italic">E tu, come lo ricordi?</p>
-          </div>
-        )}
-
         {/* ── Chat ── */}
         <div className="mt-8">
           <MemoryChat
@@ -828,16 +893,16 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       </div>
 
-      {/* ── FAB — floating contribute button ── */}
-      <div className="fixed bottom-6 right-4 z-50 max-w-lg" style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}>
+      {/* ── FAB — photo contribute ── */}
+      <div className="fixed bottom-6 z-50" style={{ right: 'max(1rem, calc((100vw - 32rem) / 2 + 1rem))' }}>
         <Link
           href={`/memories/${params.id}/contribute`}
-          className="flex items-center gap-2.5 rounded-full bg-foreground text-background pl-5 pr-6 py-3.5 text-sm font-semibold shadow-xl hover:bg-foreground/90 active:scale-95 transition-all"
+          className="flex items-center gap-2 rounded-full bg-foreground/[0.08] border border-foreground/10 text-foreground/50 px-4 py-2.5 text-xs font-medium hover:bg-foreground/[0.12] hover:text-foreground/70 active:scale-95 transition-all backdrop-blur-sm"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          Aggiungi la tua versione
+          Aggiungi una foto
         </Link>
       </div>
 

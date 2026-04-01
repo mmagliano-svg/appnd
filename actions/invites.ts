@@ -70,7 +70,7 @@ export async function createInvite(memoryId: string, email?: string) {
         <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
           <h1 style="font-size: 24px; font-weight: 600; margin-bottom: 8px;">Appnd</h1>
           <p style="color: #666; margin-bottom: 24px;">I momenti condivisi diventano ricordi condivisi.</p>
-          <p style="margin-bottom: 8px;"><strong>${inviterName}</strong> ti ha invitato a co-costruire un ricordo:</p>
+          <p style="margin-bottom: 8px; white-space: pre-line;">C'eri anche tu.<br>Ti ricordi questo momento?</p>
           <p style="font-size: 18px; font-weight: 500; margin-bottom: 24px;">"${memoryTitle}"</p>
           <a href="${inviteUrl}" style="display: inline-block; background: #000; color: #fff; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500;">
             Accetta invito

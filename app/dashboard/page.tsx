@@ -2,10 +2,12 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
 import { getTopPeople } from '@/actions/persons'
-import { getUpcomingMoments, getHomeNudge } from '@/actions/home'
+import { getUpcomingMoments, getMemorySignals } from '@/actions/home'
+import { getHomeSharedMoments } from '@/actions/shared-memories'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
-import { HomeNudge } from '@/components/home/HomeNudge'
+import { MemorySignals } from '@/components/home/MemorySignals'
+import { SharedMoments } from '@/components/home/SharedMoments'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
 import { UpcomingMoments } from '@/components/home/UpcomingMoments'
@@ -21,11 +23,12 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const [memoriesRaw, peopleRaw, upcomingMoments, nudge] = await Promise.all([
+  const [memoriesRaw, peopleRaw, upcomingMoments, signals, sharedMoments] = await Promise.all([
     getUserMemories(),
     getTopPeople(9),
     getUpcomingMoments(30),
-    getHomeNudge(),
+    getMemorySignals(),
+    getHomeSharedMoments(),
   ])
 
   if (memoriesRaw.length === 0) redirect('/onboarding')
@@ -126,11 +129,20 @@ export default async function DashboardPage() {
 
           <HomeHero memory={heroMemory} displayName={displayName} />
 
-          {nudge && <HomeNudge nudge={nudge} />}
+          {signals.newContribution || signals.incompleteMemory || signals.memoryRecall ? (
+            <div className="px-4 space-y-2">
+              <p className="text-xs text-muted-foreground/50 font-medium uppercase tracking-widest">
+                C'è qualcosa per te
+              </p>
+              <MemorySignals signals={signals} />
+            </div>
+          ) : null}
 
           {continueMemories.length > 0 && (
             <ContinueStory memories={continueMemories} />
           )}
+
+          <SharedMoments moments={sharedMoments} />
 
           <UpcomingMoments moments={upcomingMoments} />
 
