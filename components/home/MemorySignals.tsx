@@ -30,7 +30,7 @@ export function MemorySignals({ signals }: Props) {
         className="block rounded-2xl bg-black text-white px-4 py-5 hover:opacity-90 transition-opacity active:scale-[0.99]"
       >
         <p className="text-base font-semibold">{active.text} →</p>
-        <p className="text-sm text-white/70 mt-1">{subtitle}</p>
+        <div className="text-sm text-white/70 mt-1">Vedi cosa è cambiato</div>
       </Link>
     </div>
   )

@@ -23,12 +23,12 @@ export function SharedMoments({ moments }: Props) {
             href={`/shared/${item.id}`}
             className="min-w-[220px] shrink-0 rounded-2xl bg-foreground/[0.08] px-4 py-4 hover:bg-foreground/[0.11] transition-colors active:scale-[0.99]"
           >
-            <p className="text-xs text-muted-foreground/70 mb-1 truncate">
-              {item.signal}
-            </p>
-            <p className="text-base font-semibold leading-snug line-clamp-2">
+            <div className="text-xs text-muted-foreground/60 mb-1">
+              Aggiornato di recente
+            </div>
+            <div className="text-base font-semibold leading-snug line-clamp-2">
               {item.title}
-            </p>
+            </div>
           </Link>
         ))}
       </div>

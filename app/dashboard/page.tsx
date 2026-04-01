@@ -127,9 +127,10 @@ export default async function DashboardPage() {
 
         <div className="space-y-8 pt-1">
 
-          <HomeHero memory={heroMemory} displayName={displayName} />
-
-          <MemorySignals signals={signals} />
+          <div className="space-y-3">
+            <HomeHero memory={heroMemory} displayName={displayName} />
+            <MemorySignals signals={signals} />
+          </div>
 
           <SharedMoments moments={sharedMoments} />
 
