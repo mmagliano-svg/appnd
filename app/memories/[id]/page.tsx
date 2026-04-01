@@ -362,7 +362,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 44%, rgba(0,0,0,0.88) 100%)',
+                'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 44%, rgba(0,0,0,0.55) 100%)',
             }}
           />
         )}

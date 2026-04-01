@@ -81,12 +81,12 @@ export default async function YearStoryPage({ params }: Props) {
         />
 
         {/* Back button — overlaid on hero */}
-        <div className="absolute top-0 left-0 right-0 px-4 pt-6 z-10">
+        <div className="absolute top-0 left-0 right-0 px-4 pt-5 z-10">
           <Link
             href="/timeline"
-            className="inline-flex items-center gap-1.5 text-sm text-white/80 hover:text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-white font-medium drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)] transition-colors bg-black/30 backdrop-blur-sm rounded-full px-3 py-2.5 min-h-[44px]"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
             </svg>
             Timeline
@@ -108,9 +108,9 @@ export default async function YearStoryPage({ params }: Props) {
       </div>
 
       {/* ── Transition block ── */}
-      <div className="max-w-lg mx-auto px-4 mt-8 mb-3">
+      <div className="max-w-lg mx-auto px-4 mt-10 mb-3">
         <p className="text-sm tracking-wide uppercase text-foreground/60">Rivivi questo anno</p>
-        <p className="text-xs text-muted-foreground mt-1">I momenti che lo hanno costruito</p>
+        <p className="text-xs text-foreground/50 mt-1">I momenti che lo hanno reso tuo</p>
       </div>
 
       {/* ── Memory list grouped by month ── */}
@@ -118,9 +118,10 @@ export default async function YearStoryPage({ params }: Props) {
         {monthGroups.map(([month, mems]) => (
           <div key={month}>
             {/* Month label */}
-            <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase mt-8 mb-4">
+            <p className="text-xs tracking-widest text-foreground/50 uppercase mt-8 mb-2">
               {MONTHS_IT[month - 1]}
             </p>
+            <div className="h-px bg-border/30 mb-4" />
 
             <div className="space-y-6">
               {mems.map((m) =>
@@ -129,7 +130,7 @@ export default async function YearStoryPage({ params }: Props) {
                   <Link
                     key={m.id}
                     href={`/memories/${m.id}`}
-                    className="block rounded-2xl overflow-hidden bg-muted active:scale-[0.99] transition-transform"
+                    className="block rounded-2xl overflow-hidden bg-muted hover:scale-[1.01] active:scale-[0.99] transition-transform"
                   >
                     <div className="relative aspect-[16/9] overflow-hidden">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -140,9 +141,9 @@ export default async function YearStoryPage({ params }: Props) {
                         loading="lazy"
                         draggable={false}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/10 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 px-4 pb-4">
-                        <p className="text-white text-base font-semibold leading-snug line-clamp-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
+                        <p className="text-white text-base font-semibold leading-snug line-clamp-2 drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
                           {m.title}
                         </p>
                       </div>
@@ -166,9 +167,9 @@ export default async function YearStoryPage({ params }: Props) {
                   <Link
                     key={m.id}
                     href={`/memories/${m.id}`}
-                    className="block rounded-2xl bg-muted/50 border border-border/40 p-4 hover:bg-muted/80 active:scale-[0.99] transition-all"
+                    className="block rounded-2xl bg-muted/60 border border-white/10 p-4 hover:bg-muted/80 active:scale-[0.99] transition-all"
                   >
-                    <p className="text-sm font-medium text-foreground leading-snug">{m.title}</p>
+                    <p className="text-[15px] font-medium text-foreground leading-snug">{m.title}</p>
                     <div className="flex items-center gap-2 mt-2">
                       <span className="text-sm text-muted-foreground">
                         {formatMemoryDate(m.start_date, null)}
@@ -198,14 +199,14 @@ export default async function YearStoryPage({ params }: Props) {
         <div className="mt-10">
           <Link
             href={`/memories/new?year=${year}`}
-            className="flex items-center justify-between rounded-2xl border border-border/40 px-5 py-5 hover:bg-foreground/[0.03] active:scale-[0.99] transition-all group"
+            className="flex items-center justify-between rounded-2xl border border-border/40 px-5 py-8 hover:bg-foreground/[0.03] active:scale-[0.99] transition-all group"
           >
             <div>
-              <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1">Manca qualcosa?</p>
-              <p className="text-sm font-medium text-foreground">Aggiungi un momento a questo anno</p>
+              <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1.5">Manca qualcosa?</p>
+              <p className="text-sm font-medium text-foreground leading-snug">Aggiungi un momento che vale la pena ricordare</p>
             </div>
             <svg
-              className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground shrink-0 transition-colors"
+              className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground shrink-0 ml-4 transition-colors"
               fill="none" stroke="currentColor" viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
