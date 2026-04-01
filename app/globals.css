@@ -135,6 +135,12 @@
     animation: fadeIn 0.6s ease-out both;
   }
 
+  /* Year story hero — photo entrance: scale 1.02 → 1, fade-in */
+  @keyframes yearHeroIn {
+    from { opacity: 0; transform: scale(1.02); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+
   /* ── Page transitions (View Transitions API) ──────────────────────────────
    * Old page: fades out quickly — gets out of the way.
    * New page: fades in with a 1.5% scale lift — sub-perceptual as motion,

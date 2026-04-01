@@ -55,14 +55,15 @@ export default async function YearStoryPage({ params }: Props) {
       {/* ── Hero ── */}
       <div
         className="relative w-full overflow-hidden"
-        style={{ height: '65vh', minHeight: '380px', maxHeight: '600px' }}
+        style={{ height: '75vh', minHeight: '420px', maxHeight: '680px' }}
       >
         {heroUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={heroUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover animate-hero-fade-in"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ animation: 'yearHeroIn 0.6s ease-out both' }}
             loading="eager"
             draggable={false}
           />
@@ -75,7 +76,7 @@ export default async function YearStoryPage({ params }: Props) {
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.88) 100%)',
+              'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.0) 30%, rgba(0,0,0,0.92) 100%)',
           }}
         />
 
@@ -107,8 +108,9 @@ export default async function YearStoryPage({ params }: Props) {
       </div>
 
       {/* ── Transition block ── */}
-      <div className="max-w-lg mx-auto px-4 pt-8 pb-5">
-        <p className="text-sm text-muted-foreground">Rivivi questo anno</p>
+      <div className="max-w-lg mx-auto px-4 mt-8 mb-3">
+        <p className="text-sm tracking-wide uppercase text-foreground/60">Rivivi questo anno</p>
+        <p className="text-xs text-muted-foreground mt-1">I momenti che lo hanno costruito</p>
       </div>
 
       {/* ── Memory list grouped by month ── */}
@@ -116,7 +118,7 @@ export default async function YearStoryPage({ params }: Props) {
         {monthGroups.map(([month, mems]) => (
           <div key={month}>
             {/* Month label */}
-            <p className="text-xs uppercase tracking-widest text-muted-foreground/60 font-medium mb-4">
+            <p className="text-xs tracking-[0.2em] text-muted-foreground uppercase mt-8 mb-4">
               {MONTHS_IT[month - 1]}
             </p>
 
@@ -138,9 +140,9 @@ export default async function YearStoryPage({ params }: Props) {
                         loading="lazy"
                         draggable={false}
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/10 to-transparent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/10 to-transparent" />
                       <div className="absolute bottom-0 left-0 px-4 pb-4">
-                        <p className="text-white text-base font-semibold leading-snug line-clamp-2 drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
+                        <p className="text-white text-base font-semibold leading-snug line-clamp-2 drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
                           {m.title}
                         </p>
                       </div>
@@ -164,17 +166,17 @@ export default async function YearStoryPage({ params }: Props) {
                   <Link
                     key={m.id}
                     href={`/memories/${m.id}`}
-                    className="block rounded-2xl bg-foreground/[0.04] border border-border/40 px-4 py-4 hover:bg-foreground/[0.07] active:scale-[0.99] transition-all"
+                    className="block rounded-2xl bg-muted/50 border border-border/40 p-4 hover:bg-muted/80 active:scale-[0.99] transition-all"
                   >
-                    <p className="text-sm font-semibold leading-snug">{m.title}</p>
+                    <p className="text-sm font-medium text-foreground leading-snug">{m.title}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-sm text-muted-foreground">
                         {formatMemoryDate(m.start_date, null)}
                       </span>
                       {m.location_name && (
                         <>
                           <span className="text-muted-foreground/35">·</span>
-                          <span className="text-xs text-muted-foreground/70 truncate">
+                          <span className="text-sm text-muted-foreground truncate">
                             {m.location_name}
                           </span>
                         </>
@@ -193,17 +195,17 @@ export default async function YearStoryPage({ params }: Props) {
         ))}
 
         {/* ── Add CTA ── */}
-        <div className="pt-2">
+        <div className="mt-10">
           <Link
             href={`/memories/new?year=${year}`}
-            className="flex items-center justify-between rounded-2xl border border-border/50 px-5 py-4 hover:bg-foreground/[0.04] active:scale-[0.99] transition-all group"
+            className="flex items-center justify-between rounded-2xl border border-border/40 px-5 py-5 hover:bg-foreground/[0.03] active:scale-[0.99] transition-all group"
           >
             <div>
-              <p className="text-sm font-medium">Aggiungi qualcosa a questo anno</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Un momento che manca</p>
+              <p className="text-xs text-muted-foreground/60 uppercase tracking-wide mb-1">Manca qualcosa?</p>
+              <p className="text-sm font-medium text-foreground">Aggiungi un momento a questo anno</p>
             </div>
             <svg
-              className="w-4 h-4 text-muted-foreground/40 group-hover:text-muted-foreground shrink-0 transition-colors"
+              className="w-4 h-4 text-muted-foreground/30 group-hover:text-muted-foreground shrink-0 transition-colors"
               fill="none" stroke="currentColor" viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 5l7 7-7 7" />
