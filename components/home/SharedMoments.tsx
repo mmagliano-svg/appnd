@@ -23,8 +23,8 @@ export function SharedMoments({ moments }: Props) {
             href={`/shared/${item.id}`}
             className="min-w-[220px] shrink-0 rounded-2xl bg-foreground/[0.08] px-4 py-4 hover:bg-foreground/[0.11] transition-colors active:scale-[0.99]"
           >
-            <div className="text-xs text-muted-foreground/60 mb-1">
-              Aggiornato di recente
+            <div className={`text-xs mb-1 ${item.is_recent ? 'text-foreground/70 font-medium' : 'text-muted-foreground/60'}`}>
+              {item.signal}
             </div>
             <div className="text-base font-semibold leading-snug line-clamp-2">
               {item.title}

@@ -241,37 +241,20 @@ export async function getSharedMemoriesForPerson(
 export interface HomeSharedMoment {
   id: string
   title: string
+  /** Editorial signal text — e.g. "Bea ha aggiunto qualcosa" */
   signal: string
+  /** True if there was any contribution in the last 48 h */
+  is_recent: boolean
   participant_count: number
   contribution_count: number
 }
 
 /**
  * Returns up to 3 shared memories where the current user is a participant.
+ * Recently active memories (contribution in last 48 h) are sorted first.
  * Used on the Home screen — caller should hide the section if result is empty.
  */
 export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
-  // DEBUG: force visible items to verify UI rendering — remove flag to restore live data
-  const DEBUG_SHARED_MOMENTS = true
-  if (DEBUG_SHARED_MOMENTS) {
-    return [
-      {
-        id: 'test-1',
-        title: 'Festa di compleanno Margherita',
-        signal: 'Bea ha aggiunto qualcosa',
-        participant_count: 3,
-        contribution_count: 2,
-      },
-      {
-        id: 'test-2',
-        title: 'Weekend in montagna',
-        signal: 'Manca ancora qualcuno',
-        participant_count: 2,
-        contribution_count: 0,
-      },
-    ]
-  }
-
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -285,21 +268,25 @@ export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
   const smIds = (partRows ?? []).map((r) => r.shared_memory_id)
   if (smIds.length === 0) return []
 
-  // Fetch memory titles
+  // Fetch a wider set so we can re-sort by recency and take top 3
   const { data: smRows } = await supabase
     .from('shared_memories')
-    .select('id, title')
+    .select('id, title, created_at')
     .in('id', smIds)
     .order('created_at', { ascending: false })
-    .limit(3)
+    .limit(6)
 
   if (!smRows || smRows.length === 0) return []
 
   const ids = smRows.map((r) => r.id)
+  const cutoff48h = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
 
-  // Participant + contribution counts + latest contributor in parallel
+  // Participant counts + contributions (with timestamp) in parallel
   const [{ data: allParts }, { data: allContribs }] = await Promise.all([
-    supabase.from('shared_memory_participants').select('shared_memory_id').in('shared_memory_id', ids),
+    supabase
+      .from('shared_memory_participants')
+      .select('shared_memory_id')
+      .in('shared_memory_id', ids),
     supabase
       .from('shared_memory_contributions')
       .select('shared_memory_id, author_user_id, created_at')
@@ -311,16 +298,19 @@ export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
   for (const r of allParts ?? []) {
     partCounts.set(r.shared_memory_id, (partCounts.get(r.shared_memory_id) ?? 0) + 1)
   }
+
   const contribCounts = new Map<string, number>()
-  const latestAuthorId = new Map<string, string>() // smId → most recent author_user_id
+  const latestAuthorId = new Map<string, string>()
+  const latestContribAt = new Map<string, string>()
   for (const r of allContribs ?? []) {
     contribCounts.set(r.shared_memory_id, (contribCounts.get(r.shared_memory_id) ?? 0) + 1)
     if (!latestAuthorId.has(r.shared_memory_id)) {
       latestAuthorId.set(r.shared_memory_id, r.author_user_id)
+      latestContribAt.set(r.shared_memory_id, r.created_at)
     }
   }
 
-  // Resolve display names for latest authors who aren't the current user
+  // Resolve display names for external latest authors only
   const externalAuthorIds = Array.from(
     new Set(Array.from(latestAuthorId.values()).filter((id) => id !== user.id))
   )
@@ -331,25 +321,38 @@ export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
       .select('id, display_name, email')
       .in('id', externalAuthorIds)
     for (const u of authorRows ?? []) {
-      authorNameMap.set(
-        u.id,
-        u.display_name ?? u.email?.split('@')[0] ?? 'Qualcuno',
-      )
+      authorNameMap.set(u.id, u.display_name ?? u.email?.split('@')[0] ?? 'Qualcuno')
     }
   }
 
-  return smRows.map((sm) => {
-    const lastId = latestAuthorId.get(sm.id)
+  const moments: HomeSharedMoment[] = smRows.map((sm) => {
+    const lastId   = latestAuthorId.get(sm.id)
+    const lastAt   = latestContribAt.get(sm.id) ?? null
+    const is_recent = lastAt !== null && lastAt >= cutoff48h
+    const hasContribs = (contribCounts.get(sm.id) ?? 0) > 0
+
+    // Editorial signal — ordered by specificity
     const signal =
-      lastId && lastId !== user.id && authorNameMap.has(lastId)
+      is_recent && lastId && lastId !== user.id && authorNameMap.has(lastId)
         ? `${authorNameMap.get(lastId)} ha aggiunto qualcosa`
-        : `${partCounts.get(sm.id) ?? 0} persone coinvolte`
+        : is_recent
+          ? 'Aggiornato di recente'
+          : hasContribs
+            ? 'Questo momento continua'
+            : 'Inizia a costruirlo'
+
     return {
       id: sm.id,
       title: sm.title,
       signal,
+      is_recent,
       participant_count: partCounts.get(sm.id) ?? 0,
       contribution_count: contribCounts.get(sm.id) ?? 0,
     }
   })
+
+  // Recently active first, then by original creation order
+  return moments
+    .sort((a, b) => Number(b.is_recent) - Number(a.is_recent))
+    .slice(0, 3)
 }

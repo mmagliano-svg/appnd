@@ -338,14 +338,10 @@ export async function getMemorySignals(): Promise<MemorySignalsResult> {
     }
   }
 
-  // ── DEBUG: force visible signal to verify UI rendering ───────────────────
+  // Recent shared activity is the highest-priority signal (feeds black primary card)
   return {
-    primary: {
-      text: 'Bea ha aggiunto qualcosa',
-      subtext: 'Questo momento continua',
-      href: '/shared/test',
-    },
-    newContribution,
+    primary: newContribution,
+    newContribution: null,
     incompleteMemory,
     memoryRecall,
   }
