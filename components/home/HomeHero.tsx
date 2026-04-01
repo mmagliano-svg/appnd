@@ -84,7 +84,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
             className="text-white/45 text-[10px] mt-3 tracking-wide"
             style={{ textShadow: '0 1px 6px rgba(0,0,0,0.22)' }}
           >
-            Continua questo momento →
+            Rivivi questo momento →
           </p>
         </div>
       </TransitionLink>

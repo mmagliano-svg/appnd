@@ -241,6 +241,7 @@ export async function getSharedMemoriesForPerson(
 export interface HomeSharedMoment {
   id: string
   title: string
+  signal: string
   participant_count: number
   contribution_count: number
 }
@@ -250,6 +251,27 @@ export interface HomeSharedMoment {
  * Used on the Home screen — caller should hide the section if result is empty.
  */
 export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
+  // DEBUG: force visible items to verify UI rendering — remove flag to restore live data
+  const DEBUG_SHARED_MOMENTS = true
+  if (DEBUG_SHARED_MOMENTS) {
+    return [
+      {
+        id: 'test-1',
+        title: 'Festa di compleanno Margherita',
+        signal: 'Bea ha aggiunto qualcosa',
+        participant_count: 3,
+        contribution_count: 2,
+      },
+      {
+        id: 'test-2',
+        title: 'Weekend in montagna',
+        signal: 'Manca ancora qualcuno',
+        participant_count: 2,
+        contribution_count: 0,
+      },
+    ]
+  }
+
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return []
@@ -275,10 +297,14 @@ export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
 
   const ids = smRows.map((r) => r.id)
 
-  // Participant + contribution counts in parallel
+  // Participant + contribution counts + latest contributor in parallel
   const [{ data: allParts }, { data: allContribs }] = await Promise.all([
     supabase.from('shared_memory_participants').select('shared_memory_id').in('shared_memory_id', ids),
-    supabase.from('shared_memory_contributions').select('shared_memory_id').in('shared_memory_id', ids),
+    supabase
+      .from('shared_memory_contributions')
+      .select('shared_memory_id, author_user_id, created_at')
+      .in('shared_memory_id', ids)
+      .order('created_at', { ascending: false }),
   ])
 
   const partCounts = new Map<string, number>()
@@ -286,14 +312,44 @@ export async function getHomeSharedMoments(): Promise<HomeSharedMoment[]> {
     partCounts.set(r.shared_memory_id, (partCounts.get(r.shared_memory_id) ?? 0) + 1)
   }
   const contribCounts = new Map<string, number>()
+  const latestAuthorId = new Map<string, string>() // smId → most recent author_user_id
   for (const r of allContribs ?? []) {
     contribCounts.set(r.shared_memory_id, (contribCounts.get(r.shared_memory_id) ?? 0) + 1)
+    if (!latestAuthorId.has(r.shared_memory_id)) {
+      latestAuthorId.set(r.shared_memory_id, r.author_user_id)
+    }
   }
 
-  return smRows.map((sm) => ({
-    id: sm.id,
-    title: sm.title,
-    participant_count: partCounts.get(sm.id) ?? 0,
-    contribution_count: contribCounts.get(sm.id) ?? 0,
-  }))
+  // Resolve display names for latest authors who aren't the current user
+  const externalAuthorIds = Array.from(
+    new Set(Array.from(latestAuthorId.values()).filter((id) => id !== user.id))
+  )
+  const authorNameMap = new Map<string, string>()
+  if (externalAuthorIds.length > 0) {
+    const { data: authorRows } = await supabase
+      .from('users')
+      .select('id, display_name, email')
+      .in('id', externalAuthorIds)
+    for (const u of authorRows ?? []) {
+      authorNameMap.set(
+        u.id,
+        u.display_name ?? u.email?.split('@')[0] ?? 'Qualcuno',
+      )
+    }
+  }
+
+  return smRows.map((sm) => {
+    const lastId = latestAuthorId.get(sm.id)
+    const signal =
+      lastId && lastId !== user.id && authorNameMap.has(lastId)
+        ? `${authorNameMap.get(lastId)} ha aggiunto qualcosa`
+        : `${partCounts.get(sm.id) ?? 0} persone coinvolte`
+    return {
+      id: sm.id,
+      title: sm.title,
+      signal,
+      participant_count: partCounts.get(sm.id) ?? 0,
+      contribution_count: contribCounts.get(sm.id) ?? 0,
+    }
+  })
 }

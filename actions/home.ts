@@ -208,10 +208,12 @@ export async function getHomeNudge(): Promise<HomeNudge | null> {
 
 export interface MemorySignal {
   text: string
+  subtext?: string
   href: string
 }
 
 export interface MemorySignalsResult {
+  primary?: MemorySignal | null
   newContribution: MemorySignal | null
   incompleteMemory: MemorySignal | null
   memoryRecall: MemorySignal | null
@@ -336,5 +338,15 @@ export async function getMemorySignals(): Promise<MemorySignalsResult> {
     }
   }
 
-  return { newContribution, incompleteMemory, memoryRecall }
+  // ── DEBUG: force visible signal to verify UI rendering ───────────────────
+  return {
+    primary: {
+      text: 'Bea ha aggiunto qualcosa',
+      subtext: 'Questo momento continua',
+      href: '/shared/test',
+    },
+    newContribution,
+    incompleteMemory,
+    memoryRecall,
+  }
 }

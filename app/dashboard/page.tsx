@@ -129,20 +129,13 @@ export default async function DashboardPage() {
 
           <HomeHero memory={heroMemory} displayName={displayName} />
 
-          {signals.newContribution || signals.incompleteMemory || signals.memoryRecall ? (
-            <div className="px-4 space-y-2">
-              <p className="text-xs text-muted-foreground/50 font-medium uppercase tracking-widest">
-                C'è qualcosa per te
-              </p>
-              <MemorySignals signals={signals} />
-            </div>
-          ) : null}
+          <MemorySignals signals={signals} />
+
+          <SharedMoments moments={sharedMoments} />
 
           {continueMemories.length > 0 && (
             <ContinueStory memories={continueMemories} />
           )}
-
-          <SharedMoments moments={sharedMoments} />
 
           <UpcomingMoments moments={upcomingMoments} />
 

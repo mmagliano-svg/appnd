@@ -6,8 +6,10 @@ interface Props {
 }
 
 export function MemorySignals({ signals }: Props) {
-  // Priority: newContribution → incompleteMemory → memoryRecall
+  // primary overrides all (used for debug / forced signals)
+  // otherwise: newContribution → incompleteMemory → memoryRecall
   const active =
+    signals.primary ??
     signals.newContribution ??
     signals.incompleteMemory ??
     signals.memoryRecall ??
@@ -16,18 +18,19 @@ export function MemorySignals({ signals }: Props) {
   if (!active) return null
 
   const subtitle =
-    signals.newContribution  ? 'Memoria condivisa'   :
-    signals.incompleteMemory ? 'Momento incompleto'  :
-                               'Ricordo passato'
+    active.subtext ??
+    (signals.newContribution  ? 'Memoria condivisa'   :
+     signals.incompleteMemory ? 'Momento incompleto'  :
+                                'Ricordo passato')
 
   return (
     <div className="px-4">
       <Link
         href={active.href}
-        className="block rounded-2xl bg-foreground/[0.04] px-4 py-3 hover:bg-foreground/[0.07] transition-colors active:scale-[0.99]"
+        className="block rounded-2xl bg-foreground/[0.06] px-4 py-4 hover:bg-foreground/[0.09] transition-colors active:scale-[0.99]"
       >
-        <p className="text-sm font-medium">{active.text}</p>
-        <p className="text-xs text-muted-foreground/60 mt-0.5">{subtitle}</p>
+        <p className="text-base font-semibold">{active.text}</p>
+        <p className="text-sm text-muted-foreground/70 mt-1">{subtitle}</p>
       </Link>
     </div>
   )

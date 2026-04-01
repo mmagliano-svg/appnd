@@ -6,23 +6,28 @@ interface Props {
 }
 
 export function SharedMoments({ moments }: Props) {
-  if (moments.length === 0) return null
+  if (!moments || moments.length === 0) return null
 
   return (
-    <section className="px-4 space-y-3">
-      <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
-        Momenti condivisi
+    <section className="space-y-3">
+      <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
+        Questo momento continua
       </p>
-      <div className="space-y-2">
-        {moments.map((m) => (
+      <div
+        className="flex gap-3 overflow-x-auto px-4 pb-1"
+        style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+      >
+        {moments.map((item) => (
           <Link
-            key={m.id}
-            href={`/shared/${m.id}`}
-            className="flex items-center justify-between rounded-2xl bg-foreground/[0.04] px-4 py-3 hover:bg-foreground/[0.07] transition-colors active:scale-[0.99]"
+            key={item.id}
+            href={`/shared/${item.id}`}
+            className="min-w-[180px] shrink-0 rounded-xl bg-foreground/[0.04] p-3 hover:bg-foreground/[0.07] transition-colors active:scale-[0.99]"
           >
-            <p className="text-sm font-medium truncate pr-4">{m.title}</p>
-            <p className="text-xs text-muted-foreground/55 shrink-0">
-              {m.participant_count} persone · {m.contribution_count} ricord{m.contribution_count !== 1 ? 'i' : 'o'}
+            <p className="text-xs text-muted-foreground/60 mb-1 truncate">
+              {item.signal}
+            </p>
+            <p className="text-sm font-medium leading-snug line-clamp-2">
+              {item.title}
             </p>
           </Link>
         ))}
