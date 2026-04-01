@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { TimelineMemory } from '@/actions/memories'
 import { CATEGORIES } from '@/lib/constants/categories'
-import { formatPeriodDisplay } from '@/lib/utils/dates'
+
 import { getTimelinePeriods } from '@/lib/utils/timeline-periods'
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -40,67 +40,6 @@ const MONTHS_IT = [
 ]
 
 const DAYS_FULL = ['domenica', 'lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato']
-
-// ── Period insights ────────────────────────────────────────────────────────
-
-interface PeriodInsights {
-  totalMoments: number
-  mostActiveYear: number | null
-  topTags: string[]
-  topPlaces: string[]
-}
-
-function computePeriodInsights(period: TimelineMemory, events: TimelineMemory[]): PeriodInsights {
-  const effectiveEnd =
-    period.end_date && period.end_date >= '9999-01-01'
-      ? new Date().toISOString().split('T')[0]
-      : period.end_date ?? new Date().toISOString().split('T')[0]
-
-  const matched = events.filter(
-    (e) => e.start_date >= period.start_date && e.start_date <= effectiveEnd
-  )
-
-  if (matched.length === 0) {
-    return { totalMoments: 0, mostActiveYear: null, topTags: [], topPlaces: [] }
-  }
-
-  // Most active year
-  const yearCounts: Record<number, number> = {}
-  for (const e of matched) {
-    const y = parseInt(e.start_date.split('-')[0])
-    yearCounts[y] = (yearCounts[y] ?? 0) + 1
-  }
-  const mostActiveYear = parseInt(
-    Object.entries(yearCounts).sort(([, a], [, b]) => b - a)[0][0]
-  )
-
-  // Top tags (max 3)
-  const tagCounts: Record<string, number> = {}
-  for (const e of matched) {
-    for (const t of e.tags) {
-      tagCounts[t] = (tagCounts[t] ?? 0) + 1
-    }
-  }
-  const topTags = Object.entries(tagCounts)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-    .map(([t]) => t)
-
-  // Top places (max 2)
-  const placeCounts: Record<string, number> = {}
-  for (const e of matched) {
-    if (e.location_name?.trim()) {
-      const loc = e.location_name.trim()
-      placeCounts[loc] = (placeCounts[loc] ?? 0) + 1
-    }
-  }
-  const topPlaces = Object.entries(placeCounts)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 2)
-    .map(([p]) => p)
-
-  return { totalMoments: matched.length, mostActiveYear, topTags, topPlaces }
-}
 
 // ── Grouping ───────────────────────────────────────────────────────────────
 
@@ -225,103 +164,17 @@ function PhotoTile({
   )
 }
 
-// ── Period card ────────────────────────────────────────────────────────────
-// Displayed in the years view between year cards. Text-dominant, photo on right.
-
-function PeriodCard({
-  period,
-  insights,
-}: {
-  period: TimelineMemory
-  insights: PeriodInsights
-}) {
-  const dateRange = formatPeriodDisplay(period.start_date, period.end_date!)
-  const connections = [...insights.topTags, ...insights.topPlaces].slice(0, 3)
-
-  return (
-    <Link
-      href={`/memories/${period.id}`}
-      className="block rounded-2xl border border-border/30 bg-neutral-50 dark:bg-neutral-900/60 hover:border-foreground/20 active:scale-[0.985] transition-all group px-5 pt-5 pb-6"
-    >
-      {/* Top accent — visual anchor for "chapter" */}
-      <div className="w-8 h-0.5 rounded-full bg-foreground/20 mb-4" />
-
-      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground/35 mb-2">
-        Capitolo
-      </p>
-
-      <p className="font-bold text-3xl leading-tight mb-1 line-clamp-2 group-hover:opacity-70 transition-opacity">
-        {period.title}
-      </p>
-
-      {period.description && (
-        <p className="text-sm text-muted-foreground/55 leading-snug line-clamp-1 mt-1">
-          {period.description}
-        </p>
-      )}
-
-      <p className="text-sm font-semibold text-muted-foreground tabular-nums mt-4">
-        {dateRange}
-      </p>
-
-      {/* Insights */}
-      {insights.totalMoments > 0 && (
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-3 pt-3 border-t border-border/25">
-          <span className="text-xs font-semibold text-foreground/60">
-            {insights.totalMoments} {insights.totalMoments === 1 ? 'momento' : 'momenti'}
-          </span>
-          {insights.mostActiveYear !== null && insights.totalMoments > 2 && (
-            <span className="text-xs text-muted-foreground/50">
-              Più attivo: {insights.mostActiveYear}
-            </span>
-          )}
-          {connections.length > 0 && (
-            <span className="text-xs text-muted-foreground/50">
-              Con: {connections.join(', ')}
-            </span>
-          )}
-        </div>
-      )}
-    </Link>
-  )
-}
-
 // ── View: Years ────────────────────────────────────────────────────────────
+// Time-first: years only, no chapter cards. Each year = full-width image card.
 
 function YearsView({
   groups,
-  periods,
-  allEvents,
   onSelect,
 }: {
   groups: YearGroup[]
-  periods: TimelineMemory[]
-  allEvents: TimelineMemory[]
   onSelect: (year: number) => void
 }) {
-  // Build interleaved list of year cards and period cards, sorted newest first.
-  // Periods are keyed by their END date so they appear at the boundary where
-  // they "close". Ongoing periods (no end_date) get sortKey=9999 → always top.
-  type MixedItem =
-    | { kind: 'year'; sortKey: number; group: YearGroup }
-    | { kind: 'period'; sortKey: number; period: TimelineMemory }
-
-  const mixed: MixedItem[] = [
-    ...groups.map((g) => ({ kind: 'year' as const, sortKey: g.year, group: g })),
-    ...periods.map((p) => ({
-      kind: 'period' as const,
-      sortKey: p.end_date ? parseInt(p.end_date.split('-')[0]) : 9999,
-      period: p,
-    })),
-  ].sort((a, b) => {
-    if (b.sortKey !== a.sortKey) return b.sortKey - a.sortKey
-    // Tie: period before year card — chapters are structural, come first
-    if (a.kind === 'period' && b.kind === 'year') return -1
-    if (a.kind === 'year' && b.kind === 'period') return 1
-    return 0
-  })
-
-  if (mixed.length === 0) {
+  if (groups.length === 0) {
     return (
       <p className="text-muted-foreground text-sm text-center py-16">
         Nessun ricordo ancora.
@@ -331,50 +184,38 @@ function YearsView({
 
   return (
     <motion.div
-      className="space-y-3"
+      className="space-y-6"
       variants={staggerContainer}
       initial="hidden"
       animate="show"
     >
-      {mixed.map((item) => {
-        if (item.kind === 'period') {
-          const insights = computePeriodInsights(item.period, allEvents)
-          return (
-            <motion.div key={`period-${item.period.id}`} variants={staggerItem}>
-              <PeriodCard
-                period={item.period}
-                insights={insights}
-              />
-            </motion.div>
-          )
-        }
-
-        const { year, totalCount, previewUrls } = item.group
-        const mainUrl        = previewUrls[0] ?? null
-        const secondaryUrls  = previewUrls.slice(1, 3)
-        // Hero = the year card with the highest year number (first in sorted list)
-        const isHero         = groups.length > 0 && year === groups[0].year
-        const collageH       = isHero ? 'h-72' : 'h-44'
+      {groups.map((item, idx) => {
+        const { year, totalCount, previewUrls } = item
+        const mainUrl       = previewUrls[0] ?? null
+        const secondaryUrls = previewUrls.slice(1, 3)
+        // Hero = most recent year (first in desc-sorted list)
+        const isHero = idx === 0
+        const cardH  = isHero ? 'h-72' : 'h-56'
 
         return (
           <motion.div key={year} variants={staggerItem}>
             <button
               onClick={() => onSelect(year)}
-              // ⚠ No overflow-hidden here — the photo wrapper clips itself.
-              // This lets layoutId animate the photo tile without being clipped
-              // by the card's border-radius while it morphs to the months hero.
-              className="w-full block text-left rounded-2xl bg-muted group focus:outline-none active:scale-[0.985] transition-transform duration-150"
+              className="w-full block focus:outline-none active:scale-[0.985] transition-transform duration-150"
             >
-              {/* Photo section — clips to rounded-top only */}
-              <div className={`${collageH} rounded-t-2xl overflow-hidden`}>
-                {secondaryUrls.length > 0 && mainUrl ? (
+              {/* ⚠ overflow-hidden is on the inner wrapper, not the button,
+                  so the layoutId photo can animate freely across views */}
+              <div className={`relative ${cardH} rounded-3xl overflow-hidden bg-muted`}>
+
+                {/* Collage: dominant left + secondary stack right */}
+                {mainUrl && secondaryUrls.length > 0 ? (
                   <div className="flex gap-0.5 h-full">
                     <PhotoTile
                       src={mainUrl}
                       layoutId={`year-photo-${year}`}
-                      className="flex-[1.8] overflow-hidden"
+                      className="flex-[2] overflow-hidden"
                     />
-                    <div className="flex-none w-[88px] flex flex-col gap-0.5">
+                    <div className="flex-none w-[90px] flex flex-col gap-0.5">
                       {secondaryUrls.map((url, i) => (
                         <div key={i} className="flex-1 overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -396,39 +237,19 @@ function YearsView({
                     className="w-full h-full overflow-hidden"
                   />
                 )}
-              </div>
 
-              {/* Footer */}
-              <div className="flex items-center justify-between px-4 py-3.5">
-                <div>
-                  <p
-                    className={`font-bold tracking-tight tabular-nums leading-none ${
-                      isHero ? 'text-3xl' : 'text-2xl'
-                    }`}
-                  >
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-transparent pointer-events-none" />
+
+                {/* Year + count — bottom left */}
+                <div className="absolute bottom-0 left-0 px-5 pb-5 z-10">
+                  <p className={`font-bold text-white tracking-tight leading-none tabular-nums ${isHero ? 'text-4xl' : 'text-3xl'}`}>
                     {year}
                   </p>
-                  <p
-                    className={`text-muted-foreground ${
-                      isHero ? 'text-sm mt-1.5' : 'text-xs mt-1'
-                    }`}
-                  >
+                  <p className="text-sm text-white/75 mt-1.5 font-medium">
                     {totalCount} {totalCount === 1 ? 'momento' : 'momenti'}
                   </p>
                 </div>
-                <svg
-                  className="w-4 h-4 text-muted-foreground/35 group-hover:text-muted-foreground/60 transition-colors"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.75}
-                    d="M9 5l7 7-7 7"
-                  />
-                </svg>
               </div>
             </button>
           </motion.div>
@@ -994,10 +815,10 @@ export function TimelineAnimated({ memories, anchorLabel }: Props) {
           >
             <button
               onClick={() => setActiveCategory(null)}
-              className={`flex-none rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all ${
+              className={`flex-none rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
                 !activeCategory
-                  ? 'bg-foreground text-background border-foreground'
-                  : 'bg-background border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                  ? 'bg-black text-white'
+                  : 'bg-muted text-foreground/70 hover:text-foreground'
               }`}
             >
               Tutti
@@ -1006,10 +827,10 @@ export function TimelineAnimated({ memories, anchorLabel }: Props) {
               <button
                 key={cat.value}
                 onClick={() => setActiveCategory(activeCategory === cat.value ? null : cat.value)}
-                className={`flex-none rounded-full px-3.5 py-1.5 text-xs font-medium border transition-all ${
+                className={`flex-none rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
                   activeCategory === cat.value
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'bg-background border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                    ? 'bg-black text-white'
+                    : 'bg-muted text-foreground/70 hover:text-foreground'
                 }`}
               >
                 {cat.emoji} {cat.label}
@@ -1046,8 +867,6 @@ export function TimelineAnimated({ memories, anchorLabel }: Props) {
             ) : (
               <YearsView
                 groups={yearGroups}
-                periods={allPeriods}
-                allEvents={allEvents}
                 onSelect={goToYear}
               />
             )}
