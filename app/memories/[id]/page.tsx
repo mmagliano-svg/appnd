@@ -355,15 +355,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           />
         ) : null}
 
-        {/* Gradient overlay (always — stronger when no photo) */}
-        <div
-          id="memory-hero-gradient" className="absolute inset-0"
-          style={{
-            background: heroPhoto
-              ? 'linear-gradient(to bottom, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0) 32%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.86) 100%)'
-              : 'none',
-          }}
-        />
+        {/* Gradient overlay */}
+        {heroPhoto && (
+          <div
+            id="memory-hero-gradient"
+            className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/10"
+          />
+        )}
 
         {/* Top bar — overlaid on hero */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-6 z-10">
@@ -371,7 +369,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             href="/dashboard"
             className={`inline-flex items-center gap-1.5 text-sm transition-colors ${
               heroPhoto
-                ? 'text-white/45 hover:text-white/80 drop-shadow-sm'
+                ? 'text-white/90 hover:text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -386,13 +384,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 href={`/memories/${params.id}/edit`}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                   heroPhoto
-                    ? 'text-white/40 hover:text-white/70 hover:bg-white/10'
+                    ? 'text-white/90 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
                 Modifica
               </Link>
-              <DeleteButton memoryId={params.id} />
+              <DeleteButton memoryId={params.id} heroMode={!!heroPhoto} />
             </div>
           )}
         </div>
@@ -412,7 +410,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 })}
               </div>
             )}
-            <h1 className="text-2xl font-bold tracking-tight leading-tight text-white drop-shadow-sm">
+            <h1 className="text-2xl font-bold tracking-tight leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
               {memory.title}
             </h1>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5">

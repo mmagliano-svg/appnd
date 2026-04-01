@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button'
 
 interface DeleteButtonProps {
   memoryId: string
+  heroMode?: boolean
 }
 
-export function DeleteButton({ memoryId }: DeleteButtonProps) {
+export function DeleteButton({ memoryId, heroMode = false }: DeleteButtonProps) {
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,7 +58,10 @@ export function DeleteButton({ memoryId }: DeleteButtonProps) {
         variant="outline"
         size="sm"
         onClick={() => setConfirming(true)}
-        className="text-destructive border-destructive/30 hover:bg-destructive/5"
+        className={heroMode
+          ? 'bg-white/90 text-red-500 backdrop-blur-md border border-white/40 hover:bg-white'
+          : 'text-destructive border-destructive/30 hover:bg-destructive/5'
+        }
       >
         Elimina
       </Button>
