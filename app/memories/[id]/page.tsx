@@ -456,23 +456,23 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         )}
       </div>
 
+      {/* ── Shared memory — primary block, immediately after hero ── */}
+      {sharedMemory && (
+        <div className="max-w-lg mx-auto px-4 mt-4">
+          <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+            Questo momento continua
+          </div>
+          <Link
+            href={`/shared/${sharedMemory.id}`}
+            className="block rounded-2xl bg-black text-white px-4 py-4 hover:opacity-90 transition-opacity active:scale-[0.99]"
+          >
+            <div className="text-sm font-semibold">Vedi cosa stanno aggiungendo →</div>
+          </Link>
+        </div>
+      )}
+
       {/* ── Body ── */}
       <div className="max-w-lg mx-auto px-4 pb-32">
-
-        {/* ── Shared memory header block ── */}
-        {sharedMemory && (
-          <div className="mt-6">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
-              Questo momento continua
-            </div>
-            <Link
-              href={`/shared/${sharedMemory.id}?from=${params.id}`}
-              className="block rounded-2xl bg-foreground/[0.05] px-4 py-3 hover:bg-foreground/[0.08] transition-colors active:scale-[0.99]"
-            >
-              <div className="text-sm font-medium">Vedi tutto →</div>
-            </Link>
-          </div>
-        )}
 
         {/* Success feedback after contribution */}
         {searchParams.contributed === '1' && (
