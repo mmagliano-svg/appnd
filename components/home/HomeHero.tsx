@@ -57,32 +57,23 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
         )}
 
         {/* Gradient */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'linear-gradient(to bottom, transparent 0%, transparent 35%, rgba(0,0,0,0.52) 65%, rgba(0,0,0,0.88) 100%)',
-          }}
-        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
         {/* Memory text */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 animate-hero-text">
+        <div className="absolute bottom-0 left-0 right-0 px-5 pb-7 animate-hero-text relative z-10">
           <p
-            className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-1"
-            style={{ textShadow: '0 2px 8px rgba(0,0,0,0.28)' }}
+            className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
           >
             {memory.title}
           </p>
           <p
-            className="text-white/60 text-[10px] mt-2 tracking-wide"
-            style={{ textShadow: '0 1px 6px rgba(0,0,0,0.22)' }}
+            className="text-white/60 text-[10px] mt-2 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
           >
             {formatMemoryDate(memory.start_date, memory.end_date)}
             {memory.location_name && <span> · {memory.location_name}</span>}
           </p>
           <p
-            className="text-white/45 text-[10px] mt-3 tracking-wide"
-            style={{ textShadow: '0 1px 6px rgba(0,0,0,0.22)' }}
+            className="text-white/45 text-[10px] mt-3 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
           >
             Rivivi questo momento →
           </p>
