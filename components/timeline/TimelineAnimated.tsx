@@ -86,6 +86,7 @@ function groupMemories(memories: TimelineMemory[]): YearGroup[] {
         tags:       allYearMems.flatMap((m) => m.tags),
         categories: allYearMems.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])),
         titles:     allYearMems.map((m) => m.title),
+        year,
       })
 
       return {
@@ -261,7 +262,7 @@ function YearsView({
                   <p className="text-sm text-white/75 mt-1.5 font-medium">
                     {totalCount} {totalCount === 1 ? 'momento' : 'momenti'}
                   </p>
-                  <p className="text-sm text-white/55 mt-0.5">
+                  <p className="text-white/85 text-sm font-medium mt-1 drop-shadow-[0_1px_6px_rgba(0,0,0,0.6)]">
                     {highlight}
                   </p>
                 </div>
