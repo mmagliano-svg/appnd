@@ -182,10 +182,8 @@ function PhotoTile({
 
 function YearsView({
   groups,
-  onSelect,
 }: {
   groups: YearGroup[]
-  onSelect: (year: number) => void
 }) {
   if (groups.length === 0) {
     return (
@@ -212,8 +210,8 @@ function YearsView({
 
         return (
           <motion.div key={year} variants={staggerItem}>
-            <button
-              onClick={() => onSelect(year)}
+            <Link
+              href={`/timeline/${year}`}
               className="w-full block focus:outline-none active:scale-[0.985] transition-transform duration-150"
             >
               {/* ⚠ overflow-hidden is on the inner wrapper, not the button,
@@ -267,7 +265,7 @@ function YearsView({
                   </p>
                 </div>
               </div>
-            </button>
+            </Link>
           </motion.div>
         )
       })}
@@ -883,7 +881,6 @@ export function TimelineAnimated({ memories, anchorLabel }: Props) {
             ) : (
               <YearsView
                 groups={yearGroups}
-                onSelect={goToYear}
               />
             )}
           </motion.div>

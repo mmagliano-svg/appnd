@@ -148,6 +148,83 @@ export async function getTimelineMonthsForYear(year: number): Promise<MonthSumma
     }))
 }
 
+// ── getYearStoryData ──────────────────────────────────────────────────────
+// Returns all (non-period) memories for a year with tags + categories for
+// getYearHighlight, and resolved preview photos.
+
+export interface YearStoryMemory {
+  id: string
+  title: string
+  description: string | null
+  start_date: string
+  location_name: string | null
+  previewUrl: string | null
+  tags: string[]
+  categories: string[]
+  category: string | null
+}
+
+export async function getYearStoryData(year: number): Promise<YearStoryMemory[]> {
+  const supabase = await createServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) return []
+
+  const { data } = await supabase
+    .from('memory_participants')
+    .select(`memories ( id, title, description, start_date, end_date, location_name, tags, categories, category )`)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+
+  if (!data) return []
+
+  type FullRow = {
+    id: string; title: string; description: string | null
+    start_date: string; end_date: string | null; location_name: string | null
+    tags: string[] | null; categories: string[] | null; category: string | null
+  }
+
+  const all = data.map((p) => p.memories as FullRow | null).filter(Boolean) as FullRow[]
+
+  // Events only (no periods), filtered to requested year
+  const yearMems = all.filter((m) => {
+    const y = parseInt(m.start_date.split('-')[0])
+    return y === year && !m.end_date
+  })
+
+  if (yearMems.length === 0) return []
+
+  // Resolve one preview photo per memory
+  const ids = yearMems.map((m) => m.id)
+  const photoMap = new Map<string, string>()
+  const { data: photos } = await supabase
+    .from('memory_contributions')
+    .select('memory_id, media_url, created_at')
+    .eq('content_type', 'photo')
+    .in('memory_id', ids)
+    .not('media_url', 'is', null)
+    .order('created_at', { ascending: false })
+
+  for (const p of photos ?? []) {
+    if (!photoMap.has(p.memory_id) && p.media_url) {
+      photoMap.set(p.memory_id, p.media_url as string)
+    }
+  }
+
+  return yearMems
+    .sort((a, b) => b.start_date.localeCompare(a.start_date))
+    .map((m) => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      start_date: m.start_date,
+      location_name: m.location_name,
+      previewUrl: photoMap.get(m.id) ?? null,
+      tags: m.tags ?? [],
+      categories: m.categories ?? [],
+      category: m.category,
+    }))
+}
+
 // ── getTimelineEventsForMonth ─────────────────────────────────────────────
 
 export async function getTimelineEventsForMonth(
