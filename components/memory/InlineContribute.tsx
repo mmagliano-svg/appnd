@@ -9,13 +9,15 @@ interface InlineContributeProps {
   memoryId: string
 }
 
+const SUGGESTIONS = ['Un dettaglio', 'Una foto', 'Un momento divertente']
+
 export function InlineContribute({ memoryId }: InlineContributeProps) {
   const [text, setText] = useState('')
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const canSubmit = text.trim().length > 0
 
@@ -50,40 +52,77 @@ export function InlineContribute({ memoryId }: InlineContributeProps) {
 
   return (
     <div className="mt-10 pt-6 border-t border-border/30">
-      <p className="text-sm font-medium text-foreground/80 mb-3">
+      <p className="text-sm font-medium text-foreground/80 mb-4">
         Come lo ricordi tu?
       </p>
 
+      {/* Suggestion chips */}
+      <div
+        className="flex gap-2 overflow-x-auto mb-3 pb-0.5"
+        style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+      >
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => {
+              setText(s + ': ')
+              inputRef.current?.focus()
+            }}
+            className="shrink-0 text-xs px-3 py-1.5 rounded-full bg-foreground/[0.06] text-foreground/60 hover:bg-foreground/[0.10] transition-colors"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
       <form onSubmit={handleSubmit}>
-        <textarea
-          ref={textareaRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Cosa ricordi di quel giorno?"
-          rows={4}
-          className="w-full rounded-2xl bg-foreground/[0.04] border border-transparent focus:border-foreground/10 px-4 py-3.5 text-sm text-foreground/90 placeholder:text-muted-foreground/35 leading-relaxed resize-none focus:outline-none transition-colors"
-          disabled={isPending}
-        />
+        {/* Chat-style input row */}
+        <div className="flex items-center gap-2 bg-foreground/[0.04] rounded-full px-4 py-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Cosa ti ricordi di questo momento?"
+            disabled={isPending}
+            className="flex-1 bg-transparent border-none outline-none text-sm text-foreground/90 placeholder:text-muted-foreground/40 min-w-0"
+          />
+          <button
+            type="submit"
+            disabled={!canSubmit || isPending}
+            className="w-8 h-8 shrink-0 rounded-full bg-black text-white flex items-center justify-center disabled:opacity-25 hover:opacity-80 active:scale-95 transition-all"
+          >
+            {isPending ? (
+              <svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+            ) : (
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            )}
+          </button>
+        </div>
 
         {error && (
-          <p className="text-xs text-red-500/70 mt-1.5 px-1">{error}</p>
+          <p className="text-xs text-red-500/70 mt-2 px-1">{error}</p>
         )}
 
-        <div className="flex items-center justify-between mt-2.5">
+        {/* Helper text */}
+        <p className="text-xs text-muted-foreground/60 mt-2 px-1">
+          Puoi aggiungere un ricordo, un dettaglio o una foto
+        </p>
+
+        {/* Photo link */}
+        <div className="mt-3 px-1">
           <Link
             href={`/memories/${memoryId}/contribute`}
             className="text-xs text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors"
           >
             Aggiungi una foto →
           </Link>
-
-          <button
-            type="submit"
-            disabled={!canSubmit || isPending}
-            className="rounded-full bg-foreground text-background px-5 py-2 text-xs font-semibold disabled:opacity-30 hover:bg-foreground/85 active:scale-95 transition-all"
-          >
-            {isPending ? 'Salvo…' : 'Aggiungi'}
-          </button>
         </div>
       </form>
     </div>
