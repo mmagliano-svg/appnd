@@ -355,11 +355,15 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           />
         ) : null}
 
-        {/* Gradient overlay */}
+        {/* Gradient overlay — top slight dark for button readability, clean middle, strong bottom for text */}
         {heroPhoto && (
           <div
             id="memory-hero-gradient"
-            className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/10"
+            className="absolute inset-0"
+            style={{
+              background:
+                'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 44%, rgba(0,0,0,0.88) 100%)',
+            }}
           />
         )}
 
