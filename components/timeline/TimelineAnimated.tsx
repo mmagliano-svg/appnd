@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { motion, AnimatePresence, LayoutGroup } from 'framer-motion'
 import type { TimelineMemory } from '@/actions/memories'
 import { CATEGORIES } from '@/lib/constants/categories'
+import { getYearHighlight } from '@/lib/utils/year-highlight'
 
 import { getTimelinePeriods } from '@/lib/utils/timeline-periods'
 
@@ -28,6 +29,7 @@ interface YearGroup {
   year: number
   totalCount: number
   previewUrls: string[]   // [0] = main, [1][2] = secondary
+  highlight: string       // short emotional phrase, e.g. "viaggi e amici"
   monthGroups: MonthGroup[]
 }
 
@@ -77,10 +79,20 @@ function groupMemories(memories: TimelineMemory[]): YearGroup[] {
         .flatMap((mg) => mg.previewUrls)
         .slice(0, 3)
 
+      const allYearMems = monthGroups.flatMap((mg) => mg.dayGroups.flatMap((dg) => dg.memories))
+      const totalCount  = monthGroups.reduce((s, mg) => s + mg.totalCount, 0)
+      const highlight   = getYearHighlight({
+        count:      totalCount,
+        tags:       allYearMems.flatMap((m) => m.tags),
+        categories: allYearMems.flatMap((m) => m.categories.length ? m.categories : (m.category ? [m.category] : [])),
+        titles:     allYearMems.map((m) => m.title),
+      })
+
       return {
         year,
-        totalCount: monthGroups.reduce((s, mg) => s + mg.totalCount, 0),
+        totalCount,
         previewUrls,
+        highlight,
         monthGroups,
       }
     })
@@ -190,7 +202,7 @@ function YearsView({
       animate="show"
     >
       {groups.map((item, idx) => {
-        const { year, totalCount, previewUrls } = item
+        const { year, totalCount, previewUrls, highlight } = item
         const mainUrl       = previewUrls[0] ?? null
         const secondaryUrls = previewUrls.slice(1, 3)
         // Hero = most recent year (first in desc-sorted list)
@@ -248,6 +260,9 @@ function YearsView({
                   </p>
                   <p className="text-sm text-white/75 mt-1.5 font-medium">
                     {totalCount} {totalCount === 1 ? 'momento' : 'momenti'}
+                  </p>
+                  <p className="text-sm text-white/55 mt-0.5">
+                    {highlight}
                   </p>
                 </div>
               </div>
