@@ -11,7 +11,7 @@ export function SharedMoments({ moments }: Props) {
   return (
     <section className="space-y-3">
       <p className="px-4 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
-        Questo momento continua
+        Cose che stanno succedendo
       </p>
       <div
         className="flex gap-3 overflow-x-auto px-4 pb-1"
@@ -21,12 +21,12 @@ export function SharedMoments({ moments }: Props) {
           <Link
             key={item.id}
             href={`/shared/${item.id}`}
-            className="min-w-[180px] shrink-0 rounded-xl bg-foreground/[0.04] p-3 hover:bg-foreground/[0.07] transition-colors active:scale-[0.99]"
+            className="min-w-[220px] shrink-0 rounded-2xl bg-foreground/[0.08] px-4 py-4 hover:bg-foreground/[0.11] transition-colors active:scale-[0.99]"
           >
-            <p className="text-xs text-muted-foreground/60 mb-1 truncate">
+            <p className="text-xs text-muted-foreground/70 mb-1 truncate">
               {item.signal}
             </p>
-            <p className="text-sm font-medium leading-snug line-clamp-2">
+            <p className="text-base font-semibold leading-snug line-clamp-2">
               {item.title}
             </p>
           </Link>
