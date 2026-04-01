@@ -459,6 +459,21 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       {/* ── Body ── */}
       <div className="max-w-lg mx-auto px-4 pb-32">
 
+        {/* ── Shared memory header block ── */}
+        {sharedMemory && (
+          <div className="pt-4 pb-2">
+            <div className="text-xs text-muted-foreground/60">
+              Questo momento continua
+            </div>
+            <Link
+              href={`/shared/${sharedMemory.id}?from=${params.id}`}
+              className="mt-2 block rounded-xl bg-foreground/[0.06] px-4 py-3 hover:bg-foreground/[0.09] transition-colors active:scale-[0.99]"
+            >
+              <div className="text-sm font-medium">Vedi tutto →</div>
+            </Link>
+          </div>
+        )}
+
         {/* Success feedback after contribution */}
         {searchParams.contributed === '1' && (
           <p className="pt-4 text-xs text-muted-foreground">
@@ -578,46 +593,29 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* ── Shared perspectives ── */}
         {sharedMemory && (
-          <div className="mt-10 pt-6 border-t border-border/30">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">
-              Questo momento continua
-            </p>
-            {sharedMemory.contributions.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 pb-2">
-                Ancora nessuna versione aggiunta.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {sharedMemory.contributions.map((c) => (
-                  <details key={c.id} className="group">
-                    <summary className="flex items-center justify-between gap-3 cursor-pointer list-none min-h-[44px] py-1">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-6 h-6 rounded-full bg-foreground/[0.08] flex items-center justify-center text-[10px] font-semibold text-foreground/60 shrink-0">
-                          {c.author_name.slice(0, 1).toUpperCase()}
-                        </div>
-                        <div className="min-w-0">
-                          <span className="text-sm font-medium">{c.author_name}</span>
-                          <p className="text-xs text-muted-foreground/60 truncate mt-0.5 group-open:hidden">
-                            {c.body.slice(0, 80)}{c.body.length > 80 ? '…' : ''}
-                          </p>
-                        </div>
-                      </div>
-                      <svg className="w-3.5 h-3.5 text-muted-foreground/30 shrink-0 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </summary>
-                    <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap pl-[34px] pb-3 pt-1">
-                      {c.body}
-                    </p>
-                  </details>
+          <div className="mt-8">
+            {sharedMemory.contributions.length > 0 && (
+              <div className="space-y-3 mb-4">
+                {sharedMemory.contributions.slice(0, 3).map((c) => (
+                  <div key={c.id} className="text-sm leading-relaxed">
+                    <span className="text-muted-foreground/60">{c.author_name}</span>
+                    {' '}
+                    <span className="text-foreground/80">{c.body}</span>
+                  </div>
                 ))}
+                <Link
+                  href={`/shared/${sharedMemory.id}?from=${params.id}`}
+                  className="block text-sm text-muted-foreground/70 hover:text-foreground/80 transition-colors mt-2 min-h-[44px] flex items-center"
+                >
+                  Vedi tutto →
+                </Link>
               </div>
             )}
             <Link
-              href={`/shared/${sharedMemory.id}?from=${params.id}`}
-              className="inline-flex items-center gap-1.5 mt-5 text-sm text-muted-foreground/55 hover:text-foreground/80 transition-colors min-h-[44px]"
+              href={`/shared/${sharedMemory.id}/add?from=${params.id}`}
+              className="block rounded-xl bg-black text-white text-center py-3 text-sm font-medium hover:opacity-90 transition-opacity active:scale-[0.99]"
             >
-              Vedi tutto →
+              Aggiungi qualcosa →
             </Link>
           </div>
         )}
