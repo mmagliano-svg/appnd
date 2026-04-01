@@ -37,7 +37,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
   }
 
   return (
-    <div className="px-4">
+    <div className="px-4 animate-hero-fade-in">
       <TransitionLink
         href={`/memories/${memory.id}`}
         className="relative block w-full aspect-[3/4] max-h-[56vh] rounded-3xl overflow-hidden bg-muted"
