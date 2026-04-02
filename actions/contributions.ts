@@ -100,6 +100,51 @@ export async function createContribution(input: CreateContributionInput) {
   redirect(`/memories/${input.memoryId}`)
 }
 
+// ── Fragment action — no redirect, returns result ─────────────────────────
+// Used by ContributeFlow so the client can show confirmation state after save.
+
+export async function addFragment(input: {
+  memoryId: string
+  content_type: 'text' | 'photo'
+  text_content?: string
+  media_url?: string
+  caption?: string
+}): Promise<{ error?: string }> {
+  try {
+    const supabase = await createServerClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { error: 'Non autenticato.' }
+
+    const { data: participant } = await supabase
+      .from('memory_participants')
+      .select('id')
+      .eq('memory_id', input.memoryId)
+      .eq('user_id', user.id)
+      .not('joined_at', 'is', null)
+      .single()
+
+    if (!participant) return { error: 'Non sei un partecipante di questo ricordo.' }
+
+    const { error } = await supabase
+      .from('memory_contributions')
+      .insert({
+        memory_id: input.memoryId,
+        author_id: user.id,
+        content_type: input.content_type,
+        text_content: input.text_content?.trim() || null,
+        media_url: input.media_url || null,
+        caption: input.caption?.trim() || null,
+      })
+
+    if (error) return { error: 'Impossibile salvare il frammento. Riprova.' }
+
+    revalidatePath(`/memories/${input.memoryId}`)
+    return {}
+  } catch {
+    return { error: 'Errore imprevisto.' }
+  }
+}
+
 // Non-redirecting version — used when the caller handles navigation
 export async function addMediaContribution(
   memoryId: string,
