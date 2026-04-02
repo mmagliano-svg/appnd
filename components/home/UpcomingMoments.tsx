@@ -7,7 +7,7 @@ function birthdayHeadline(personName: string, daysUntil: number): string {
   if (daysUntil === 0)  return `Oggi è il compleanno di ${personName}`
   if (daysUntil <= 5)   return `Sta tornando il compleanno di ${personName}`
   if (daysUntil <= 15)  return `Tra pochi giorni è il compleanno di ${personName}`
-  return `Sta tornando questo momento — ${personName}`
+  return `Sta tornando un momento con ${personName}`
 }
 
 function anchorHeadline(label: string, daysUntil: number): string {
@@ -18,7 +18,7 @@ function anchorHeadline(label: string, daysUntil: number): string {
 }
 
 function subText(memoryCount: number): string {
-  if (memoryCount === 0) return 'Vuoi ricordarlo anche quest\'anno?'
+  if (memoryCount === 0) return 'Vuoi riviverlo anche quest\'anno?'
   return `${memoryCount} ricord${memoryCount === 1 ? 'o' : 'i'} nel tempo`
 }
 
@@ -45,7 +45,7 @@ export function UpcomingMoments({ moments }: UpcomingMomentsProps) {
           Momenti che tornano nel tempo
         </p>
         <p className="text-[11px] text-muted-foreground/35 mt-0.5">
-          Ci sono ricordi che ritornano, ogni anno
+          Ci sono momenti che tornano
         </p>
       </div>
       <div className="px-4 space-y-2">

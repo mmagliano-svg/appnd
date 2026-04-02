@@ -27,14 +27,14 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const SINGLE_FALLBACKS = [
   'un momento che conta',
-  'un ricordo importante',
+  '· un ricordo importante',
   'qualcosa da ricordare',
 ]
 
 const FEW_FALLBACKS = [
   'piccoli ricordi',
   'momenti sparsi',
-  'attimi insieme',
+  'momenti insieme',
 ]
 
 const DEFAULT_FALLBACKS = [

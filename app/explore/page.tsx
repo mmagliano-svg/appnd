@@ -159,7 +159,7 @@ export default async function ExplorePage() {
         <div className="pt-10 pb-2">
           <h1 className="text-3xl font-bold tracking-tight mb-1">Scopri la tua storia</h1>
           <p className="text-sm text-muted-foreground/50">
-            Alcuni momenti tornano, anche quando non ci fai caso
+            Ci sono momenti che tornano
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default async function ExplorePage() {
         {/* ── 1. PATTERN CHE EMERGONO ── */}
         {hero.primary && primaryText && (
           <section className="mb-12">
-            <SectionTitle>Cose che fanno parte della tua vita</SectionTitle>
+            <SectionTitle>Cose che fanno parte di te</SectionTitle>
             <div className="space-y-3">
 
               {/* Primary — full width, visually dominant */}
@@ -287,7 +287,7 @@ export default async function ExplorePage() {
         {/* ── 3. I LUOGHI DELLA TUA VITA ── */}
         {places.length > 0 && (
           <section className="mb-12">
-            <SectionTitle>I luoghi che fanno parte di te</SectionTitle>
+            <SectionTitle>I luoghi della tua storia</SectionTitle>
             <div
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
