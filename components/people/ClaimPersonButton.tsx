@@ -28,8 +28,19 @@ export function ClaimPersonButton({
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
 
-  // Whether verification questions are actually needed
   const hasVerifiableData = hasNicknames || hasBirthYear
+
+  // ── Soft label — no interactive claim possible ─────────────────────────
+
+  if (!hasVerifiableData) {
+    return (
+      <p className="text-xs text-muted-foreground/35 mt-4 italic">
+        Profilo non ancora verificabile
+      </p>
+    )
+  }
+
+  // ── CTA + modal — verification data is available ───────────────────────
 
   function openModal() {
     setStep('verify')
@@ -54,7 +65,6 @@ export function ClaimPersonButton({
       })
       if (result.success) {
         setStep('success')
-        // Refresh page so the "active" badge and linked status update
         router.refresh()
       } else {
         setError(result.error ?? 'Qualcosa è andato storto. Riprova.')
@@ -64,14 +74,20 @@ export function ClaimPersonButton({
 
   return (
     <>
-      {/* ── Trigger button ── */}
+      {/* ── Visible CTA ── */}
       <button
         type="button"
         onClick={openModal}
-        className="flex items-center gap-2 text-sm text-muted-foreground/60 hover:text-foreground transition-colors mt-3"
+        className="mt-5 flex items-center gap-2.5 rounded-2xl border border-border/60 bg-muted/40 hover:bg-muted/70 hover:border-foreground/20 px-5 py-3 text-sm font-medium transition-all active:scale-[0.98]"
       >
-        <span className="text-base leading-none">👤</span>
-        Questa persona sono io
+        <span className="text-base leading-none shrink-0">👤</span>
+        <span>Questa persona potresti essere tu</span>
+        <svg
+          className="w-3.5 h-3.5 text-muted-foreground/40 ml-auto shrink-0"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 18l6-6-6-6" />
+        </svg>
       </button>
 
       {/* ── Modal backdrop ── */}
@@ -107,15 +123,13 @@ export function ClaimPersonButton({
                 <div className="px-6 pt-7 pb-2">
                   <h2 className="text-lg font-bold mb-1">Sei {personName}?</h2>
                   <p className="text-sm text-muted-foreground leading-relaxed">
-                    {hasVerifiableData
-                      ? 'Rispondi alle domande per collegare il tuo account a questo profilo.'
-                      : 'Stai per collegare il tuo account a questo profilo. Questa azione non può essere annullata.'}
+                    Rispondi alle domande per collegare il tuo account a questo profilo.
                   </p>
                 </div>
 
                 <div className="px-6 py-5 space-y-5">
 
-                  {/* Question 1 — always shown */}
+                  {/* Question 1 — name / nickname */}
                   <div className="space-y-2">
                     <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
                       {hasNicknames ? 'Il tuo soprannome' : 'Come ti chiami?'}
@@ -131,7 +145,7 @@ export function ClaimPersonButton({
                     />
                   </div>
 
-                  {/* Question 2 — only if birth year is stored */}
+                  {/* Question 2 — birth year, only when stored */}
                   {hasBirthYear && (
                     <div className="space-y-2">
                       <label className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
@@ -149,7 +163,7 @@ export function ClaimPersonButton({
                     </div>
                   )}
 
-                  {/* Error message */}
+                  {/* Error */}
                   {error && (
                     <p className="text-sm text-destructive leading-snug">{error}</p>
                   )}
