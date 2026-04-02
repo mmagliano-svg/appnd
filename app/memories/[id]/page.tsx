@@ -91,9 +91,53 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
   const hasOwnContribution = contributions.some((c) => c.author_id === user?.id)
 
-  const allParticipants = memory.memory_participants
   const importanceLevel: 1 | 2 | 3 | 4 = (isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2
   const importanceStars = '★'.repeat(importanceLevel) + '☆'.repeat(5 - importanceLevel)
+
+  // Unified people list: all participants + all contributors, deduped by userId
+  type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | null }
+  const peopleOnMemory: PersonOnMemory[] = []
+  const seenUserIds = new Set<string>()
+
+  // 1. Formal participants (joined or pending invite)
+  for (const p of memory.memory_participants) {
+    if (p.user_id) {
+      if (seenUserIds.has(p.user_id)) continue
+      seenUserIds.add(p.user_id)
+      const name = p.users?.display_name ?? p.users?.email ?? '?'
+      peopleOnMemory.push({
+        key: p.id,
+        name,
+        ini: initials(name),
+        isMe: p.user_id === user?.id,
+        status: p.joined_at ? 'accepted' : 'invited',
+      })
+    } else if (p.invited_email) {
+      // Pending invite — no account yet
+      peopleOnMemory.push({
+        key: p.id,
+        name: p.invited_email,
+        ini: initials(p.invited_email),
+        isMe: false,
+        status: 'invited',
+      })
+    }
+  }
+
+  // 2. Contributors not already in participant list
+  for (const c of contributions) {
+    if (!c.author_id || seenUserIds.has(c.author_id)) continue
+    seenUserIds.add(c.author_id)
+    const authorData = (c as { users?: { display_name?: string | null; email?: string | null } }).users
+    const name = authorData?.display_name ?? authorData?.email ?? 'Anonimo'
+    peopleOnMemory.push({
+      key: `contrib:${c.author_id}`,
+      name,
+      ini: initials(name),
+      isMe: c.author_id === user?.id,
+      status: null,
+    })
+  }
 
   // Fetch creator name — used for contextual line shown to invited (non-creator) participants
   let creatorName: string | null = null
@@ -349,7 +393,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       <MemoryScrollEffects />
 
       {/* ── Hero block ── */}
-      <div id="memory-hero" className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'pt-14'} bg-muted overflow-hidden`}>
+      <div id="memory-hero" className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'h-14'} bg-muted overflow-hidden`}>
         {heroPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -360,14 +404,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           />
         ) : null}
 
-        {/* Gradient overlay — top slight dark for button readability, clean middle, strong bottom for text */}
+        {/* Gradient overlay — top only, for control readability */}
         {heroPhoto && (
           <div
             id="memory-hero-gradient"
             className="absolute inset-0"
             style={{
-              background:
-                'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, transparent 30%, transparent 44%, rgba(0,0,0,0.55) 100%)',
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, transparent 42%)',
             }}
           />
         )}
@@ -411,71 +454,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </div>
         </div>
 
-        {/* Hero caption — bottom of hero when photo exists */}
-        {heroPhoto && (
-          <div id="memory-hero-text" className="absolute bottom-0 left-0 right-0 px-5 pb-4 z-10">
-            {memoryCats.length > 0 && (
-              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mb-1">
-                {memoryCats.map((cv) => {
-                  const ci = getCategoryByValue(cv)
-                  return ci ? (
-                    <p key={cv} className="text-xs font-semibold uppercase tracking-widest text-white/60">
-                      {ci.emoji} {ci.label}
-                    </p>
-                  ) : null
-                })}
-              </div>
-            )}
-            <h1 className="text-2xl font-bold tracking-tight leading-tight text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.8)]">
-              {memory.title}
-            </h1>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1">
-              <span className="text-xs text-white/65">
-                {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
-              </span>
-              {memory.location_name && (
-                <>
-                  <span className="text-white/30">·</span>
-                  <span className="text-xs text-white/65">{memory.location_name}</span>
-                </>
-              )}
-              {anchorLabel && (
-                <>
-                  <span className="text-white/30">·</span>
-                  <span className="text-xs text-white/65">{anchorLabel}</span>
-                </>
-              )}
-              <span className="text-white/30">·</span>
-              <span className="text-[10px] text-white/50 tracking-wide">{importanceStars}</span>
-            </div>
-            {/* Description — tight under title */}
-            {memory.description && (
-              <p className="text-xs text-white/60 mt-1.5 line-clamp-2 leading-relaxed drop-shadow-[0_1px_4px_rgba(0,0,0,0.6)]">
-                {memory.description}
-              </p>
-            )}
-            {/* Badges */}
-            {(isFirstTime || isAnniversary || sharingStatus === 'shared') && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {isFirstTime && (
-                  <span className="text-[9px] font-semibold rounded-full bg-amber-400/20 border border-amber-300/40 px-2 py-0.5 text-amber-200">
-                    ✦ Prima volta
-                  </span>
-                )}
-                {isAnniversary && (
-                  <span className="text-[9px] font-semibold rounded-full bg-violet-400/20 border border-violet-300/40 px-2 py-0.5 text-violet-200">
-                    ↺ Ricorrenza
-                  </span>
-                )}
-                {sharingStatus === 'shared' && (
-                  <span className="text-[9px] font-semibold rounded-full bg-white/10 border border-white/20 px-2 py-0.5 text-white/60">
-                    ♡ Parte della vostra storia
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Shared memory — primary block, immediately after hero ── */}
@@ -503,73 +481,76 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </p>
         )}
 
-        {/* Title block — only when no hero photo */}
-        {!heroPhoto && (
-          <div className="pt-6 pb-6 border-b border-border/50">
-            {memoryCats.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 mb-3">
-                {memoryCats.map((cv) => {
-                  const ci = getCategoryByValue(cv)
-                  return ci ? (
-                    <Link
-                      key={cv}
-                      href={`/dashboard?category=${ci.value}`}
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <span>{ci.emoji}</span>
-                      <span className="uppercase tracking-wider">{ci.label}</span>
-                    </Link>
-                  ) : null
-                })}
-              </div>
+        {/* ── Memory meta — always shown below hero ── */}
+        <div className="pt-5 pb-4 border-b border-border/30">
+          {/* Category tags */}
+          {memoryCats.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-2">
+              {memoryCats.map((cv) => {
+                const ci = getCategoryByValue(cv)
+                return ci ? (
+                  <Link
+                    key={cv}
+                    href={`/dashboard?category=${ci.value}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <span>{ci.emoji}</span>
+                    <span className="uppercase tracking-wider">{ci.label}</span>
+                  </Link>
+                ) : null
+              })}
+            </div>
+          )}
+
+          {/* Title */}
+          <h1 className="text-3xl font-semibold tracking-tight leading-tight">
+            {memory.title}
+          </h1>
+
+          {/* Date · Place */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base text-muted-foreground mt-2">
+            <span>{formatMemoryDateFull(memoryStartDate, memoryEndDate)}</span>
+            {memory.location_name && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span>{memory.location_name}</span>
+              </>
             )}
-            <div className="flex items-start gap-3">
-              <h1 className="text-3xl font-bold tracking-tight leading-tight flex-1">
-                {memory.title}
-              </h1>
-              {(isFirstTime || isAnniversary || sharingStatus === 'shared') && (
-                <div className="flex flex-col gap-1 mt-1 shrink-0">
-                  {isFirstTime && (
-                    <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
-                      ✦ Prima volta
-                    </span>
-                  )}
-                  {isAnniversary && (
-                    <span className="text-[9px] font-semibold rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
-                      ↺ Ricorrenza
-                    </span>
-                  )}
-                  {sharingStatus === 'shared' && (
-                    <span className="text-[9px] font-semibold rounded-full bg-muted border border-border px-2 py-0.5 text-muted-foreground">
-                      ♡ Parte della vostra storia
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-3">
-              <span className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
-              </span>
-              {memory.location_name && (
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  {memory.location_name}
-                </span>
-              )}
-              {anchorLabel && (
-                <span className="text-muted-foreground/70">{anchorLabel}</span>
-              )}
-              <span className="text-[11px] text-muted-foreground/40 tracking-wide">{importanceStars}</span>
-            </div>
+            {anchorLabel && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span className="text-sm">{anchorLabel}</span>
+              </>
+            )}
           </div>
-        )}
+
+          {/* Importance + badges row */}
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <span className="text-[11px] text-muted-foreground/40 tracking-wide">{importanceStars}</span>
+            {isFirstTime && (
+              <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
+                ✦ Prima volta
+              </span>
+            )}
+            {isAnniversary && (
+              <span className="text-[9px] font-semibold rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
+                ↺ Ricorrenza
+              </span>
+            )}
+            {sharingStatus === 'shared' && (
+              <span className="text-[9px] font-semibold rounded-full bg-muted border border-border px-2 py-0.5 text-muted-foreground">
+                ♡ Parte della vostra storia
+              </span>
+            )}
+          </div>
+
+          {/* Description */}
+          {memory.description && (
+            <p data-fade-in className="text-lg leading-relaxed text-foreground/90 mt-3 whitespace-pre-wrap">
+              {memory.description}
+            </p>
+          )}
+        </div>
 
         {/* Contextual invite line — shown to non-creators in shared memories */}
         {!isCreator && creatorName && (
@@ -578,48 +559,32 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </p>
         )}
 
-        {/* ── Description (story) — only shown in body when no hero photo ── */}
-        {memory.description && !heroPhoto && (
-          <div data-fade-in className="pt-5 pb-4">
-            <p className="text-[15px] text-foreground/90 leading-[1.8] whitespace-pre-wrap">
-              {memory.description}
-            </p>
-          </div>
-        )}
-
-        {/* ── Persone presenti ── */}
-        {allParticipants.length > 0 && (
-          <div className={`${heroPhoto ? 'pt-3' : 'pt-2'} pb-4`}>
+        {/* ── Persone presenti — unified source: participants + contributors ── */}
+        {peopleOnMemory.length > 0 && (
+          <div className="pt-4 pb-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2.5">
               Persone presenti
             </p>
-            <div className="flex items-center gap-3 overflow-x-auto pb-1">
-              {allParticipants.map((p) => {
-                const name = p.users?.display_name ?? p.users?.email ?? p.invited_email ?? '?'
-                const ini = initials(name)
-                const isMe = p.user_id === user?.id
-                const accepted = Boolean(p.joined_at)
-                const displayName = isMe ? 'Tu' : name.split(' ')[0]
-                return (
-                  <div key={p.id} className="flex flex-col items-center gap-1 shrink-0">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                      accepted
-                        ? 'bg-foreground text-background'
-                        : 'bg-muted border border-dashed border-border text-muted-foreground'
-                    }`}>
-                      {ini}
-                    </div>
-                    <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
-                      {displayName}
-                    </span>
-                    {!accepted && (
-                      <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
-                        invitato
-                      </span>
-                    )}
+            <div className="flex items-start gap-4 overflow-x-auto pb-1">
+              {peopleOnMemory.map((p) => (
+                <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                    p.status === 'accepted' || p.status === null
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted border border-dashed border-border text-muted-foreground'
+                  }`}>
+                    {p.ini}
                   </div>
-                )
-              })}
+                  <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
+                    {p.isMe ? 'Tu' : p.name.split(' ')[0]}
+                  </span>
+                  {p.status === 'invited' && (
+                    <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
+                      invitato
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           </div>
         )}
