@@ -669,8 +669,8 @@ export interface ClaimAnswers {
  *   at least one of them (case-insensitive, substring match).
  * - If the person has a full birth date (YYYY-MM-DD), the supplied birth year
  *   must match.
- * - If no verifiable data exists on the record, the claim is granted on trust.
- * - At least one supplied answer must pass any check that is applicable.
+ * - If no verifiable data exists on the record, the claim is rejected.
+ * - At least one supplied answer must pass a check for the claim to succeed.
  *
  * Uses admin client for the DB update so it works regardless of whether the
  * current user owns the people record.
@@ -728,8 +728,16 @@ export async function claimPerson(
     checks.push({ pass: supplied === storedYear })
   }
 
-  // If there are checks, at least one must pass
-  if (checks.length > 0 && !checks.some((c) => c.pass)) {
+  // Reject immediately if no verifiable data exists on this person record
+  if (checks.length === 0) {
+    return {
+      success: false,
+      error: 'Questa identità non può ancora essere verificata. Chiedi a chi ti ha aggiunto di completare il tuo profilo.',
+    }
+  }
+
+  // At least one check must pass — no silent fallback
+  if (!checks.some((c) => c.pass)) {
     return {
       success: false,
       error: 'Le risposte non corrispondono. Verifica i dati inseriti e riprova.',
@@ -743,7 +751,6 @@ export async function claimPerson(
     .update({
       linked_user_id: user.id,
       claim_status: 'claimed',
-      status: 'active',
     } as Record<string, unknown>)
     .eq('id', personId)
     .is('linked_user_id', null) // guard against race condition
