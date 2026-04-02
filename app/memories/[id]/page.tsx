@@ -503,6 +503,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       </div>
 
+      {/* ── Emotional line under hero ── */}
+      <p className="max-w-lg mx-auto px-5 text-xs text-muted-foreground/35 mt-2">
+        Questo momento è ancora qui
+      </p>
+
       {/* ── Hero image actions — like only ── */}
       {heroPhoto && (
         <div className="max-w-lg mx-auto px-4">
@@ -602,11 +607,47 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             )}
           </div>
 
+          {/* Con chi eri — before description */}
+          {peopleOnMemory.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
+                Con chi eri
+              </p>
+              <div className="flex items-start gap-3 flex-wrap">
+                {peopleOnMemory.map((p) => (
+                  <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                      p.status === 'accepted' || p.status === null
+                        ? 'bg-foreground text-background'
+                        : 'bg-muted border border-dashed border-border text-muted-foreground'
+                    }`}>
+                      {p.ini}
+                    </div>
+                    <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
+                      {p.isMe ? 'Tu' : p.name.split(' ')[0]}
+                    </span>
+                    {p.status === 'invited' && (
+                      <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
+                        invitato
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground/40 mt-2">
+                Anche loro potrebbero ricordarlo in modo diverso
+              </p>
+            </div>
+          )}
+
           {/* Description */}
           {memory.description && (
-            <p data-fade-in className="text-lg leading-relaxed text-foreground/90 mt-3 whitespace-pre-wrap">
-              {memory.description}
-            </p>
+            <>
+              <p className="text-[10px] text-muted-foreground/35 mt-4 mb-0.5">Ti ricordi quando...</p>
+              <p data-fade-in className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap">
+                {memory.description}
+              </p>
+            </>
           )}
 
           {/* Text block interactions — persisted to memory_messages */}
@@ -828,36 +869,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           )}
         </div>
 
-        {/* ── Persone presenti — end of page ── */}
-        {peopleOnMemory.length > 0 && (
-          <div className="pt-8 pb-4 border-t border-border/20 mt-6">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">
-              Chi c'era con te
-            </p>
-            <div className="flex items-start gap-4 overflow-x-auto pb-1">
-              {peopleOnMemory.map((p) => (
-                <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                    p.status === 'accepted' || p.status === null
-                      ? 'bg-foreground text-background'
-                      : 'bg-muted border border-dashed border-border text-muted-foreground'
-                  }`}>
-                    {p.ini}
-                  </div>
-                  <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
-                    {p.isMe ? 'Tu' : p.name.split(' ')[0]}
-                  </span>
-                  {p.status === 'invited' && (
-                    <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
-                      invitato
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
       </div>
 
       {/* ── FAB — photo contribute ── */}
@@ -869,7 +880,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-          Aggiungi un momento
+          Continua questo momento
         </Link>
       </div>
 

@@ -53,7 +53,7 @@ export function ImportanceStars({ memoryId, initialValue, isCreator }: Importanc
       ))}
     </div>
     <p className="text-[10px] text-muted-foreground/40 leading-none">
-      Quanto è stato importante per te?
+      Quanto ti è rimasto?
     </p>
     </div>
   )
