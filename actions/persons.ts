@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { RelationshipType } from '@/lib/supabase/types'
 import { dayMonthFromDate, dayMonthFromBirthDate, daysUntilBirthday } from '@/lib/utils/anchors'
+import { generateInviteToken } from '@/lib/utils/invite'
 export type { RelationshipType }
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -359,6 +360,86 @@ export async function setMemoryPeople(
 
   const { error } = await supabase.from('memory_people').insert(rows)
   if (error) throw new Error(`Impossibile salvare persone: ${error.message}`)
+}
+
+/**
+ * Sync memory_participants from the selected people list.
+ * - Keeps the creator row intact.
+ * - Replaces all other participant rows with rows for each selected person
+ *   who has a linked Supabase user account (linked_user_id is set).
+ * - Ghost people (no linked_user_id) are skipped — they are only tagged
+ *   in memory_people and cannot access the shared memory yet.
+ * - Called after setMemoryPeople on both create and edit flows.
+ */
+export async function syncParticipantsFromPeople(
+  memoryId: string,
+  personIds: string[],
+): Promise<void> {
+  const { supabase, user } = await authedClient()
+
+  // Verify ownership and get creator id
+  const { data: memory } = await supabase
+    .from('memories')
+    .select('created_by')
+    .eq('id', memoryId)
+    .single()
+
+  if (!memory || memory.created_by !== user.id) return
+
+  const creatorId = memory.created_by
+
+  // Find the creator's existing participant row so we can preserve it
+  const { data: creatorRow } = await supabase
+    .from('memory_participants')
+    .select('id')
+    .eq('memory_id', memoryId)
+    .eq('user_id', creatorId)
+    .maybeSingle()
+
+  // Delete all rows for this memory except the creator's row
+  if (creatorRow) {
+    await supabase
+      .from('memory_participants')
+      .delete()
+      .eq('memory_id', memoryId)
+      .neq('id', creatorRow.id)
+  } else {
+    // Creator row missing (edge case) — delete everything and recreate it
+    await supabase.from('memory_participants').delete().eq('memory_id', memoryId)
+    await supabase.from('memory_participants').insert({
+      memory_id: memoryId,
+      user_id: creatorId,
+      invite_token: generateInviteToken(),
+      joined_at: new Date().toISOString(),
+    })
+  }
+
+  if (personIds.length === 0) return
+
+  // Resolve linked_user_id for each selected person (active users only)
+  const { data: people } = await supabase
+    .from('people')
+    .select('linked_user_id')
+    .in('id', personIds)
+    .eq('owner_id', user.id)
+    .not('linked_user_id', 'is', null)
+
+  const linkedUserIds = (people ?? [])
+    .map((p) => p.linked_user_id as string)
+    .filter((uid) => uid !== creatorId)
+
+  if (linkedUserIds.length === 0) return
+
+  // Insert a participant row for each linked user (accepted immediately — they are tagged)
+  const rows = linkedUserIds.map((uid) => ({
+    memory_id: memoryId,
+    user_id: uid,
+    invite_token: generateInviteToken(),
+    joined_at: new Date().toISOString(),
+  }))
+
+  const { error } = await supabase.from('memory_participants').insert(rows)
+  if (error) throw new Error(`Impossibile sincronizzare partecipanti: ${error.message}`)
 }
 
 /** Get people tagged on a memory */

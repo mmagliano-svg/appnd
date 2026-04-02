@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { createMemoryReturnId, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
 import { getUserGroups, type GroupSummary } from '@/actions/groups'
 import { addMediaContribution } from '@/actions/contributions'
-import { setMemoryPeople } from '@/actions/persons'
+import { setMemoryPeople, syncParticipantsFromPeople } from '@/actions/persons'
 import { createSharedMemory } from '@/actions/shared-memories'
 import { PeopleSelector } from '@/components/people/PeopleSelector'
 import type { SimplePerson } from '@/actions/persons'
@@ -157,7 +157,9 @@ function NewMemoryForm() {
       })
 
       if (selectedPeople.length > 0) {
-        await setMemoryPeople(memoryId, selectedPeople.map((p) => p.id))
+        const personIds = selectedPeople.map((p) => p.id)
+        await setMemoryPeople(memoryId, personIds)
+        await syncParticipantsFromPeople(memoryId, personIds)
       }
 
       if (makeShared && selectedPeople.length > 0) {

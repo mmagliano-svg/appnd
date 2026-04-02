@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { updateMemory, getAllUserTags, getUserPeriods, type PeriodSummary } from '@/actions/memories'
-import { getMemoryPeople, setMemoryPeople, type SimplePerson } from '@/actions/persons'
+import { getMemoryPeople, setMemoryPeople, syncParticipantsFromPeople, type SimplePerson } from '@/actions/persons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -118,7 +118,9 @@ export default function EditMemoryPage() {
         categories,
         tags,
       })
-      await setMemoryPeople(id, selectedPeople.map((p) => p.id))
+      const personIds = selectedPeople.map((p) => p.id)
+      await setMemoryPeople(id, personIds)
+      await syncParticipantsFromPeople(id, personIds)
       router.push(`/memories/${id}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
