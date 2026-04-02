@@ -10,20 +10,11 @@ import { MemoryScrollEffects } from '@/components/memory/MemoryScrollEffects'
 import { getAnchorLabel } from '@/lib/utils/anchors'
 import { getSharedMemoryDetail } from '@/actions/shared-memories'
 import { ShareButton } from '@/components/memory/ShareButton'
-import { ImageCard } from '@/components/memory/ImageCard'
 import { MoreMenu } from '@/components/memory/MoreMenu'
+import { MemoryTimeline, type TimelineFragment } from '@/components/memory/MemoryTimeline'
 import { ContentActions } from '@/components/memory/ContentActions'
 import { ImportanceStars } from '@/components/memory/ImportanceStars'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
-
-function formatDateTime(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('it-IT', {
-    day: 'numeric',
-    month: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -814,110 +805,15 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <InlineContribute memoryId={params.id} />
         )}
 
-        {/* ── Gallery section title ── */}
-        {contributions.some(c => c.id !== heroContribution?.id && (c.content_type === 'photo' || c.content_type === 'text' || c.content_type === 'note')) && (
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/35 mt-8 mb-0">
-            Frammenti di quel giorno
-          </p>
-        )}
-
-        {/* ── Contributions — narrative ── */}
-        <div id="contributi" className="pt-4">
-
-          {contributions.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <p className="text-3xl">✦</p>
-              {isCreator ? (
-                <>
-                  <p className="text-sm text-muted-foreground/60 font-normal italic">Ancora nessun racconto.</p>
-                  <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                    Aggiungi i tuoi pensieri, foto o note su questo momento.
-                  </p>
-                </>
-              ) : (
-                <p className="text-xs text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                  Ancora nessun contributo.
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {contributions.map((c) => {
-                // Skip hero photo — already shown as the page hero above
-                if (c.id === heroContribution?.id) return null
-
-                const authorData = (c as {
-                  users?: { display_name?: string | null; email?: string | null }
-                }).users
-                const authorName = authorData?.display_name ?? authorData?.email ?? 'Anonimo'
-                const isOwn = c.author_id === user?.id
-                const ini = initials(authorName)
-
-                /* ── Photo contribution ── */
-                if (c.content_type === 'photo' && c.media_url) {
-                  return (
-                    <ImageCard
-                      key={c.id}
-                      src={c.media_url}
-                      alt={c.caption ?? ''}
-                      caption={c.caption}
-                      comments={[]}
-                    />
-                  )
-                }
-
-                /* ── Text contribution — journal style ── */
-                if (c.content_type === 'text' && c.text_content) {
-                  return (
-                    <div key={c.id} data-fade-in className="space-y-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full bg-foreground flex items-center justify-center text-xs font-bold text-background shrink-0">
-                          {ini}
-                        </div>
-                        <div>
-                          <p className="text-xs font-semibold leading-none">
-                            {isOwn ? 'Tu' : authorName}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">
-                            {formatDateTime(c.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                      <p className="text-base leading-relaxed text-foreground/85 whitespace-pre-wrap pl-9">
-                        {c.text_content}
-                      </p>
-                    </div>
-                  )
-                }
-
-                /* ── Note contribution — distinct bg ── */
-                if (c.content_type === 'note' && c.text_content) {
-                  return (
-                    <div key={c.id} data-fade-in className="rounded-2xl bg-muted/50 border border-border/40 px-5 py-4 space-y-2.5">
-                      <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-wrap italic">
-                        {c.text_content}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
-                          {ini}
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {isOwn ? 'Tu' : authorName}
-                        </span>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="text-xs text-muted-foreground/50">
-                          {formatDateTime(c.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                }
-
-                /* ── Fallback ── */
-                return null
-              })}
-            </div>
-          )}
+        {/* ── Memory timeline ── */}
+        <div id="contributi">
+          <MemoryTimeline
+            contributions={contributions as TimelineFragment[]}
+            happenedAt={memoryStartDate}
+            heroContributionId={heroContribution?.id ?? null}
+            userId={user?.id ?? null}
+            memoryId={params.id}
+          />
         </div>
 
       </div>
