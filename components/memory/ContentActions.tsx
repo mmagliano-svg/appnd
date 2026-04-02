@@ -15,9 +15,11 @@ interface ContentActionsProps {
   /** When provided, comments are persisted to memory_messages. Omit for local-only (e.g. hero image). */
   memoryId?: string
   initialComments?: ContentComment[]
+  /** When true, hides comments entirely — like button only. */
+  likeOnly?: boolean
 }
 
-export function ContentActions({ memoryId, initialComments = [] }: ContentActionsProps) {
+export function ContentActions({ memoryId, initialComments = [], likeOnly = false }: ContentActionsProps) {
   const router = useRouter()
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
@@ -115,49 +117,52 @@ export function ContentActions({ memoryId, initialComments = [] }: ContentAction
         )}
       </button>
 
-      {/* Comment thread */}
-      {comments.length > 0 && (
-        <div className="space-y-2.5">
-          {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2">
-              <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
-                {c.authorInitials}
-              </div>
-              <div className="min-w-0">
-                <span className="text-xs font-semibold">{c.authorName}</span>
-                <p className="text-sm text-foreground/75 leading-relaxed mt-0.5">{c.text}</p>
-              </div>
+      {/* Comment thread + input — hidden in likeOnly mode */}
+      {!likeOnly && (
+        <>
+          {comments.length > 0 && (
+            <div className="space-y-2.5">
+              {comments.map((c) => (
+                <div key={c.id} className="flex items-start gap-2">
+                  <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
+                    {c.authorInitials}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-semibold">{c.authorName}</span>
+                    <p className="text-sm text-foreground/75 leading-relaxed mt-0.5">{c.text}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      )}
+          )}
 
-      {/* Input box */}
-      <div className="flex items-center gap-2">
-        <input
-          ref={inputRef}
-          type="text"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Scrivi un ricordo o un pensiero su questo momento..."
-          disabled={isPending}
-          className="flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
-        />
-        <button
-          onClick={handleSend}
-          disabled={!draft.trim() || isPending}
-          aria-label="Invia"
-          className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center shrink-0 disabled:opacity-30 active:scale-95 transition-all"
-        >
-          <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />
-          </svg>
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Scrivi un ricordo o un pensiero su questo momento..."
+              disabled={isPending}
+              className="flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
+            />
+            <button
+              onClick={handleSend}
+              disabled={!draft.trim() || isPending}
+              aria-label="Invia"
+              className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center shrink-0 disabled:opacity-30 active:scale-95 transition-all"
+            >
+              <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
+            </button>
+          </div>
 
-      {sendError && (
-        <p className="text-xs text-destructive">{sendError}</p>
+          {sendError && (
+            <p className="text-xs text-destructive">{sendError}</p>
+          )}
+        </>
       )}
     </div>
   )

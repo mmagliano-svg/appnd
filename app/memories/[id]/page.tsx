@@ -451,10 +451,10 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       </div>
 
-      {/* ── Hero image actions ── */}
+      {/* ── Hero image actions — like only ── */}
       {heroPhoto && (
         <div className="max-w-lg mx-auto px-4">
-          <ContentActions />
+          <ContentActions likeOnly />
         </div>
       )}
 
