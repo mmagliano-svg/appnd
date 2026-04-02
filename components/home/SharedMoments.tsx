@@ -31,7 +31,7 @@ export function SharedMoments({ moments }: Props) {
                 ? 'Qualcosa è cambiato di recente'
                 : 'Anche altri potrebbero raccontarlo'}
             </p>
-            <p className="text-xs text-muted-foreground/40 mt-3">Apri →</p>
+            <p className="text-xs text-muted-foreground/40 mt-3">Rivivi</p>
           </Link>
         ))}
       </div>

@@ -4,8 +4,8 @@ import { useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 
 /**
- * Client component: scrolls to #fragment-latest and applies a brief glow
- * when the user returns from the contribute flow (?contributed=1).
+ * Client component: smoothly scrolls to #fragment-latest and applies a brief
+ * scale + glow when the user returns from the contribute flow (?contributed=1).
  * Cleans the URL after the effect completes.
  */
 export function TimelineHighlight({ active }: { active: boolean }) {
@@ -18,25 +18,34 @@ export function TimelineHighlight({ active }: { active: boolean }) {
     const el = document.getElementById('fragment-latest')
     if (!el) return
 
-    // Quick glow-in
-    el.style.transition = 'box-shadow 0.12s ease'
-    el.style.boxShadow = '0 0 0 10px rgba(0,0,0,0.055)'
-    el.style.borderRadius = '12px'
+    // Smooth scroll — lands fragment in the center of viewport
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
-    // Fade out after 500ms
-    const fadeOut = setTimeout(() => {
-      el.style.transition = 'box-shadow 0.9s ease'
-      el.style.boxShadow = '0 0 0 0px transparent'
-      setTimeout(() => { el.style.cssText = '' }, 900)
-    }, 500)
+    // Scale + glow in (slight delay so scroll completes first)
+    const startEffect = setTimeout(() => {
+      el.style.transition = 'box-shadow 0.15s ease, transform 0.15s ease'
+      el.style.boxShadow = '0 0 0 14px rgba(0,0,0,0.07)'
+      el.style.borderRadius = '12px'
+      el.style.transform = 'scale(1.012)'
 
-    // Clean URL (?contributed=1) after effect ends
+      // Ease back to neutral after 700ms
+      const fadeOut = setTimeout(() => {
+        el.style.transition = 'box-shadow 1.0s ease, transform 0.7s ease'
+        el.style.boxShadow = '0 0 0 0px transparent'
+        el.style.transform = 'scale(1)'
+        setTimeout(() => { el.style.cssText = '' }, 1050)
+      }, 700)
+
+      return () => clearTimeout(fadeOut)
+    }, 350)
+
+    // Clean URL (?contributed=1) after effect fully ends
     const cleanUrl = setTimeout(() => {
       router.replace(pathname)
-    }, 2500)
+    }, 3200)
 
     return () => {
-      clearTimeout(fadeOut)
+      clearTimeout(startEffect)
       clearTimeout(cleanUrl)
     }
   }, [active, pathname, router])

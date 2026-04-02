@@ -70,7 +70,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                   <p className="text-white/50 text-[10px] mt-1">
                     {formatMemoryDate(memory.start_date, memory.end_date)}
                   </p>
-                  <p className="text-white/30 text-[10px] mt-1.5">Continua →</p>
+                  <p className="text-white/30 text-[10px] mt-1.5">Continua da qui</p>
                 </div>
               </TransitionLink>
             )

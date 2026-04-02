@@ -70,6 +70,18 @@ function initials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
+/**
+ * Stable hash derived from a fragment id.
+ * Used to introduce subtle, deterministic variation in rendering.
+ */
+function idHash(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) & 0xffff
+  }
+  return h
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function MemoryTimeline({
@@ -91,15 +103,15 @@ export function MemoryTimeline({
   // ── Empty state ──────────────────────────────────────────────────────────
   if (visible.length === 0) {
     return (
-      <div className="py-14 text-center space-y-2.5">
-        <p className="text-3xl text-muted-foreground/[0.12] select-none">◯</p>
-        <p className="text-sm text-muted-foreground/45">È ancora tutto qui</p>
-        <p className="text-xs text-muted-foreground/30 max-w-[200px] mx-auto leading-relaxed">
+      <div className="py-16 text-center space-y-3">
+        <p className="text-3xl text-muted-foreground/[0.10] select-none">◯</p>
+        <p className="text-sm text-muted-foreground/40">È ancora tutto qui</p>
+        <p className="text-xs text-muted-foreground/28 max-w-[200px] mx-auto leading-relaxed">
           Ma potrebbe non restare così
         </p>
         <Link
           href={`/memories/${memoryId}/contribute`}
-          className="inline-block mt-2 text-xs text-muted-foreground/45 hover:text-foreground border border-border/35 rounded-full px-4 py-2 transition-colors hover:border-foreground/20"
+          className="inline-block mt-3 text-xs text-muted-foreground/40 hover:text-foreground border border-border/30 rounded-full px-4 py-2 transition-colors hover:border-foreground/20"
         >
           Aggiungi il primo dettaglio
         </Link>
@@ -122,40 +134,49 @@ export function MemoryTimeline({
     labelToGroup.get(label)!.items.push(c)
   }
 
-  // Pre-compute micro-labels and last-fragment marker
+  // Pre-compute micro-labels, last-fragment marker, and rendering variant
   const lastVisibleId = visible[visible.length - 1].id
+
+  type FragmentVariant = 'normal' | 'dim' | 'spacious'
 
   type ProcessedFragment = TimelineFragment & {
     microLabel: string | null
     isLast: boolean
+    variant: FragmentVariant
   }
 
   const groups = rawGroups.map((group, gi) => ({
     label: group.label,
-    items: group.items.map((c, fi): ProcessedFragment => ({
-      ...c,
-      microLabel: getMicroLabel(
-        gi === 0 && fi === 0,
-        fi === 0,
-        getDiffDays(c.created_at, happenedAt),
-      ),
-      isLast: c.id === lastVisibleId,
-    })),
+    items: group.items.map((c, fi): ProcessedFragment => {
+      const hash = idHash(c.id)
+      const variant: FragmentVariant =
+        hash % 4 === 0 ? 'spacious' : hash % 7 === 0 ? 'dim' : 'normal'
+      return {
+        ...c,
+        microLabel: getMicroLabel(
+          gi === 0 && fi === 0,
+          fi === 0,
+          getDiffDays(c.created_at, happenedAt),
+        ),
+        isLast: c.id === lastVisibleId,
+        variant,
+      }
+    }),
   }))
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="mt-10">
+    <div className="mt-12">
 
       {/* Scroll + glow when returning from contribute */}
       <TimelineHighlight active={!!highlightLast} />
 
       {/* Section header */}
-      <div className="mb-8">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/35">
+      <div className="mb-10">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/32">
           Questo momento nel tempo
         </p>
-        <p className="text-[11px] text-muted-foreground/22 mt-1">
+        <p className="text-[11px] text-muted-foreground/20 mt-1.5">
           Ogni dettaglio aggiunge qualcosa
         </p>
       </div>
@@ -167,18 +188,18 @@ export function MemoryTimeline({
         <div className="absolute left-[11px] top-2 bottom-12 w-px bg-foreground/[0.07] pointer-events-none" />
 
         {groups.map((group, gi) => (
-          <div key={group.label} className={`relative ${gi > 0 ? 'mt-16' : ''}`}>
+          <div key={group.label} className={`relative ${gi > 0 ? 'mt-18' : ''}`}>
 
             {/* Group marker — open circle */}
-            <div className="absolute left-[6px] top-[3px] w-3 h-3 rounded-full bg-background border-[1.5px] border-foreground/[0.22] pointer-events-none" />
+            <div className="absolute left-[6px] top-[3px] w-3 h-3 rounded-full bg-background border-[1.5px] border-foreground/[0.20] pointer-events-none" />
 
             {/* Group label */}
-            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/35 mb-7 leading-none">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/32 mb-8 leading-none">
               {group.label}
             </p>
 
             {/* Fragments */}
-            <div className="space-y-9">
+            <div className="space-y-11">
               {group.items.map((c) => {
                 const authorName =
                   c.users?.display_name ?? c.users?.email ?? 'Anonimo'
@@ -189,16 +210,20 @@ export function MemoryTimeline({
                     key={c.id}
                     id={c.isLast ? 'fragment-latest' : undefined}
                     data-fade-in
-                    className="relative"
+                    className={`relative${c.variant === 'spacious' ? ' mt-3' : ''}`}
                   >
-                    {/* Fragment dot — small, filled */}
-                    <div className="absolute left-[8px] top-[9px] w-2 h-2 rounded-full bg-foreground/[0.18] ring-[2px] ring-background pointer-events-none" />
+                    {/* Fragment dot — vary opacity by variant */}
+                    <div className={`absolute left-[8px] top-[9px] w-2 h-2 rounded-full ring-[2px] ring-background pointer-events-none ${
+                      c.variant === 'dim'
+                        ? 'bg-foreground/[0.10]'
+                        : 'bg-foreground/[0.18]'
+                    }`} />
 
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
 
                       {/* Micro-label (first of group only, very subtle) */}
                       {c.microLabel && (
-                        <p className="text-[9px] text-muted-foreground/28 uppercase tracking-[0.14em] leading-none">
+                        <p className="text-[9px] text-muted-foreground/25 uppercase tracking-[0.14em] leading-none">
                           {c.microLabel}
                         </p>
                       )}
@@ -210,7 +235,7 @@ export function MemoryTimeline({
                             {initials(authorName)}
                           </div>
                         )}
-                        <p className="text-[10px] text-muted-foreground/30 leading-none">
+                        <p className="text-[10px] text-muted-foreground/28 leading-none">
                           {!isOwn ? `${authorName} · ` : ''}
                           {formatFragmentDate(c.created_at)}
                         </p>
@@ -233,22 +258,22 @@ export function MemoryTimeline({
 
                       {/* Caption */}
                       {c.content_type === 'photo' && c.caption && (
-                        <p className="text-sm leading-relaxed text-foreground/60 whitespace-pre-wrap italic">
+                        <p className="text-sm leading-relaxed text-foreground/58 whitespace-pre-wrap italic">
                           {c.caption}
                         </p>
                       )}
 
                       {/* Text contribution */}
                       {c.content_type === 'text' && c.text_content && (
-                        <p className="text-base leading-relaxed text-foreground/82 whitespace-pre-wrap">
+                        <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-wrap">
                           {c.text_content}
                         </p>
                       )}
 
                       {/* Note contribution */}
                       {c.content_type === 'note' && c.text_content && (
-                        <div className="rounded-xl bg-muted/35 px-4 py-3">
-                          <p className="text-sm leading-relaxed text-foreground/70 whitespace-pre-wrap italic">
+                        <div className="rounded-xl bg-muted/30 px-4 py-3">
+                          <p className="text-sm leading-relaxed text-foreground/65 whitespace-pre-wrap italic">
                             {c.text_content}
                           </p>
                         </div>
@@ -257,7 +282,7 @@ export function MemoryTimeline({
                       {/* Subtle per-fragment continue action */}
                       <Link
                         href={`/memories/${memoryId}/contribute`}
-                        className="inline-block text-[10px] text-muted-foreground/22 hover:text-muted-foreground/55 transition-colors mt-0.5"
+                        className="inline-block text-[10px] text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors mt-0.5"
                       >
                         Continua da qui →
                       </Link>
@@ -273,15 +298,15 @@ export function MemoryTimeline({
 
       </div>
 
-      {/* ── End of timeline — natural continuation loop ── */}
-      <div className="mt-14 pt-8 border-t border-border/10 text-center space-y-2">
-        <p className="text-base font-medium text-foreground/75">E poi?</p>
-        <p className="text-sm text-muted-foreground/40">Cosa è successo dopo?</p>
+      {/* ── End of timeline — strong continuation trigger ── */}
+      <div className="mt-16 pt-10 border-t border-border/[0.08] text-center space-y-3">
+        <p className="text-base font-semibold text-foreground/78">E poi?</p>
+        <p className="text-sm text-muted-foreground/38 leading-relaxed">Non è finita qui</p>
         <Link
           href={`/memories/${memoryId}/contribute`}
-          className="inline-flex items-center mt-3 rounded-2xl bg-foreground text-background px-5 py-3 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
+          className="inline-flex items-center mt-4 rounded-2xl bg-foreground text-background px-6 py-3.5 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
         >
-          Aggiungi cosa è successo
+          Aggiungi cosa è successo dopo
         </Link>
       </div>
 

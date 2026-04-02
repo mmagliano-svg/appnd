@@ -98,6 +98,8 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
         setError(result.error)
         setFlowState('idle')
       } else {
+        // Brief pause — creates perceived physical completion before state change
+        await new Promise<void>((res) => setTimeout(res, 280))
         setFlowState('saved')
       }
     } catch (err) {
