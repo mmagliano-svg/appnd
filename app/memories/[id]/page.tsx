@@ -496,7 +496,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       </div>
 
       {/* ── Emotional lines under hero ── */}
-      <div className="max-w-lg mx-auto px-5 mt-3 space-y-1">
+      <div className="max-w-lg mx-auto px-5 mt-3 space-y-1.5">
         <p className="text-xs text-muted-foreground/45">Questo momento è ancora qui</p>
         <p className="text-[11px] text-muted-foreground/25">Un giorno che può continuare a vivere</p>
       </div>
@@ -637,7 +637,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
                 </svg>
-                Invita chi era con te
+                Chiedi anche a loro
               </Link>
             </div>
           )}
@@ -771,31 +771,22 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         )}
 
         {/* ── Living memory activation block ── */}
-        <div className="mt-8 mb-2 border-t border-border/20 pt-7">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/35 mb-5">
+        <div className="mt-8 mb-2">
+          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/25 mb-4">
             Questo momento può continuare
           </p>
-          <div className="space-y-0.5">
-            <div className="flex items-start gap-3.5 py-2.5">
-              <span className="text-xs text-muted-foreground/35 mt-0.5 w-4 shrink-0 text-center leading-none">✦</span>
-              <div>
-                <p className="text-sm font-medium leading-snug">Aggiungi un dettaglio</p>
-                <p className="text-xs text-muted-foreground/50 mt-0.5">Qualcosa che ti è tornato in mente ora</p>
-              </div>
+          <div className="space-y-0">
+            <div className="flex items-center gap-3 py-1.5">
+              <span className="text-[10px] text-muted-foreground/20 w-3 shrink-0 text-center leading-none">✦</span>
+              <p className="text-xs text-muted-foreground/45 leading-snug">Aggiungi qualcosa che ti è tornato in mente</p>
             </div>
-            <div className="flex items-start gap-3.5 py-2.5">
-              <span className="text-xs text-muted-foreground/35 mt-0.5 w-4 shrink-0 text-center leading-none">○</span>
-              <div>
-                <p className="text-sm font-medium leading-snug">Invita chi era con te</p>
-                <p className="text-xs text-muted-foreground/50 mt-0.5">Per vedere anche il loro punto di vista</p>
-              </div>
+            <div className="flex items-center gap-3 py-1.5">
+              <span className="text-[10px] text-muted-foreground/20 w-3 shrink-0 text-center leading-none">○</span>
+              <p className="text-xs text-muted-foreground/45 leading-snug">Invita chi era con te per vedere anche il loro punto di vista</p>
             </div>
-            <div className="flex items-start gap-3.5 py-2.5">
-              <span className="text-xs text-muted-foreground/35 mt-0.5 w-4 shrink-0 text-center leading-none">↺</span>
-              <div>
-                <p className="text-sm font-medium leading-snug">Rivivilo nel tempo</p>
-                <p className="text-xs text-muted-foreground/50 mt-0.5">Quando questo momento ritorna, puoi aggiornarlo</p>
-              </div>
+            <div className="flex items-center gap-3 py-1.5">
+              <span className="text-[10px] text-muted-foreground/20 w-3 shrink-0 text-center leading-none">↺</span>
+              <p className="text-xs text-muted-foreground/45 leading-snug">Quando questo momento ritorna, puoi aggiornarlo</p>
             </div>
           </div>
         </div>
@@ -813,6 +804,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             heroContributionId={heroContribution?.id ?? null}
             userId={user?.id ?? null}
             memoryId={params.id}
+            highlightLast={searchParams.contributed === '1'}
           />
         </div>
 

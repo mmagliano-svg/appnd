@@ -17,28 +17,28 @@ export function MemorySignals({ signals }: Props) {
   if (signals.primary) {
     cards.push({
       signal: signals.primary,
-      label: 'Qualcosa è cambiato',
+      label: 'Qualcuno ha aggiunto qualcosa',
       sublabel: 'Vedi cosa è successo',
     })
   }
   if (signals.newContribution) {
     cards.push({
       signal: signals.newContribution,
-      label: 'Nuovo',
+      label: 'Qualcuno ha aggiunto qualcosa',
       sublabel: 'Vedi cosa è successo',
     })
   }
   if (signals.incompleteMemory) {
     cards.push({
       signal: signals.incompleteMemory,
-      label: 'Aperto',
+      label: 'È ancora incompleto',
       sublabel: 'Manca ancora qualcosa',
     })
   }
   if (signals.memoryRecall) {
     cards.push({
       signal: signals.memoryRecall,
-      label: 'Ritorna',
+      label: 'Potrebbe tornare',
       sublabel: 'Era questo periodo',
     })
   }
@@ -58,7 +58,7 @@ export function MemorySignals({ signals }: Props) {
           </p>
           <p className="text-sm font-medium leading-snug">{card.signal.text}</p>
           <p className="text-xs text-muted-foreground/50 mt-0.5">{card.sublabel}</p>
-          <p className="text-xs text-muted-foreground/45 mt-3">Rivivi →</p>
+          <p className="text-xs text-muted-foreground/45 mt-3">Torna qui</p>
         </Link>
       ))}
     </div>

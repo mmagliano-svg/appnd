@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { TimelineHighlight } from './TimelineHighlight'
 
 // ── Types ─────────────────────────────────────────────────────────────────
 
@@ -19,17 +20,19 @@ interface MemoryTimelineProps {
   heroContributionId: string | null
   userId: string | null
   memoryId: string
+  highlightLast?: boolean
 }
 
-// ── Time helpers ──────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────
 
-function getGroupLabel(createdAt: string, happenedAt: string): string {
-  const created = new Date(createdAt)
-  const happened = new Date(happenedAt)
-  const diffDays = Math.floor(
-    (created.getTime() - happened.getTime()) / (1000 * 60 * 60 * 24),
+function getDiffDays(createdAt: string, happenedAt: string): number {
+  return Math.floor(
+    (new Date(createdAt).getTime() - new Date(happenedAt).getTime()) /
+      (1000 * 60 * 60 * 24),
   )
+}
 
+function getGroupLabel(diffDays: number): string {
   if (diffDays <= 0)   return 'Quel giorno'
   if (diffDays === 1)  return 'Il giorno dopo'
   if (diffDays <= 6)   return 'Qualche giorno dopo'
@@ -39,8 +42,18 @@ function getGroupLabel(createdAt: string, happenedAt: string): string {
   if (diffDays <= 179) return 'Qualche mese dopo'
   if (diffDays <= 364) return 'Quasi un anno dopo'
   if (diffDays <= 729) return 'Un anno dopo'
-  const years = Math.floor(diffDays / 365)
-  return `${years} anni dopo`
+  return `${Math.floor(diffDays / 365)} anni dopo`
+}
+
+function getMicroLabel(
+  isAbsoluteFirst: boolean,
+  isFirstOfGroup: boolean,
+  diffDays: number,
+): string | null {
+  if (isAbsoluteFirst) return 'Hai iniziato questo momento'
+  if (!isFirstOfGroup) return null
+  if (diffDays > 180)  return 'Lo hai rivissuto'
+  return 'Ti è tornato in mente'
 }
 
 function formatFragmentDate(dateStr: string): string {
@@ -65,8 +78,8 @@ export function MemoryTimeline({
   heroContributionId,
   userId,
   memoryId,
+  highlightLast,
 }: MemoryTimelineProps) {
-  // Filter: exclude hero photo, only show renderable types
   const visible = contributions.filter(
     (c) =>
       c.id !== heroContributionId &&
@@ -79,91 +92,133 @@ export function MemoryTimeline({
   if (visible.length === 0) {
     return (
       <div className="py-14 text-center space-y-2.5">
-        <p className="text-3xl text-muted-foreground/12 select-none">◯</p>
+        <p className="text-3xl text-muted-foreground/[0.12] select-none">◯</p>
         <p className="text-sm text-muted-foreground/45">È ancora tutto qui</p>
-        <p className="text-xs text-muted-foreground/30">Aggiungi il primo dettaglio</p>
+        <p className="text-xs text-muted-foreground/30 max-w-[200px] mx-auto leading-relaxed">
+          Ma potrebbe non restare così
+        </p>
+        <Link
+          href={`/memories/${memoryId}/contribute`}
+          className="inline-block mt-2 text-xs text-muted-foreground/45 hover:text-foreground border border-border/35 rounded-full px-4 py-2 transition-colors hover:border-foreground/20"
+        >
+          Aggiungi il primo dettaglio
+        </Link>
       </div>
     )
   }
 
   // ── Group by relative time ────────────────────────────────────────────────
-  type Group = { label: string; items: TimelineFragment[] }
-  const groups: Group[] = []
-  const labelToGroup = new Map<string, Group>()
+  type RawGroup = { label: string; items: TimelineFragment[] }
+  const rawGroups: RawGroup[] = []
+  const labelToGroup = new Map<string, RawGroup>()
 
   for (const c of visible) {
-    const label = getGroupLabel(c.created_at, happenedAt)
+    const label = getGroupLabel(getDiffDays(c.created_at, happenedAt))
     if (!labelToGroup.has(label)) {
-      const g: Group = { label, items: [] }
-      groups.push(g)
+      const g: RawGroup = { label, items: [] }
+      rawGroups.push(g)
       labelToGroup.set(label, g)
     }
     labelToGroup.get(label)!.items.push(c)
   }
 
+  // Pre-compute micro-labels and last-fragment marker
+  const lastVisibleId = visible[visible.length - 1].id
+
+  type ProcessedFragment = TimelineFragment & {
+    microLabel: string | null
+    isLast: boolean
+  }
+
+  const groups = rawGroups.map((group, gi) => ({
+    label: group.label,
+    items: group.items.map((c, fi): ProcessedFragment => ({
+      ...c,
+      microLabel: getMicroLabel(
+        gi === 0 && fi === 0,
+        fi === 0,
+        getDiffDays(c.created_at, happenedAt),
+      ),
+      isLast: c.id === lastVisibleId,
+    })),
+  }))
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="mt-10">
+
+      {/* Scroll + glow when returning from contribute */}
+      <TimelineHighlight active={!!highlightLast} />
+
       {/* Section header */}
       <div className="mb-8">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/35">
-          Come è cresciuto questo momento
+          Questo momento nel tempo
         </p>
         <p className="text-[11px] text-muted-foreground/22 mt-1">
           Ogni dettaglio aggiunge qualcosa
         </p>
       </div>
 
-      {/* Timeline: pl-6 (24px) gives space for line + dots at ~12px */}
+      {/* Timeline — pl-6 (24px) positions content; line+dots center at ~12px */}
       <div className="relative pl-6">
 
         {/* Continuous vertical line */}
-        <div className="absolute left-[11px] top-2 bottom-10 w-px bg-foreground/[0.07] pointer-events-none" />
+        <div className="absolute left-[11px] top-2 bottom-12 w-px bg-foreground/[0.07] pointer-events-none" />
 
         {groups.map((group, gi) => (
-          <div key={group.label} className={`relative ${gi > 0 ? 'mt-12' : ''}`}>
+          <div key={group.label} className={`relative ${gi > 0 ? 'mt-16' : ''}`}>
 
-            {/* Group marker — open circle on the line */}
+            {/* Group marker — open circle */}
             <div className="absolute left-[6px] top-[3px] w-3 h-3 rounded-full bg-background border-[1.5px] border-foreground/[0.22] pointer-events-none" />
 
             {/* Group label */}
-            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/38 mb-6 leading-none">
+            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/35 mb-7 leading-none">
               {group.label}
             </p>
 
             {/* Fragments */}
-            <div className="space-y-8">
+            <div className="space-y-9">
               {group.items.map((c) => {
                 const authorName =
-                  c.users?.display_name ??
-                  c.users?.email ??
-                  'Anonimo'
+                  c.users?.display_name ?? c.users?.email ?? 'Anonimo'
                 const isOwn = c.author_id === userId
 
                 return (
-                  <div key={c.id} data-fade-in className="relative">
-
+                  <div
+                    key={c.id}
+                    id={c.isLast ? 'fragment-latest' : undefined}
+                    data-fade-in
+                    className="relative"
+                  >
                     {/* Fragment dot — small, filled */}
                     <div className="absolute left-[8px] top-[9px] w-2 h-2 rounded-full bg-foreground/[0.18] ring-[2px] ring-background pointer-events-none" />
 
-                    {/* Fragment card content */}
-                    <div className="space-y-2.5">
+                    <div className="space-y-2">
 
-                      {/* Header: author (if not own) + date */}
-                      <div className="flex items-center gap-2 min-h-[16px]">
+                      {/* Micro-label (first of group only, very subtle) */}
+                      {c.microLabel && (
+                        <p className="text-[9px] text-muted-foreground/28 uppercase tracking-[0.14em] leading-none">
+                          {c.microLabel}
+                        </p>
+                      )}
+
+                      {/* Author (if not own) + date */}
+                      <div className="flex items-center gap-2">
                         {!isOwn && (
                           <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[8px] font-bold text-background shrink-0">
                             {initials(authorName)}
                           </div>
                         )}
                         <p className="text-[10px] text-muted-foreground/30 leading-none">
-                          {!isOwn ? `${authorName} · ` : ''}{formatFragmentDate(c.created_at)}
+                          {!isOwn ? `${authorName} · ` : ''}
+                          {formatFragmentDate(c.created_at)}
                         </p>
                       </div>
 
                       {/* Photo */}
                       {c.content_type === 'photo' && c.media_url && (
-                        <div className="rounded-2xl overflow-hidden -ml-0">
+                        <div className="rounded-2xl overflow-hidden">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
                             src={c.media_url}
@@ -176,7 +231,7 @@ export function MemoryTimeline({
                         </div>
                       )}
 
-                      {/* Caption (photo) */}
+                      {/* Caption */}
                       {c.content_type === 'photo' && c.caption && (
                         <p className="text-sm leading-relaxed text-foreground/60 whitespace-pre-wrap italic">
                           {c.caption}
@@ -199,10 +254,10 @@ export function MemoryTimeline({
                         </div>
                       )}
 
-                      {/* Subtle footer action */}
+                      {/* Subtle per-fragment continue action */}
                       <Link
                         href={`/memories/${memoryId}/contribute`}
-                        className="inline-block text-[10px] text-muted-foreground/22 hover:text-muted-foreground/55 transition-colors"
+                        className="inline-block text-[10px] text-muted-foreground/22 hover:text-muted-foreground/55 transition-colors mt-0.5"
                       >
                         Continua da qui →
                       </Link>
@@ -217,6 +272,19 @@ export function MemoryTimeline({
         ))}
 
       </div>
+
+      {/* ── End of timeline — natural continuation loop ── */}
+      <div className="mt-14 pt-8 border-t border-border/10 text-center space-y-2">
+        <p className="text-base font-medium text-foreground/75">E poi?</p>
+        <p className="text-sm text-muted-foreground/40">Cosa è successo dopo?</p>
+        <Link
+          href={`/memories/${memoryId}/contribute`}
+          className="inline-flex items-center mt-3 rounded-2xl bg-foreground text-background px-5 py-3 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
+        >
+          Aggiungi cosa è successo
+        </Link>
+      </div>
+
     </div>
   )
 }

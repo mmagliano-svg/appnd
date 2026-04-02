@@ -127,7 +127,7 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
             </div>
             <p className="text-xl font-semibold tracking-tight">Aggiunto</p>
             <p className="text-sm text-muted-foreground/50 max-w-[200px] leading-relaxed mt-1">
-              Questo momento è ancora più completo
+              Adesso è ancora più tuo
             </p>
           </div>
 
@@ -140,7 +140,7 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
               Continua ancora
             </button>
             <button
-              onClick={() => router.push(`/memories/${memoryId}`)}
+              onClick={() => router.push(`/memories/${memoryId}?contributed=1#fragment-latest`)}
               className="w-full rounded-2xl py-3 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Torna al momento
@@ -174,7 +174,7 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
         <ContextHeader previewUrl={previewUrl} title={memoryTitle} />
 
         {/* Input area */}
-        <div className="mt-6 space-y-3">
+        <div className={`mt-6 space-y-3 transition-all duration-150 ${flowState === 'saving' ? 'scale-[0.98] opacity-70' : ''}`}>
 
           {/* Inline photo preview */}
           {photoPreview && (
