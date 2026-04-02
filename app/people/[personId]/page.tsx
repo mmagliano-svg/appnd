@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getPersonDetail, type RelationshipType } from '@/actions/persons'
+import { getPersonDetail, getClaimablePerson, type RelationshipType } from '@/actions/persons'
 import { getSharedMemoriesWithUser } from '@/actions/people'
 import { getSharedMemoriesForPerson } from '@/actions/shared-memories'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { dayMonthFromDate, dayMonthFromBirthDate, formatBirthDate } from '@/lib/utils/anchors'
+import { ClaimPersonButton } from '@/components/people/ClaimPersonButton'
 
 const RELATIONSHIP_LABELS: Record<RelationshipType, string> = {
   family:       'Famiglia',
@@ -333,6 +334,19 @@ async function PersonEntityView({ id }: { id: string }) {
           {person.status === 'invited' && person.claimStatus !== 'claimed' && (
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">Invitato su Appnd</p>
           )}
+
+          {/* Claim button — shown when person is not yet linked to any account */}
+          {person.claimStatus !== 'claimed' && !person.linkedUserId && (
+            <ClaimPersonButton
+              personId={person.id}
+              personName={person.name}
+              hasNicknames={person.nicknames.length > 0}
+              hasBirthYear={
+                person.birthDate !== null &&
+                person.birthDate.length === 10 // YYYY-MM-DD
+              }
+            />
+          )}
         </div>
 
         {/* ══ SECTION 2 — IL VOSTRO LEGAME ══════════════════════════════════ */}
@@ -570,6 +584,63 @@ async function RegisteredUserView({ userId, currentUserId }: { userId: string; c
   )
 }
 
+// ── Non-owner claim view ───────────────────────────────────────────────────
+
+/**
+ * Shown when the current user is NOT the owner of the person record
+ * but the person is unclaimed and they want to say "this is me".
+ */
+async function ClaimablePersonView({ personId }: { personId: string }) {
+  const person = await getClaimablePerson(personId)
+  if (!person) return null
+
+  const ini = person.name.trim().split(/\s+/).length >= 2
+    ? (person.name.trim().split(/\s+/)[0][0] + person.name.trim().split(/\s+/)[1][0]).toUpperCase()
+    : person.name.slice(0, 2).toUpperCase()
+
+  return (
+    <main className="min-h-screen bg-background">
+      <div className="max-w-lg mx-auto px-4 pb-28">
+
+        <div className="pt-6 pb-2">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
+            </svg>
+            Home
+          </Link>
+        </div>
+
+        <div className="pt-12 flex flex-col items-center text-center">
+          <div className="w-24 h-24 rounded-full bg-foreground flex items-center justify-center mb-6">
+            <span className="text-3xl font-bold text-background">{ini}</span>
+          </div>
+
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
+            Profilo non collegato
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight mb-3">{person.name}</h1>
+          <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-8">
+            Questo profilo non è ancora collegato a un account Appnd.
+            Se sei {person.name}, puoi collegare il tuo account adesso.
+          </p>
+
+          <ClaimPersonButton
+            personId={person.id}
+            personName={person.name}
+            hasNicknames={person.hasNicknames}
+            hasBirthYear={person.hasBirthYear}
+          />
+        </div>
+
+      </div>
+    </main>
+  )
+}
+
 // ── Router ─────────────────────────────────────────────────────────────────
 
 export default async function PersonPage({ params }: { params: { personId: string } }) {
@@ -577,11 +648,17 @@ export default async function PersonPage({ params }: { params: { personId: strin
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) notFound()
 
+  // 1. Owner's full entity view
   const personView = await PersonEntityView({ id: params.personId })
   if (personView) return personView
 
+  // 2. Registered user — shared memories (NOI view)
   const userView = await RegisteredUserView({ userId: params.personId, currentUserId: user.id })
   if (userView) return userView
+
+  // 3. Non-owner — claimable ghost person
+  const claimView = await ClaimablePersonView({ personId: params.personId })
+  if (claimView) return claimView
 
   notFound()
 }

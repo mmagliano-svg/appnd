@@ -1,6 +1,6 @@
 'use server'
 
-import { createServerClient } from '@/lib/supabase/server'
+import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import type { RelationshipType } from '@/lib/supabase/types'
 import { dayMonthFromDate, dayMonthFromBirthDate, daysUntilBirthday } from '@/lib/utils/anchors'
@@ -649,5 +649,139 @@ export async function getUpcomingBirthdayPerson(
     personName: best.name,
     daysUntil: best.daysUntil,
     birthdayMemoryCount: memories.length,
+  }
+}
+
+// ── claimPerson ────────────────────────────────────────────────────────────
+
+export interface ClaimAnswers {
+  /** The user's name or nickname as they believe the person knows them */
+  nickname?: string
+  /** 4-digit birth year, e.g. "1990" */
+  birthYear?: string
+}
+
+/**
+ * Links the current authenticated user to a ghost person entry.
+ *
+ * Verification rules (partial match allowed):
+ * - If the person has nicknames/name data, the supplied nickname must match
+ *   at least one of them (case-insensitive, substring match).
+ * - If the person has a full birth date (YYYY-MM-DD), the supplied birth year
+ *   must match.
+ * - If no verifiable data exists on the record, the claim is granted on trust.
+ * - At least one supplied answer must pass any check that is applicable.
+ *
+ * Uses admin client for the DB update so it works regardless of whether the
+ * current user owns the people record.
+ */
+export async function claimPerson(
+  personId: string,
+  answers: ClaimAnswers,
+): Promise<{ success: boolean; error?: string }> {
+  // Verify session
+  const supabase = await createServerClient()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) return { success: false, error: 'Devi essere connesso per rivendicare un profilo.' }
+
+  // Fetch person via admin client — bypasses owner_id RLS so any user can claim
+  const admin = createAdminClient()
+  const { data: person } = await admin
+    .from('people')
+    .select('id, name, nicknames, birth_date, linked_user_id, claim_status')
+    .eq('id', personId)
+    .maybeSingle()
+
+  if (!person) return { success: false, error: 'Persona non trovata.' }
+  if (person.linked_user_id) {
+    if (person.linked_user_id === user.id) return { success: true } // already theirs
+    return { success: false, error: 'Questa persona è già collegata a un altro account.' }
+  }
+
+  // ── Verification ──────────────────────────────────────────────────────────
+
+  const nicknames = (person.nicknames as string[] | null) ?? []
+  const birthDate = person.birth_date as string | null
+  const hasYearInBirthDate = birthDate !== null && birthDate.length === 10 // YYYY-MM-DD
+
+  // Build the list of verifiable checks based on available data
+  type Check = { pass: boolean }
+  const checks: Check[] = []
+
+  // Name / nickname check
+  const allKnownNames = [person.name, ...nicknames]
+    .map((n) => n.toLowerCase().trim())
+    .filter(Boolean)
+
+  if (allKnownNames.length > 0) {
+    const supplied = (answers.nickname ?? '').toLowerCase().trim()
+    const pass = supplied.length >= 2 && allKnownNames.some(
+      (known) => known.includes(supplied) || supplied.includes(known)
+    )
+    checks.push({ pass })
+  }
+
+  // Birth year check
+  if (hasYearInBirthDate) {
+    const storedYear = birthDate!.slice(0, 4)
+    const supplied = (answers.birthYear ?? '').trim()
+    checks.push({ pass: supplied === storedYear })
+  }
+
+  // If there are checks, at least one must pass
+  if (checks.length > 0 && !checks.some((c) => c.pass)) {
+    return {
+      success: false,
+      error: 'Le risposte non corrispondono. Verifica i dati inseriti e riprova.',
+    }
+  }
+
+  // ── Link ──────────────────────────────────────────────────────────────────
+
+  const { error: updateError } = await admin
+    .from('people')
+    .update({
+      linked_user_id: user.id,
+      claim_status: 'claimed',
+      status: 'active',
+    } as Record<string, unknown>)
+    .eq('id', personId)
+    .is('linked_user_id', null) // guard against race condition
+
+  if (updateError) {
+    return { success: false, error: 'Errore durante il collegamento. Riprova.' }
+  }
+
+  return { success: true }
+}
+
+/**
+ * Fetches minimal public data for a claimable person (no owner filter).
+ * Returns null if the person doesn't exist or is already claimed.
+ * Used to render the claim page for non-owner visitors.
+ */
+export async function getClaimablePerson(personId: string): Promise<{
+  id: string
+  name: string
+  hasNicknames: boolean
+  hasBirthYear: boolean
+} | null> {
+  const admin = createAdminClient()
+  const { data } = await admin
+    .from('people')
+    .select('id, name, nicknames, birth_date, linked_user_id')
+    .eq('id', personId)
+    .maybeSingle()
+
+  if (!data || data.linked_user_id) return null
+
+  const nicknames = (data.nicknames as string[] | null) ?? []
+  const birthDate = data.birth_date as string | null
+
+  return {
+    id: data.id,
+    name: data.name,
+    hasNicknames: nicknames.length > 0,
+    hasBirthYear: birthDate !== null && birthDate.length === 10,
   }
 }
