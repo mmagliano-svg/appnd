@@ -121,8 +121,35 @@ export default async function ExplorePage() {
     month: 'long',
   })
 
-  const primaryText   = hero.primary   ? heroCardText(hero.primary)   : null
-  const secondaryText = hero.secondary ? heroCardText(hero.secondary) : null
+  const primaryText = hero.primary ? heroCardText(hero.primary) : null
+
+  // Build secondary cards — ranking engine gives us 1; page layer adds a second
+  // if needed to satisfy the person→place rule. No new queries: uses places[].
+  type SecondaryCard = { candidate: HeroCandidate; text: string }
+  const secondaryCards: SecondaryCard[] = []
+
+  if (hero.secondary) {
+    const t = heroCardText(hero.secondary)
+    if (t) secondaryCards.push({ candidate: hero.secondary, text: t })
+  }
+
+  // Special rule: if primary is a PERSON, ensure at least one PLACE in secondary
+  if (
+    hero.primary?.kind === 'person' &&
+    !secondaryCards.some(({ candidate: c }) => c.kind === 'place') &&
+    places.length > 0
+  ) {
+    const p = places[0]
+    const placeCandidate: HeroCandidate = {
+      kind: 'place', subject: p.place,
+      href: `/places/${encodeURIComponent(p.place)}`,
+      score: p.score, count: p.count, yearsCount: p.yearsCount, yearsSpan: 0, isBirthday: false,
+    }
+    const t = heroCardText(placeCandidate)
+    if (t) secondaryCards.push({ candidate: placeCandidate, text: t })
+  }
+
+  const shownSecondaries = secondaryCards.slice(0, 2)
 
   return (
     <main className="min-h-screen bg-background">
@@ -142,40 +169,44 @@ export default async function ExplorePage() {
         </div>
 
         {/* ── 1. PATTERN CHE EMERGONO ── */}
-        {/* Primary card only shown if it has a hero text (strong signal). */}
         {hero.primary && primaryText && (
           <section className="mb-12">
             <SectionTitle>Pattern che emergono</SectionTitle>
             <div className="space-y-3">
 
-              {/* Primary — visually dominant */}
+              {/* Primary — full width, visually dominant */}
               <Link
                 href={hero.primary.href}
-                className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.06] hover:bg-foreground/[0.09] active:scale-[0.99] transition-all px-5 py-5 group"
+                className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.06] hover:bg-foreground/[0.09] active:scale-[0.99] transition-all px-5 py-6 group"
               >
                 <div className="min-w-0">
                   <p className="text-lg font-bold leading-snug truncate">{hero.primary.subject}</p>
-                  <p className="text-sm text-muted-foreground/55 mt-0.5 leading-relaxed">{primaryText}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{primaryText}</p>
                 </div>
                 <span className="text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors shrink-0">
                   <ChevronRight />
                 </span>
               </Link>
 
-              {/* Secondary — smaller, only shown when text exists */}
-              {hero.secondary && secondaryText && (
-                <Link
-                  href={hero.secondary.href}
-                  className="flex items-center justify-between gap-3 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-4 group"
-                >
-                  <div className="min-w-0">
-                    <p className="text-[14px] font-semibold leading-snug truncate">{hero.secondary.subject}</p>
-                    <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-2 leading-relaxed">{secondaryText}</p>
-                  </div>
-                  <span className="text-muted-foreground/15 group-hover:text-muted-foreground/40 transition-colors shrink-0">
-                    <ChevronRight />
-                  </span>
-                </Link>
+              {/* Secondaries — 2-col grid when 2 exist, full-width when 1 */}
+              {shownSecondaries.length > 0 && (
+                <div className={shownSecondaries.length === 2 ? 'grid grid-cols-2 gap-3' : ''}>
+                  {shownSecondaries.map(({ candidate: c, text: t }) => (
+                    <Link
+                      key={`${c.kind}:${c.subject}`}
+                      href={c.href}
+                      className="flex items-center justify-between gap-3 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-4 group"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-[14px] font-semibold leading-snug truncate">{c.subject}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{t}</p>
+                      </div>
+                      <span className="text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors shrink-0">
+                        <ChevronRight />
+                      </span>
+                    </Link>
+                  ))}
+                </div>
               )}
 
             </div>
