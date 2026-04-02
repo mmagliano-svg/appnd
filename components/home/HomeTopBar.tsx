@@ -29,7 +29,7 @@ export function HomeTopBar({ displayName, avatarUrl }: HomeTopBarProps) {
         )}
       </Link>
 
-      <p className="text-base font-bold tracking-tight">I tuoi momenti</p>
+      <p className="text-base font-bold tracking-tight">I tuoi ricordi</p>
 
       {/* Notification bell — placeholder for future */}
       <Link

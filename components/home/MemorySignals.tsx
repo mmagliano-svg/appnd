@@ -5,33 +5,62 @@ interface Props {
   signals: MemorySignalsResult
 }
 
+type SignalCard = {
+  signal: { text: string; subtext?: string; href: string }
+  label: string
+  sublabel: string
+}
+
 export function MemorySignals({ signals }: Props) {
-  // primary overrides all (used for debug / forced signals)
-  // otherwise: newContribution → incompleteMemory → memoryRecall
-  const active =
-    signals.primary ??
-    signals.newContribution ??
-    signals.incompleteMemory ??
-    signals.memoryRecall ??
-    null
+  const cards: SignalCard[] = []
 
-  if (!active) return null
+  if (signals.primary) {
+    cards.push({
+      signal: signals.primary,
+      label: 'Qualcosa è cambiato',
+      sublabel: 'Vedi cosa è successo',
+    })
+  }
+  if (signals.newContribution) {
+    cards.push({
+      signal: signals.newContribution,
+      label: 'Nuovo',
+      sublabel: 'Vedi cosa è successo',
+    })
+  }
+  if (signals.incompleteMemory) {
+    cards.push({
+      signal: signals.incompleteMemory,
+      label: 'Aperto',
+      sublabel: 'Manca ancora qualcosa',
+    })
+  }
+  if (signals.memoryRecall) {
+    cards.push({
+      signal: signals.memoryRecall,
+      label: 'Ritorna',
+      sublabel: 'Era questo periodo',
+    })
+  }
 
-  const subtitle =
-    active.subtext ??
-    (signals.newContribution  ? 'Memoria condivisa'   :
-     signals.incompleteMemory ? 'Momento incompleto'  :
-                                'Ricordo passato')
+  if (cards.length === 0) return null
 
   return (
-    <div className="px-4">
-      <Link
-        href={active.href}
-        className="block rounded-2xl bg-black text-white px-4 py-5 hover:opacity-90 transition-opacity active:scale-[0.99]"
-      >
-        <p className="text-base font-semibold">{active.text} →</p>
-        <div className="text-sm text-white/70 mt-1">Vedi cosa è cambiato</div>
-      </Link>
+    <div className="px-4 space-y-2">
+      {cards.map((card, i) => (
+        <Link
+          key={i}
+          href={card.signal.href}
+          className="block rounded-2xl bg-foreground/[0.05] px-4 py-4 hover:bg-foreground/[0.08] transition-colors active:scale-[0.99]"
+        >
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/40 mb-1.5">
+            {card.label}
+          </p>
+          <p className="text-sm font-medium leading-snug">{card.signal.text}</p>
+          <p className="text-xs text-muted-foreground/50 mt-0.5">{card.sublabel}</p>
+          <p className="text-xs text-muted-foreground/45 mt-3">Rivivi →</p>
+        </Link>
+      ))}
     </div>
   )
 }

@@ -19,8 +19,8 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
   return (
     <section className="pt-2 space-y-3">
       <div className="px-4">
-        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
-          Continua da dove eri rimasto
+        <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
+          Continua dove eri rimasto
         </p>
       </div>
       <div
@@ -70,6 +70,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                   <p className="text-white/50 text-[10px] mt-1">
                     {formatMemoryDate(memory.start_date, memory.end_date)}
                   </p>
+                  <p className="text-white/30 text-[10px] mt-1.5">Continua →</p>
                 </div>
               </TransitionLink>
             )

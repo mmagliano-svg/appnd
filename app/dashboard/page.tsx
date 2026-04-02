@@ -125,21 +125,26 @@ export default async function DashboardPage() {
 
         <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
 
-        <div className="space-y-8 pt-1">
+        <div className="space-y-10 pt-1">
 
-          <div className="space-y-3">
+          {/* Hero + signals — immediate emotional tone */}
+          <div className="space-y-4">
             <HomeHero memory={heroMemory} displayName={displayName} />
             <MemorySignals signals={signals} />
           </div>
 
+          {/* Social layer — shared moments */}
           <SharedMoments moments={sharedMoments} />
 
+          {/* Continuation — open memories */}
           {continueMemories.length > 0 && (
             <ContinueStory memories={continueMemories} />
           )}
 
+          {/* Time depth — recurring moments */}
           <UpcomingMoments moments={upcomingMoments} />
 
+          {/* Life context — clusters */}
           <LifeClusters
             people={peopleClusters}
             places={placesClusters}

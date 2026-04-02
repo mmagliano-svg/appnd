@@ -42,10 +42,10 @@ export function UpcomingMoments({ moments }: UpcomingMomentsProps) {
     <section className="pt-2 space-y-3">
       <div className="px-4">
         <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50">
-          Momenti che tornano nel tempo
+          Succede anche adesso
         </p>
-        <p className="text-[11px] text-muted-foreground/35 mt-0.5">
-          Ci sono momenti che tornano
+        <p className="text-[11px] text-muted-foreground/30 mt-0.5">
+          Alcuni momenti tornano ogni anno
         </p>
       </div>
       <div className="px-4 space-y-2">
@@ -70,12 +70,9 @@ export function UpcomingMoments({ moments }: UpcomingMomentsProps) {
                   <p className="text-xs text-muted-foreground/50 mt-0.5">{subText(moment.memoryCount)}</p>
                 </div>
               </div>
-              <svg
-                className="w-4 h-4 text-muted-foreground/20 group-hover:text-muted-foreground/45 transition-colors shrink-0"
-                fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M9 18l6-6-6-6" />
-              </svg>
+              <span className="text-xs text-muted-foreground/30 group-hover:text-muted-foreground/55 transition-colors shrink-0 whitespace-nowrap">
+                Aggiorna →
+              </span>
             </TransitionLink>
           )
         })}
