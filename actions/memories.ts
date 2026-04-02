@@ -640,3 +640,16 @@ export async function getUserPeriods(): Promise<PeriodSummary[]> {
     .filter((m): m is PeriodSummary => m !== null && m.end_date !== null)
     .sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 }
+
+export async function updateImportance(memoryId: string, importance: number) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  // Silently no-ops if the importance column doesn't exist yet in the DB
+  await supabase
+    .from('memories')
+    .update({ importance } as Record<string, unknown>)
+    .eq('id', memoryId)
+    .eq('created_by', user.id)
+}

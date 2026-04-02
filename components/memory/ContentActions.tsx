@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 export interface ContentComment {
   id: string
@@ -13,10 +13,12 @@ interface ContentActionsProps {
   comments?: ContentComment[]
 }
 
-export function ContentActions({ comments = [] }: ContentActionsProps) {
+export function ContentActions({ comments: initialComments = [] }: ContentActionsProps) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
-  const [open, setOpen] = useState(false)
+  const [comments, setComments] = useState<ContentComment[]>(initialComments)
+  const [draft, setDraft] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const toggleLike = () => {
     setLiked((prev) => {
@@ -25,77 +27,98 @@ export function ContentActions({ comments = [] }: ContentActionsProps) {
     })
   }
 
+  const handleSend = () => {
+    const text = draft.trim()
+    if (!text) return
+    setComments((prev) => [
+      ...prev,
+      {
+        id: `local-${Date.now()}`,
+        authorName: 'Tu',
+        authorInitials: 'TU',
+        text,
+      },
+    ])
+    setDraft('')
+    inputRef.current?.focus()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
   return (
-    <div>
-      <div className="flex items-center gap-5 pt-3">
-        {/* Like */}
-        <button
-          onClick={toggleLike}
-          className="flex items-center gap-1.5 transition-colors active:scale-90"
-          aria-label={liked ? 'Rimuovi like' : 'Metti like'}
+    <div className="mt-3 space-y-3">
+      {/* Heart */}
+      <button
+        onClick={toggleLike}
+        className="flex items-center gap-1.5 transition-colors active:scale-90"
+        aria-label={liked ? 'Rimuovi like' : 'Metti like'}
+      >
+        <svg
+          className={`w-[18px] h-[18px] transition-all ${
+            liked
+              ? 'fill-rose-500 stroke-rose-500'
+              : 'fill-none stroke-muted-foreground hover:stroke-rose-400'
+          }`}
+          viewBox="0 0 24 24"
         >
-          <svg
-            className={`w-[18px] h-[18px] transition-all ${
-              liked
-                ? 'fill-rose-500 stroke-rose-500'
-                : 'fill-none stroke-muted-foreground hover:stroke-rose-400'
-            }`}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-            />
-          </svg>
-          {likeCount > 0 && (
-            <span className={`text-xs tabular-nums ${liked ? 'text-rose-500' : 'text-muted-foreground'}`}>
-              {likeCount}
-            </span>
-          )}
-        </button>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.75}
+            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+          />
+        </svg>
+        {likeCount > 0 && (
+          <span className={`text-xs tabular-nums ${liked ? 'text-rose-500' : 'text-muted-foreground'}`}>
+            {likeCount}
+          </span>
+        )}
+      </button>
 
-        {/* Comments */}
-        <button
-          onClick={() => setOpen((p) => !p)}
-          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label={open ? 'Chiudi commenti' : 'Apri commenti'}
-        >
-          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.75}
-              d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-            />
-          </svg>
-          {comments.length > 0 && (
-            <span className="text-xs tabular-nums">{comments.length}</span>
-          )}
-        </button>
-      </div>
-
-      {/* Expandable thread */}
-      {open && (
-        <div className="mt-2 rounded-xl bg-muted/40 border border-border/30 px-4 py-3 space-y-3">
-          {comments.length === 0 ? (
-            <p className="text-xs text-muted-foreground/50 italic">Nessun commento ancora.</p>
-          ) : (
-            comments.map((c) => (
-              <div key={c.id} className="flex items-start gap-2">
-                <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
-                  {c.authorInitials}
-                </div>
-                <div className="min-w-0">
-                  <span className="text-xs font-semibold">{c.authorName}</span>
-                  <p className="text-xs text-foreground/70 leading-relaxed mt-0.5">{c.text}</p>
-                </div>
+      {/* Comment thread */}
+      {comments.length > 0 && (
+        <div className="space-y-2.5">
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
+                {c.authorInitials}
               </div>
-            ))
-          )}
+              <div className="min-w-0">
+                <span className="text-xs font-semibold">{c.authorName}</span>
+                <p className="text-sm text-foreground/75 leading-relaxed mt-0.5">{c.text}</p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
+
+      {/* Input box */}
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Scrivi un ricordo o un pensiero su questo momento..."
+          className="flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!draft.trim()}
+          aria-label="Invia"
+          className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center shrink-0 disabled:opacity-30 active:scale-95 transition-all"
+        >
+          <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
   )
 }
