@@ -2,24 +2,21 @@
 
 import { useState } from 'react'
 
-export interface ImageComment {
+export interface ContentComment {
   id: string
   authorName: string
   authorInitials: string
   text: string
 }
 
-interface ImageCardProps {
-  src: string
-  alt: string
-  caption?: string | null
-  comments?: ImageComment[]
+interface ContentActionsProps {
+  comments?: ContentComment[]
 }
 
-export function ImageCard({ src, alt, caption, comments = [] }: ImageCardProps) {
+export function ContentActions({ comments = [] }: ContentActionsProps) {
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
-  const [commentsOpen, setCommentsOpen] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const toggleLike = () => {
     setLiked((prev) => {
@@ -29,29 +26,8 @@ export function ImageCard({ src, alt, caption, comments = [] }: ImageCardProps) 
   }
 
   return (
-    <div className="-mx-4">
-      {/* Image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        className="w-full object-cover"
-        style={{
-          maxHeight: '480px',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 5%)',
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 5%)',
-        }}
-        loading="lazy"
-        draggable={false}
-      />
-
-      {/* Caption */}
-      {caption && (
-        <p className="px-4 pt-2 text-sm text-foreground/70 italic leading-relaxed">{caption}</p>
-      )}
-
-      {/* Actions row */}
-      <div className="px-4 pt-2 pb-1 flex items-center gap-5">
+    <div>
+      <div className="flex items-center gap-5 pt-3">
         {/* Like */}
         <button
           onClick={toggleLike}
@@ -60,7 +36,9 @@ export function ImageCard({ src, alt, caption, comments = [] }: ImageCardProps) 
         >
           <svg
             className={`w-[18px] h-[18px] transition-all ${
-              liked ? 'fill-rose-500 stroke-rose-500' : 'fill-none stroke-muted-foreground hover:stroke-rose-400'
+              liked
+                ? 'fill-rose-500 stroke-rose-500'
+                : 'fill-none stroke-muted-foreground hover:stroke-rose-400'
             }`}
             viewBox="0 0 24 24"
           >
@@ -78,11 +56,11 @@ export function ImageCard({ src, alt, caption, comments = [] }: ImageCardProps) 
           )}
         </button>
 
-        {/* Comments toggle */}
+        {/* Comments */}
         <button
-          onClick={() => setCommentsOpen((prev) => !prev)}
+          onClick={() => setOpen((p) => !p)}
           className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-          aria-label={commentsOpen ? 'Chiudi commenti' : 'Apri commenti'}
+          aria-label={open ? 'Chiudi commenti' : 'Apri commenti'}
         >
           <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -98,20 +76,20 @@ export function ImageCard({ src, alt, caption, comments = [] }: ImageCardProps) 
         </button>
       </div>
 
-      {/* Expandable comments thread */}
-      {commentsOpen && (
-        <div className="mx-4 mb-2 rounded-xl bg-muted/40 border border-border/30 px-4 py-3 space-y-3">
+      {/* Expandable thread */}
+      {open && (
+        <div className="mt-2 rounded-xl bg-muted/40 border border-border/30 px-4 py-3 space-y-3">
           {comments.length === 0 ? (
             <p className="text-xs text-muted-foreground/50 italic">Nessun commento ancora.</p>
           ) : (
-            comments.map((comment) => (
-              <div key={comment.id} className="flex items-start gap-2">
+            comments.map((c) => (
+              <div key={c.id} className="flex items-start gap-2">
                 <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
-                  {comment.authorInitials}
+                  {c.authorInitials}
                 </div>
                 <div className="min-w-0">
-                  <span className="text-xs font-semibold">{comment.authorName}</span>
-                  <p className="text-xs text-foreground/70 leading-relaxed mt-0.5">{comment.text}</p>
+                  <span className="text-xs font-semibold">{c.authorName}</span>
+                  <p className="text-xs text-foreground/70 leading-relaxed mt-0.5">{c.text}</p>
                 </div>
               </div>
             ))

@@ -1,13 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { DeleteButton } from '@/components/memory/DeleteButton'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { formatMemoryDateFull, formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
-import { getMessages } from '@/actions/messages'
-import { getLikeState } from '@/actions/likes'
-import { MemoryChat } from '@/components/memory/MemoryChat'
-import { MemoryActions } from '@/components/memory/MemoryActions'
 import { InlineContribute } from '@/components/memory/InlineContribute'
 import { ScrollToTop } from '@/components/memory/ScrollToTop'
 import { MemoryScrollEffects } from '@/components/memory/MemoryScrollEffects'
@@ -15,6 +10,8 @@ import { getAnchorLabel } from '@/lib/utils/anchors'
 import { getSharedMemoryDetail } from '@/actions/shared-memories'
 import { ShareButton } from '@/components/memory/ShareButton'
 import { ImageCard } from '@/components/memory/ImageCard'
+import { MoreMenu } from '@/components/memory/MoreMenu'
+import { ContentActions } from '@/components/memory/ContentActions'
 
 function formatDateTime(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('it-IT', {
@@ -69,10 +66,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
   const isCreator = memory.created_by === user?.id
 
-  const [initialMessages, initialLikes] = await Promise.all([
-    getMessages(params.id),
-    getLikeState(params.id),
-  ])
   const contributions = [...memory.memory_contributions].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   )
@@ -207,15 +200,10 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             I tuoi ricordi
           </Link>
           {isCreator && (
-            <div className="flex items-center gap-1">
-              <Link
-                href={`/memories/${params.id}/edit`}
-                className="rounded-full px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                Modifica
-              </Link>
-              <DeleteButton memoryId={params.id} />
-            </div>
+            <MoreMenu
+              memoryId={params.id}
+              editHref={`/memories/${params.id}/edit`}
+            />
           )}
         </div>
 
@@ -437,24 +425,23 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               heroMode={!!heroPhoto}
             />
             {isCreator && (
-              <>
-                <Link
-                  href={`/memories/${params.id}/edit`}
-                  className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                    heroPhoto
-                      ? 'text-white/90 hover:text-white hover:bg-white/10 drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}
-                >
-                  Modifica
-                </Link>
-                <DeleteButton memoryId={params.id} heroMode={!!heroPhoto} />
-              </>
+              <MoreMenu
+                memoryId={params.id}
+                editHref={`/memories/${params.id}/edit`}
+                heroMode={!!heroPhoto}
+              />
             )}
           </div>
         </div>
 
       </div>
+
+      {/* ── Hero image actions ── */}
+      {heroPhoto && (
+        <div className="max-w-lg mx-auto px-4">
+          <ContentActions />
+        </div>
+      )}
 
       {/* ── Shared memory — primary block, immediately after hero ── */}
       {sharedMemory && (
@@ -550,6 +537,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               {memory.description}
             </p>
           )}
+
+          {/* Text block interactions */}
+          <ContentActions />
         </div>
 
         {/* Contextual invite line — shown to non-creators in shared memories */}
@@ -557,36 +547,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <p className="text-xs text-muted-foreground pt-3 pb-0">
             {creatorName} ha salvato questo momento con te.
           </p>
-        )}
-
-        {/* ── Persone presenti — unified source: participants + contributors ── */}
-        {peopleOnMemory.length > 0 && (
-          <div className="pt-4 pb-4">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2.5">
-              Persone presenti
-            </p>
-            <div className="flex items-start gap-4 overflow-x-auto pb-1">
-              {peopleOnMemory.map((p) => (
-                <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                    p.status === 'accepted' || p.status === null
-                      ? 'bg-foreground text-background'
-                      : 'bg-muted border border-dashed border-border text-muted-foreground'
-                  }`}>
-                    {p.ini}
-                  </div>
-                  <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
-                    {p.isMe ? 'Tu' : p.name.split(' ')[0]}
-                  </span>
-                  {p.status === 'invited' && (
-                    <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
-                      invitato
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
         )}
 
         {/* ── Tags ── */}
@@ -605,15 +565,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             </div>
           </div>
         )}
-
-        {/* ── Actions (like · chat · people) — after content ── */}
-        <div className="opacity-60 pb-2">
-          <MemoryActions
-            memoryId={params.id}
-            initialLikes={initialLikes}
-            participantCount={participants.length}
-          />
-        </div>
 
         {/* ── Shared perspectives ── */}
         {sharedMemory && sharedMemory.contributions.length > 0 && (
@@ -744,10 +695,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                       src={c.media_url}
                       alt={c.caption ?? ''}
                       caption={c.caption}
-                      authorName={authorName}
-                      authorInitials={ini}
-                      timestamp={formatDateTime(c.created_at)}
-                      isOwn={isOwn}
                       comments={[]}
                     />
                   )
@@ -807,14 +754,35 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           )}
         </div>
 
-        {/* ── Chat — attached close to content ── */}
-        <div className="mt-4">
-          <MemoryChat
-            memoryId={params.id}
-            currentUserId={user!.id}
-            initialMessages={initialMessages}
-          />
-        </div>
+        {/* ── Persone presenti — end of page ── */}
+        {peopleOnMemory.length > 0 && (
+          <div className="pt-8 pb-4 border-t border-border/20 mt-6">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-3">
+              Persone presenti
+            </p>
+            <div className="flex items-start gap-4 overflow-x-auto pb-1">
+              {peopleOnMemory.map((p) => (
+                <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                    p.status === 'accepted' || p.status === null
+                      ? 'bg-foreground text-background'
+                      : 'bg-muted border border-dashed border-border text-muted-foreground'
+                  }`}>
+                    {p.ini}
+                  </div>
+                  <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
+                    {p.isMe ? 'Tu' : p.name.split(' ')[0]}
+                  </span>
+                  {p.status === 'invited' && (
+                    <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
+                      invitato
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 
