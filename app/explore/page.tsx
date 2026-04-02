@@ -14,7 +14,7 @@ import { ExploreSearch } from '@/components/explore/ExploreSearch'
 import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
 import type { Person } from '@/actions/persons'
 
-// ── Shared UI components ───────────────────────────────────────────────────
+// ── Shared UI ──────────────────────────────────────────────────────────────
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -32,12 +32,10 @@ function ChevronRight() {
   )
 }
 
-// ── Insight helpers ────────────────────────────────────────────────────────
+// ── Deterministic insight helpers ─────────────────────────────────────────
+// All strings are predefined. No generation, no inference beyond stated rules.
 
-/**
- * Soft color for avatar fallback — name-hashed so it's stable per person.
- * Returns a Tailwind bg + text pair (light mode friendly).
- */
+/** Soft color for avatar fallback — name-hashed, stable per person. */
 function avatarColor(name: string): string {
   const palette = [
     'bg-rose-100 text-rose-600',
@@ -53,51 +51,62 @@ function avatarColor(name: string): string {
 }
 
 /**
- * Warm label from memory count + date range.
- * Ordered from most meaningful to generic fallback.
+ * SPEC §2 — Person insight label.
+ * Inputs: memoryCount, yearsSpan, lastMemoryYear vs currentYear.
  */
 function personInsight(person: Person): string {
   const currentYear = new Date().getFullYear()
   const lastYear  = person.lastMemoryDate  ? parseInt(person.lastMemoryDate.split('-')[0])  : 0
   const firstYear = person.firstMemoryDate ? parseInt(person.firstMemoryDate.split('-')[0]) : lastYear
-  const yearsSpan = lastYear && firstYear ? lastYear - firstYear + 1 : 0
+  const yearsSpan = (lastYear && firstYear) ? lastYear - firstYear : 0
 
-  if (person.memoryCount >= 8)                              return 'Parte della tua quotidianità'
-  if (person.memoryCount >= 5 && lastYear === currentYear)  return 'Con te spesso'
-  if (yearsSpan >= 3 || (person.memoryCount >= 3 && yearsSpan >= 2)) return 'Presenza costante'
-  if (person.memoryCount >= 3)                              return 'Un volto ricorrente'
-  if (lastYear === currentYear)                             return "Presente quest'anno"
-  return 'Nella tua storia'
+  if (person.memoryCount >= 8)                             return 'Parte della tua quotidianità'
+  if (person.memoryCount >= 5 && lastYear === currentYear) return 'Con te spesso'
+  if (yearsSpan >= 3)                                      return 'Presenza costante'
+  if (person.memoryCount >= 3)                             return 'Un volto ricorrente'
+  return 'Fa parte della tua storia'
 }
 
 /**
- * Emotional place label based on count + position.
- * First place gets the strongest claim; others get softer labels.
+ * SPEC §1 — Place insight label.
+ * isTopPlace = this is the #1 most frequent place.
+ * Returns null if no signal.
  */
-function placeInsight(count: number, index: number): string {
-  if (index === 0) return count >= 4 ? 'Il centro della tua storia' : 'Il tuo posto principale'
-  if (count >= 3)  return 'Un posto che ritorna'
-  if (count >= 2)  return 'Dove torni spesso'
-  return 'Un ricordo speciale'
+function placeInsight(count: number, isTopPlace: boolean): string | null {
+  if (isTopPlace)  return 'Il centro della tua storia'
+  if (count >= 5)  return 'Dove torni spesso'
+  if (count >= 3)  return 'Un posto che torna'
+  if (count >= 1)  return 'Ci sei stato'
+  return null
 }
 
 /**
- * Interpretation line for a recurring moment.
- * Aware of birthday vs fixed-calendar kind.
+ * SPEC §5 — Hero insight line for primary place card.
+ * Returns null if count < 3 (no strong signal).
  */
-function recurringContext(item: RecurringMomentItem): string {
+function placeHeroText(count: number): string | null {
+  if (count >= 5) return 'Negli ultimi anni, torni sempre qui'
+  if (count >= 3) return 'Negli ultimi anni, è sempre presente'
+  return null
+}
+
+/**
+ * SPEC §3 — Recurring moment label.
+ * Birthday and fixed-calendar anchors have separate tiers.
+ * Returns null if count = 0 (no signal for fixed anchors).
+ */
+function recurringContext(item: RecurringMomentItem): string | null {
   const { count, kind } = item
   if (kind === 'birthday') {
-    if (count >= 3) return 'Torna nel tempo'
-    if (count >= 2) return 'Un appuntamento fisso'
-    if (count === 1) return 'Ci sei sempre'
-    return 'Un compleanno importante'
+    if (count >= 3) return 'Ci sei sempre'
+    if (count >= 2) return 'Torna ogni anno'
+    return 'Un appuntamento fisso'   // birthdays are inherently recurrent
   }
-  if (count >= 4) return 'Sta diventando un rituale'
-  if (count >= 3) return 'Lo vivi ogni anno'
+  if (count >= 4) return "Sta diventando un'abitudine"
+  if (count === 3) return 'Torna nel tempo'
   if (count === 2) return 'Sta iniziando a tornare'
-  if (count === 1) return 'Parte della tua storia'
-  return 'Potrebbe essere il primo'
+  if (count === 1) return "L'hai vissuto una volta"
+  return null   // count = 0 → no signal
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -128,24 +137,16 @@ export default async function ExplorePage() {
     month: 'long',
   })
 
-  const shownMoments = recurringMoments.slice(0, 8)
-
-  // ── Dynamic top-of-page insight sentence (one strong claim) ───────────────
-  let topInsightLine: string | null = null
-  if (topPlaces.length > 0 && topPlaces[0].count >= 3) {
-    topInsightLine = `Negli ultimi anni, ${topPlaces[0].place} è il luogo che appare di più`
-  } else if (people.length > 0 && people[0].memoryCount >= 5) {
-    topInsightLine = `${people[0].name.trim().split(/\s+/)[0]} è la persona con cui condividi più momenti`
-  } else {
-    const ritual = recurringMoments.find((m) => m.count >= 3)
-    if (ritual) topInsightLine = `${ritual.label} sta diventando un rituale`
-  }
+  // Only show recurring items that have a non-null label
+  const shownMoments = recurringMoments
+    .filter((m) => recurringContext(m) !== null)
+    .slice(0, 8)
 
   // ── Hero insights ──────────────────────────────────────────────────────────
-  // Primary: top place (strongest anchor in the user's story)
-  // Secondary 1: top recurring moment with count ≥ 2
-  // Secondary 2: top person with memoryCount ≥ 3
-  // These are intentionally separate from Connections (person×place clusters).
+  // Primary: top place with spec §5 hero text.
+  // Secondary 1: top recurring moment (count ≥ 2).
+  // Secondary 2: top person (memoryCount ≥ 3).
+  // Connections section is separate — no deduplication needed here.
   type HeroInsight = { subject: string; text: string; href: string }
 
   let primaryInsight: HeroInsight | null = null
@@ -153,24 +154,30 @@ export default async function ExplorePage() {
 
   if (topPlaces.length > 0) {
     const { place, count } = topPlaces[0]
-    primaryInsight = {
-      subject: place,
-      text: count >= 4 ? 'Il centro della tua storia'
-        : count >= 2   ? 'Il posto che appare di più'
-        :                'Un luogo presente nella tua storia',
-      href: `/places/${encodeURIComponent(place)}`,
+    const heroText = placeHeroText(count)
+    if (heroText) {
+      primaryInsight = {
+        subject: place,
+        text: heroText,
+        href: `/places/${encodeURIComponent(place)}`,
+      }
     }
   }
 
+  // Secondary 1 — top recurring moment with a non-null label
   const topRecurring = recurringMoments.find((m) => m.count >= 2)
   if (topRecurring) {
-    secondaryInsights.push({
-      subject: topRecurring.label,
-      text: topRecurring.count >= 3 ? 'Un momento che torna nel tempo' : 'Sta diventando un rituale',
-      href: topRecurring.href,
-    })
+    const ctx = recurringContext(topRecurring)
+    if (ctx) {
+      secondaryInsights.push({
+        subject: topRecurring.label,
+        text: ctx,
+        href: topRecurring.href,
+      })
+    }
   }
 
+  // Secondary 2 — top person
   if (people.length > 0 && people[0].memoryCount >= 3) {
     secondaryInsights.push({
       subject: people[0].name.trim().split(/\s+/)[0],
@@ -179,12 +186,13 @@ export default async function ExplorePage() {
     })
   }
 
-  // Fallback: if no primary yet, promote the first secondary
+  // Fallback: if still no primary, promote first secondary
   if (!primaryInsight && secondaryInsights.length > 0) {
     primaryInsight = secondaryInsights.shift()!
   }
 
   const shownSecondaries = secondaryInsights.slice(0, 2)
+  const hasHero = primaryInsight !== null
 
   return (
     <main className="min-h-screen bg-background">
@@ -196,11 +204,6 @@ export default async function ExplorePage() {
           <p className="text-sm text-muted-foreground/50">
             Ci sono storie che si ripetono, anche senza accorgertene.
           </p>
-          {topInsightLine && (
-            <p className="text-xs text-muted-foreground/40 italic mt-2 leading-relaxed">
-              {topInsightLine}
-            </p>
-          )}
         </div>
 
         {/* ── Search ── */}
@@ -208,29 +211,27 @@ export default async function ExplorePage() {
           <ExploreSearch memories={searchMemories} />
         </div>
 
-        {/* ── 1. PATTERN CHE EMERGONO ───────────────────────────────────────── */}
-        {/* 1 large primary card + up to 2 secondary cards in a 2-col grid.     */}
-        {/* Intentionally excludes person×place clusters (those are Connections).*/}
-        {primaryInsight && (
+        {/* ── 1. PATTERN CHE EMERGONO ── */}
+        {hasHero && (
           <section className="mb-12">
             <SectionTitle>Pattern che emergono</SectionTitle>
             <div className="space-y-3">
 
               {/* Primary — visually dominant */}
               <Link
-                href={primaryInsight.href}
+                href={primaryInsight!.href}
                 className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.06] hover:bg-foreground/[0.09] active:scale-[0.99] transition-all px-5 py-5 group"
               >
                 <div className="min-w-0">
-                  <p className="text-lg font-bold leading-snug truncate">{primaryInsight.subject}</p>
-                  <p className="text-sm text-muted-foreground/55 mt-0.5 leading-relaxed">{primaryInsight.text}</p>
+                  <p className="text-lg font-bold leading-snug truncate">{primaryInsight!.subject}</p>
+                  <p className="text-sm text-muted-foreground/55 mt-0.5 leading-relaxed">{primaryInsight!.text}</p>
                 </div>
                 <span className="text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors shrink-0">
                   <ChevronRight />
                 </span>
               </Link>
 
-              {/* Secondary — smaller, side-by-side when two exist */}
+              {/* Secondaries — side-by-side when two exist */}
               {shownSecondaries.length > 0 && (
                 <div className={shownSecondaries.length === 2 ? 'grid grid-cols-2 gap-3' : ''}>
                   {shownSecondaries.map((s, i) => (
@@ -282,7 +283,6 @@ export default async function ExplorePage() {
                     href={`/people/${person.id}`}
                     className="flex-none flex flex-col items-center gap-2 group"
                   >
-                    {/* Avatar — soft color fallback, never black */}
                     <div
                       className={[
                         'relative w-14 h-14 rounded-full overflow-hidden',
@@ -335,16 +335,21 @@ export default async function ExplorePage() {
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {topPlaces.slice(0, 5).map(({ place, count }, i) => (
-                <Link
-                  key={place}
-                  href={`/places/${encodeURIComponent(place)}`}
-                  className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 pt-4 pb-3.5 min-w-[140px] max-w-[180px] border border-foreground/[0.05]"
-                >
-                  <p className="text-sm font-semibold leading-snug truncate">{place}</p>
-                  <p className="text-[10px] text-muted-foreground/60 mt-1.5">{placeInsight(count, i)}</p>
-                </Link>
-              ))}
+              {topPlaces.slice(0, 5).map(({ place, count }, i) => {
+                const label = placeInsight(count, i === 0)
+                return (
+                  <Link
+                    key={place}
+                    href={`/places/${encodeURIComponent(place)}`}
+                    className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 pt-4 pb-3.5 min-w-[140px] max-w-[180px] border border-foreground/[0.05]"
+                  >
+                    <p className="text-sm font-semibold leading-snug truncate">{place}</p>
+                    {label && (
+                      <p className="text-[10px] text-muted-foreground/60 mt-1.5">{label}</p>
+                    )}
+                  </Link>
+                )
+              })}
             </div>
           </section>
         )}
@@ -357,24 +362,26 @@ export default async function ExplorePage() {
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {shownMoments.map((m) => (
-                <Link
-                  key={m.id}
-                  href={m.href}
-                  className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-3.5 min-w-[130px] max-w-[180px]"
-                >
-                  <p className="text-sm font-medium leading-snug line-clamp-2">{m.label}</p>
-                  <p className="text-[10px] text-muted-foreground/50 mt-1">
-                    {recurringContext(m)}
-                  </p>
-                </Link>
-              ))}
+              {shownMoments.map((m) => {
+                const ctx = recurringContext(m)
+                return (
+                  <Link
+                    key={m.id}
+                    href={m.href}
+                    className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-3.5 min-w-[130px] max-w-[180px]"
+                  >
+                    <p className="text-sm font-medium leading-snug line-clamp-2">{m.label}</p>
+                    {ctx && (
+                      <p className="text-[10px] text-muted-foreground/50 mt-1">{ctx}</p>
+                    )}
+                  </Link>
+                )
+              })}
             </div>
           </section>
         )}
 
         {/* ── 5. CONNESSIONI ── */}
-        {/* Person × place clusters — broader exploration, not duplicated in Hero */}
         {connections.length > 0 && (
           <section className="mb-10">
             <SectionTitle>Connessioni</SectionTitle>

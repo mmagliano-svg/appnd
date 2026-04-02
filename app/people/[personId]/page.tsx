@@ -37,6 +37,39 @@ function formatFirstDate(d: string) {
   return new Date(d).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' })
 }
 
+/**
+ * SPEC §2 — Dynamic insight sentence shown once in hero.
+ * Returns null if no strong signal (prefer silence over generic copy).
+ */
+function personPageInsight(totalCount: number, yearsSpan: number, lastYear: number): string | null {
+  const currentYear = new Date().getFullYear()
+  if (totalCount >= 8)                             return 'La persona con cui passi più tempo'
+  if (totalCount >= 5 && lastYear === currentYear) return 'Con te spesso negli ultimi tempi'
+  if (yearsSpan >= 3)                              return 'Una presenza costante nella tua storia'
+  if (totalCount >= 3)                             return 'Torna spesso nella tua storia'
+  return null
+}
+
+/**
+ * SPEC §1 — Shared-location insight label (in person page locations list).
+ * Replaces raw counts with meaning.
+ */
+function sharedLocationInsight(count: number): string {
+  if (count >= 4) return 'Dove siete stati più volte'
+  if (count >= 3) return 'Un posto che torna'
+  if (count >= 2) return 'Ci siete stati insieme'
+  return 'Una volta'
+}
+
+/**
+ * SPEC §3 — Birthday insight label.
+ */
+function birthdayInsight(count: number): string {
+  if (count >= 3) return 'Ci sei sempre'
+  if (count >= 2) return 'Torna ogni anno'
+  return 'Un appuntamento fisso'
+}
+
 /** Wraps how_we_met in a natural Italian phrase unless user already wrote one. */
 function narrativeHowWeMet(text: string): string {
   const t = text.trim()
@@ -208,6 +241,12 @@ async function PersonEntityView({ id }: { id: string }) {
   const hasLegame = !!(person.howWeMet || person.sharedContext || person.groups.length > 0)
   const fullName = [person.firstName, person.lastName].filter(Boolean).join(' ')
 
+  // Dynamic insight — computed once, shown in hero
+  const heroLastYear  = sorted.length > 0 ? new Date(sorted[sorted.length - 1].start_date).getFullYear() : 0
+  const heroFirstYear = sorted.length > 0 ? new Date(sorted[0].start_date).getFullYear() : heroLastYear
+  const heroYearsSpan = heroLastYear && heroFirstYear ? heroLastYear - heroFirstYear : 0
+  const heroInsight   = personPageInsight(person.stats.totalCount, heroYearsSpan, heroLastYear)
+
   return (
     <main className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto pb-28">
@@ -280,6 +319,13 @@ async function PersonEntityView({ id }: { id: string }) {
             </p>
           )}
 
+          {/* Dynamic insight — shown only when signal is strong enough */}
+          {heroInsight && (
+            <p className="text-xs text-muted-foreground/55 italic mt-2">
+              {heroInsight}
+            </p>
+          )}
+
           {/* Membership badge */}
           {person.status === 'active' && (
             <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-2">✓ Attivo su Appnd</p>
@@ -330,8 +376,8 @@ async function PersonEntityView({ id }: { id: string }) {
               {locations.map(([loc, count]) => (
                 <div key={loc} className="flex items-center justify-between gap-4">
                   <span className="text-sm leading-snug">{loc}</span>
-                  <span className="text-xs text-muted-foreground/60 shrink-0 tabular-nums">
-                    {count === 1 ? '1 momento' : `${count} momenti`}
+                  <span className="text-[10px] text-muted-foreground/50 shrink-0">
+                    {sharedLocationInsight(count)}
                   </span>
                 </div>
               ))}
@@ -360,7 +406,7 @@ async function PersonEntityView({ id }: { id: string }) {
                       Compleanno · {formatBirthDate(person.birthDate!)}
                     </p>
                     <p className="text-xs text-muted-foreground/50 mt-0.5">
-                      {birthdayCount} ricord{birthdayCount === 1 ? 'o' : 'i'}
+                      {birthdayInsight(birthdayCount)}
                     </p>
                   </div>
                 </div>
@@ -383,7 +429,7 @@ async function PersonEntityView({ id }: { id: string }) {
           {heroMemory && (
             <div className="mb-10">
               <p className="text-xs text-muted-foreground/50 uppercase tracking-widest mb-3">
-                Un momento speciale della vostra storia
+                Il momento più recente
               </p>
               <Link
                 href={`/memories/${heroMemory.id}`}
