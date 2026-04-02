@@ -38,7 +38,7 @@ export function ExploreSearch({ memories }: ExploreSearchProps) {
         </svg>
         <input
           type="search"
-          placeholder="Cerca un momento, una persona, un luogo"
+          placeholder="Cerca tra i tuoi ricordi"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-2xl border border-input bg-foreground/[0.04] pl-10 pr-4 py-3 text-sm placeholder:text-muted-foreground/35 focus:outline-none focus:ring-2 focus:ring-ring"

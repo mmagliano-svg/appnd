@@ -20,7 +20,7 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
     <section className="pt-2 space-y-3">
       <div className="px-4">
         <p className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/80">
-          Riprendi da qui
+          Continua da dove eri rimasto
         </p>
       </div>
       <div

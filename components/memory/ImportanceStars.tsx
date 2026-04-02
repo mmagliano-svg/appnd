@@ -30,6 +30,7 @@ export function ImportanceStars({ memoryId, initialValue, isCreator }: Importanc
   }
 
   return (
+    <div className="space-y-1">
     <div
       className="flex items-center gap-0.5"
       onMouseLeave={() => setHovered(0)}
@@ -50,6 +51,10 @@ export function ImportanceStars({ memoryId, initialValue, isCreator }: Importanc
           {star <= displayed ? '★' : '☆'}
         </button>
       ))}
+    </div>
+    <p className="text-[10px] text-muted-foreground/40 leading-none">
+      Quanto è stato importante per te?
+    </p>
     </div>
   )
 }

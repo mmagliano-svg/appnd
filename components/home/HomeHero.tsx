@@ -75,10 +75,13 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
           <p
             className="text-white/45 text-[10px] mt-3 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
           >
-            Rivivi questo momento →
+            Rivivi questo momento
           </p>
         </div>
       </TransitionLink>
+      <p className="px-1 pt-2 text-[11px] text-muted-foreground/40 leading-snug">
+        Un ricordo che vale la pena tornare a vedere
+      </p>
     </div>
   )
 }

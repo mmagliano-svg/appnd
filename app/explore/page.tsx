@@ -157,9 +157,9 @@ export default async function ExplorePage() {
 
         {/* ── Header ── */}
         <div className="pt-10 pb-2">
-          <h1 className="text-3xl font-bold tracking-tight mb-1">Esplora</h1>
+          <h1 className="text-3xl font-bold tracking-tight mb-1">Scopri la tua storia</h1>
           <p className="text-sm text-muted-foreground/50">
-            Ci sono storie che si ripetono, anche senza accorgertene.
+            Alcuni momenti tornano, anche quando non ci fai caso
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default async function ExplorePage() {
         {/* ── 1. PATTERN CHE EMERGONO ── */}
         {hero.primary && primaryText && (
           <section className="mb-12">
-            <SectionTitle>Pattern che emergono</SectionTitle>
+            <SectionTitle>Cose che fanno parte della tua vita</SectionTitle>
             <div className="space-y-3">
 
               {/* Primary — full width, visually dominant */}
@@ -262,7 +262,7 @@ export default async function ExplorePage() {
                       )}
                     </div>
                     <div className="text-center max-w-[64px]">
-                      <p className="text-xs font-medium leading-none truncate">{firstName}</p>
+                      <p className="text-xs font-medium leading-none truncate">Con {firstName}</p>
                       <p className="text-[10px] text-muted-foreground/50 mt-0.5 leading-tight">
                         {personInsight(person)}
                       </p>
@@ -287,7 +287,7 @@ export default async function ExplorePage() {
         {/* ── 3. I LUOGHI DELLA TUA VITA ── */}
         {places.length > 0 && (
           <section className="mb-12">
-            <SectionTitle>I luoghi della tua vita</SectionTitle>
+            <SectionTitle>I luoghi che fanno parte di te</SectionTitle>
             <div
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
@@ -341,7 +341,7 @@ export default async function ExplorePage() {
         {/* ── 5. CONNESSIONI ── */}
         {connections.length > 0 && (
           <section className="mb-10">
-            <SectionTitle>Connessioni</SectionTitle>
+            <SectionTitle>Relazioni che tornano</SectionTitle>
             <div className="space-y-2">
               {connections.map((c, i) => (
                 <Link
