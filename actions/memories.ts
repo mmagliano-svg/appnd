@@ -643,13 +643,14 @@ export async function getUserPeriods(): Promise<PeriodSummary[]> {
 
 export async function updateImportance(memoryId: string, importance: number) {
   const supabase = await createServerClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) throw new Error('Non autenticato.')
 
-  // Silently no-ops if the importance column doesn't exist yet in the DB
-  await supabase
+  const { error } = await supabase
     .from('memories')
     .update({ importance } as Record<string, unknown>)
     .eq('id', memoryId)
     .eq('created_by', user.id)
+
+  if (error) throw new Error(`Impossibile salvare l'importanza: ${error.message}`)
 }

@@ -85,8 +85,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
   const hasOwnContribution = contributions.some((c) => c.author_id === user?.id)
 
-  const importanceLevel: 1 | 2 | 3 | 4 = (isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2
-  const importanceStars = '★'.repeat(importanceLevel) + '☆'.repeat(5 - importanceLevel)
+  const dbImportance = (memory as { importance?: number | null }).importance
+  const importanceLevel: number = dbImportance ?? ((isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2)
 
   // Unified people list: all participants + all contributors, deduped by userId
   type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | null }
