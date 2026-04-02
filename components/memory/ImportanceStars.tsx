@@ -41,10 +41,10 @@ export function ImportanceStars({ memoryId, initialValue, isCreator }: Importanc
           onMouseEnter={() => isCreator ? setHovered(star) : undefined}
           disabled={!isCreator || isPending}
           aria-label={`Importanza ${star}`}
-          className={`text-[15px] leading-none transition-all disabled:cursor-default ${
+          className={`text-xl leading-none transition-all active:scale-110 disabled:cursor-default ${
             star <= displayed
               ? 'text-amber-400'
-              : 'text-foreground/15 hover:text-amber-300'
+              : 'text-foreground/20 hover:text-amber-300'
           } ${isPending ? 'opacity-50' : ''}`}
         >
           {star <= displayed ? '★' : '☆'}

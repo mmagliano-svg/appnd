@@ -145,13 +145,13 @@ export function ContentActions({ memoryId, initialComments = [], likeOnly = fals
               onKeyDown={handleKeyDown}
               placeholder="Scrivi un ricordo o un pensiero su questo momento..."
               disabled={isPending}
-              className="flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
+              className="flex-1 rounded-2xl border border-foreground/10 bg-muted px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
             />
             <button
               onClick={handleSend}
               disabled={!draft.trim() || isPending}
               aria-label="Invia"
-              className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center shrink-0 disabled:opacity-30 active:scale-95 transition-all"
+              className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center shrink-0 shadow-sm disabled:opacity-30 active:scale-95 transition-all"
             >
               <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />

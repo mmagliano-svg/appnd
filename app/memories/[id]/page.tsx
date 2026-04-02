@@ -147,6 +147,20 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
     })
   }
 
+  // 3. Message authors not already captured above
+  for (const m of rawMessages) {
+    if (!m.author_id || seenUserIds.has(m.author_id)) continue
+    seenUserIds.add(m.author_id)
+    const name = m.author.display_name ?? m.author.email.split('@')[0] ?? 'Anonimo'
+    peopleOnMemory.push({
+      key: `msg:${m.author_id}`,
+      name,
+      ini: initials(name),
+      isMe: m.author_id === user?.id,
+      status: null,
+    })
+  }
+
   // Fetch creator name — used for contextual line shown to invited (non-creator) participants
   let creatorName: string | null = null
   if (!isCreator && sharingStatus === 'shared') {
@@ -222,7 +236,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           )}
         </div>
 
-        <div className="max-w-lg mx-auto px-4 pb-32">
+        <div className="max-w-lg mx-auto px-4 pb-24">
 
           {/* ── Chapter header ── */}
           <div className="pt-8 pb-8 border-b border-border/30">
@@ -474,7 +488,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       )}
 
       {/* ── Body ── */}
-      <div className="max-w-lg mx-auto px-4 pb-32">
+      <div className="max-w-lg mx-auto px-4 pb-24">
 
         {/* Success feedback after contribution */}
         {searchParams.contributed === '1' && (
