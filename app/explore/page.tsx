@@ -2,17 +2,15 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getOnThisDayMemories } from '@/actions/memories'
-import { getTopPeople } from '@/actions/persons'
 import {
   getSearchableMemories,
-  getRecurringMoments,
-  getExploreConnections,
-  type RecurringMomentItem,
+  getExploreRanked,
+  type RankedPerson,
+  type RankedRecurring,
+  type HeroCandidate,
 } from '@/actions/explore'
-import { getExploreData } from '@/actions/memories'
 import { ExploreSearch } from '@/components/explore/ExploreSearch'
 import { OnThisDayCarousel } from '@/components/explore/OnThisDayCarousel'
-import type { Person } from '@/actions/persons'
 
 // ── Shared UI ──────────────────────────────────────────────────────────────
 
@@ -32,10 +30,10 @@ function ChevronRight() {
   )
 }
 
-// ── Deterministic insight helpers ─────────────────────────────────────────
-// All strings are predefined. No generation, no inference beyond stated rules.
+// ── Deterministic label functions (spec §1–5) ──────────────────────────────
+// All strings are predefined. No generation. Silence over weak copy.
 
-/** Soft color for avatar fallback — name-hashed, stable per person. */
+/** Stable name-hashed soft color for avatar fallback. */
 function avatarColor(name: string): string {
   const palette = [
     'bg-rose-100 text-rose-600',
@@ -50,63 +48,57 @@ function avatarColor(name: string): string {
   return palette[hash % palette.length]
 }
 
-/**
- * SPEC §2 — Person insight label.
- * Inputs: memoryCount, yearsSpan, lastMemoryYear vs currentYear.
- */
-function personInsight(person: Person): string {
+/** SPEC §2 — person insight label, using pre-computed yearsSpan from ranking engine. */
+function personInsight(p: RankedPerson): string {
   const currentYear = new Date().getFullYear()
-  const lastYear  = person.lastMemoryDate  ? parseInt(person.lastMemoryDate.split('-')[0])  : 0
-  const firstYear = person.firstMemoryDate ? parseInt(person.firstMemoryDate.split('-')[0]) : lastYear
-  const yearsSpan = (lastYear && firstYear) ? lastYear - firstYear : 0
-
-  if (person.memoryCount >= 8)                             return 'Parte della tua quotidianità'
-  if (person.memoryCount >= 5 && lastYear === currentYear) return 'Con te spesso'
-  if (yearsSpan >= 3)                                      return 'Presenza costante'
-  if (person.memoryCount >= 3)                             return 'Un volto ricorrente'
+  const lastYear    = p.lastMemoryDate ? parseInt(p.lastMemoryDate.split('-')[0]) : 0
+  if (p.memoryCount >= 8)                            return 'Parte della tua quotidianità'
+  if (p.memoryCount >= 5 && lastYear === currentYear) return 'Con te spesso'
+  if (p.yearsSpan >= 3)                              return 'Presenza costante'
+  if (p.memoryCount >= 3)                            return 'Un volto ricorrente'
   return 'Fa parte della tua storia'
 }
 
-/**
- * SPEC §1 — Place insight label.
- * isTopPlace = this is the #1 most frequent place.
- * Returns null if no signal.
- */
+/** SPEC §1 — place insight label. isTopPlace = rank 0 in sorted list. */
 function placeInsight(count: number, isTopPlace: boolean): string | null {
-  if (isTopPlace)  return 'Il centro della tua storia'
-  if (count >= 5)  return 'Dove torni spesso'
-  if (count >= 3)  return 'Un posto che torna'
-  if (count >= 1)  return 'Ci sei stato'
+  if (isTopPlace) return 'Il centro della tua storia'
+  if (count >= 5) return 'Dove torni spesso'
+  if (count >= 3) return 'Un posto che torna'
+  if (count >= 1) return 'Ci sei stato'
   return null
 }
 
-/**
- * SPEC §5 — Hero insight line for primary place card.
- * Returns null if count < 3 (no strong signal).
- */
-function placeHeroText(count: number): string | null {
-  if (count >= 5) return 'Negli ultimi anni, torni sempre qui'
-  if (count >= 3) return 'Negli ultimi anni, è sempre presente'
-  return null
-}
-
-/**
- * SPEC §3 — Recurring moment label.
- * Birthday and fixed-calendar anchors have separate tiers.
- * Returns null if count = 0 (no signal for fixed anchors).
- */
-function recurringContext(item: RecurringMomentItem): string | null {
+/** SPEC §3 — recurring moment label. */
+function recurringContext(item: RankedRecurring): string | null {
   const { count, kind } = item
   if (kind === 'birthday') {
     if (count >= 3) return 'Ci sei sempre'
     if (count >= 2) return 'Torna ogni anno'
-    return 'Un appuntamento fisso'   // birthdays are inherently recurrent
+    return 'Un appuntamento fisso'
   }
   if (count >= 4) return "Sta diventando un'abitudine"
   if (count === 3) return 'Torna nel tempo'
   if (count === 2) return 'Sta iniziando a tornare'
-  if (count === 1) return "L'hai vissuto una volta"
-  return null   // count = 0 → no signal
+  return null
+}
+
+/** SPEC §5 — hero card subtitle, derived from the ranked HeroCandidate. */
+function heroCardText(c: HeroCandidate): string | null {
+  switch (c.kind) {
+    case 'place':
+      if (c.count >= 5) return 'Negli ultimi anni, torni sempre qui'
+      if (c.count >= 3) return 'Negli ultimi anni, è sempre presente'
+      return null
+    case 'person':
+      if (c.count >= 8)     return 'Parte della tua quotidianità'
+      if (c.yearsSpan >= 3) return 'Presenza costante'
+      if (c.count >= 5)     return 'Con te spesso'
+      return 'Un volto ricorrente'
+    case 'recurring':
+      if (c.isBirthday)  return 'Ci sei sempre'
+      if (c.count >= 4)  return "Sta diventando un'abitudine"
+      return 'Torna nel tempo'
+  }
 }
 
 // ── Page ───────────────────────────────────────────────────────────────────
@@ -116,83 +108,21 @@ export default async function ExplorePage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const [
-    searchMemories,
-    people,
-    onThisDay,
-    { topPlaces },
-    recurringMoments,
-    connections,
-  ] = await Promise.all([
+  const [searchMemories, ranked, onThisDay] = await Promise.all([
     getSearchableMemories(),
-    getTopPeople(5),
+    getExploreRanked(),
     getOnThisDayMemories(),
-    getExploreData(),
-    getRecurringMoments(),
-    getExploreConnections(),
   ])
+
+  const { hero, people, places, recurring, connections } = ranked
 
   const todayLabel = new Date().toLocaleDateString('it-IT', {
     day: 'numeric',
     month: 'long',
   })
 
-  // Only show recurring items that have a non-null label
-  const shownMoments = recurringMoments
-    .filter((m) => recurringContext(m) !== null)
-    .slice(0, 8)
-
-  // ── Hero insights ──────────────────────────────────────────────────────────
-  // Primary: top place with spec §5 hero text.
-  // Secondary 1: top recurring moment (count ≥ 2).
-  // Secondary 2: top person (memoryCount ≥ 3).
-  // Connections section is separate — no deduplication needed here.
-  type HeroInsight = { subject: string; text: string; href: string }
-
-  let primaryInsight: HeroInsight | null = null
-  const secondaryInsights: HeroInsight[] = []
-
-  if (topPlaces.length > 0) {
-    const { place, count } = topPlaces[0]
-    const heroText = placeHeroText(count)
-    if (heroText) {
-      primaryInsight = {
-        subject: place,
-        text: heroText,
-        href: `/places/${encodeURIComponent(place)}`,
-      }
-    }
-  }
-
-  // Secondary 1 — top recurring moment with a non-null label
-  const topRecurring = recurringMoments.find((m) => m.count >= 2)
-  if (topRecurring) {
-    const ctx = recurringContext(topRecurring)
-    if (ctx) {
-      secondaryInsights.push({
-        subject: topRecurring.label,
-        text: ctx,
-        href: topRecurring.href,
-      })
-    }
-  }
-
-  // Secondary 2 — top person
-  if (people.length > 0 && people[0].memoryCount >= 3) {
-    secondaryInsights.push({
-      subject: people[0].name.trim().split(/\s+/)[0],
-      text: personInsight(people[0]),
-      href: `/people/${people[0].id}`,
-    })
-  }
-
-  // Fallback: if still no primary, promote first secondary
-  if (!primaryInsight && secondaryInsights.length > 0) {
-    primaryInsight = secondaryInsights.shift()!
-  }
-
-  const shownSecondaries = secondaryInsights.slice(0, 2)
-  const hasHero = primaryInsight !== null
+  const primaryText   = hero.primary   ? heroCardText(hero.primary)   : null
+  const secondaryText = hero.secondary ? heroCardText(hero.secondary) : null
 
   return (
     <main className="min-h-screen bg-background">
@@ -212,44 +142,40 @@ export default async function ExplorePage() {
         </div>
 
         {/* ── 1. PATTERN CHE EMERGONO ── */}
-        {hasHero && (
+        {/* Primary card only shown if it has a hero text (strong signal). */}
+        {hero.primary && primaryText && (
           <section className="mb-12">
             <SectionTitle>Pattern che emergono</SectionTitle>
             <div className="space-y-3">
 
               {/* Primary — visually dominant */}
               <Link
-                href={primaryInsight!.href}
+                href={hero.primary.href}
                 className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.06] hover:bg-foreground/[0.09] active:scale-[0.99] transition-all px-5 py-5 group"
               >
                 <div className="min-w-0">
-                  <p className="text-lg font-bold leading-snug truncate">{primaryInsight!.subject}</p>
-                  <p className="text-sm text-muted-foreground/55 mt-0.5 leading-relaxed">{primaryInsight!.text}</p>
+                  <p className="text-lg font-bold leading-snug truncate">{hero.primary.subject}</p>
+                  <p className="text-sm text-muted-foreground/55 mt-0.5 leading-relaxed">{primaryText}</p>
                 </div>
                 <span className="text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors shrink-0">
                   <ChevronRight />
                 </span>
               </Link>
 
-              {/* Secondaries — side-by-side when two exist */}
-              {shownSecondaries.length > 0 && (
-                <div className={shownSecondaries.length === 2 ? 'grid grid-cols-2 gap-3' : ''}>
-                  {shownSecondaries.map((s, i) => (
-                    <Link
-                      key={i}
-                      href={s.href}
-                      className="flex items-center justify-between gap-3 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-4 group"
-                    >
-                      <div className="min-w-0">
-                        <p className="text-[14px] font-semibold leading-snug truncate">{s.subject}</p>
-                        <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-2 leading-relaxed">{s.text}</p>
-                      </div>
-                      <span className="text-muted-foreground/15 group-hover:text-muted-foreground/40 transition-colors shrink-0">
-                        <ChevronRight />
-                      </span>
-                    </Link>
-                  ))}
-                </div>
+              {/* Secondary — smaller, only shown when text exists */}
+              {hero.secondary && secondaryText && (
+                <Link
+                  href={hero.secondary.href}
+                  className="flex items-center justify-between gap-3 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-4 group"
+                >
+                  <div className="min-w-0">
+                    <p className="text-[14px] font-semibold leading-snug truncate">{hero.secondary.subject}</p>
+                    <p className="text-[11px] text-muted-foreground/50 mt-0.5 line-clamp-2 leading-relaxed">{secondaryText}</p>
+                  </div>
+                  <span className="text-muted-foreground/15 group-hover:text-muted-foreground/40 transition-colors shrink-0">
+                    <ChevronRight />
+                  </span>
+                </Link>
               )}
 
             </div>
@@ -328,22 +254,22 @@ export default async function ExplorePage() {
         )}
 
         {/* ── 3. I LUOGHI DELLA TUA VITA ── */}
-        {topPlaces.length > 0 && (
+        {places.length > 0 && (
           <section className="mb-12">
             <SectionTitle>I luoghi della tua vita</SectionTitle>
             <div
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {topPlaces.slice(0, 5).map(({ place, count }, i) => {
-                const label = placeInsight(count, i === 0)
+              {places.map((p) => {
+                const label = placeInsight(p.count, p.isTopPlace)
                 return (
                   <Link
-                    key={place}
-                    href={`/places/${encodeURIComponent(place)}`}
+                    key={p.place}
+                    href={`/places/${encodeURIComponent(p.place)}`}
                     className="flex-none rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 pt-4 pb-3.5 min-w-[140px] max-w-[180px] border border-foreground/[0.05]"
                   >
-                    <p className="text-sm font-semibold leading-snug truncate">{place}</p>
+                    <p className="text-sm font-semibold leading-snug truncate">{p.place}</p>
                     {label && (
                       <p className="text-[10px] text-muted-foreground/60 mt-1.5">{label}</p>
                     )}
@@ -355,14 +281,14 @@ export default async function ExplorePage() {
         )}
 
         {/* ── 4. COSE CHE TORNANO ── */}
-        {shownMoments.length > 0 && (
+        {recurring.length > 0 && (
           <section className="mb-12">
             <SectionTitle>Cose che tornano</SectionTitle>
             <div
               className="flex gap-2.5 overflow-x-auto pb-2 -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {shownMoments.map((m) => {
+              {recurring.map((m) => {
                 const ctx = recurringContext(m)
                 return (
                   <Link
@@ -406,7 +332,7 @@ export default async function ExplorePage() {
         )}
 
         {/* ── Empty state ── */}
-        {people.length === 0 && topPlaces.length === 0 && shownMoments.length === 0 && connections.length === 0 && (
+        {people.length === 0 && places.length === 0 && recurring.length === 0 && connections.length === 0 && (
           <div className="text-center py-20 space-y-3">
             <p className="text-base font-medium">Ancora niente da esplorare.</p>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
