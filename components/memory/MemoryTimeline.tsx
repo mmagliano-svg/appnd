@@ -50,7 +50,7 @@ function getMicroLabel(
   isFirstOfGroup: boolean,
   diffDays: number,
 ): string | null {
-  if (isAbsoluteFirst) return 'Hai iniziato questo momento'
+  if (isAbsoluteFirst) return null          // handled by origin mark below
   if (!isFirstOfGroup) return null
   if (diffDays > 180)  return 'Lo hai rivissuto'
   return 'Ti è tornato in mente'
@@ -72,7 +72,7 @@ function initials(name: string): string {
 
 /**
  * Stable hash derived from a fragment id.
- * Used to introduce subtle, deterministic variation in rendering.
+ * Drives subtle, deterministic rendering variation — never random.
  */
 function idHash(id: string): number {
   let h = 0
@@ -134,13 +134,15 @@ export function MemoryTimeline({
     labelToGroup.get(label)!.items.push(c)
   }
 
-  // Pre-compute micro-labels, last-fragment marker, and rendering variant
+  // Pre-compute micro-labels, markers, and rendering variant
   const lastVisibleId = visible[visible.length - 1].id
+  const firstVisibleId = visible[0].id
 
   type FragmentVariant = 'normal' | 'dim' | 'spacious'
 
   type ProcessedFragment = TimelineFragment & {
     microLabel: string | null
+    isFirst: boolean
     isLast: boolean
     variant: FragmentVariant
   }
@@ -158,6 +160,7 @@ export function MemoryTimeline({
           fi === 0,
           getDiffDays(c.created_at, happenedAt),
         ),
+        isFirst: c.id === firstVisibleId,
         isLast: c.id === lastVisibleId,
         variant,
       }
@@ -184,11 +187,17 @@ export function MemoryTimeline({
       {/* Timeline — pl-6 (24px) positions content; line+dots center at ~12px */}
       <div className="relative pl-6">
 
-        {/* Continuous vertical line */}
-        <div className="absolute left-[11px] top-2 bottom-12 w-px bg-foreground/[0.07] pointer-events-none" />
+        {/* Continuous vertical line — fades out toward the bottom */}
+        <div
+          className="absolute left-[11px] top-2 bottom-16 w-px pointer-events-none"
+          style={{
+            background:
+              'linear-gradient(to bottom, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0.07) 70%, transparent 100%)',
+          }}
+        />
 
         {groups.map((group, gi) => (
-          <div key={group.label} className={`relative ${gi > 0 ? 'mt-18' : ''}`}>
+          <div key={group.label} className={`relative ${gi > 0 ? 'mt-20' : ''}`}>
 
             {/* Group marker — open circle */}
             <div className="absolute left-[6px] top-[3px] w-3 h-3 rounded-full bg-background border-[1.5px] border-foreground/[0.20] pointer-events-none" />
@@ -221,7 +230,14 @@ export function MemoryTimeline({
 
                     <div className="space-y-2.5">
 
-                      {/* Micro-label (first of group only, very subtle) */}
+                      {/* Origin mark — first fragment only */}
+                      {c.isFirst && (
+                        <p className="text-[9px] text-muted-foreground/22 uppercase tracking-[0.16em] leading-none">
+                          Da qui è iniziato
+                        </p>
+                      )}
+
+                      {/* Micro-label (first of non-initial groups, very subtle) */}
                       {c.microLabel && (
                         <p className="text-[9px] text-muted-foreground/25 uppercase tracking-[0.14em] leading-none">
                           {c.microLabel}
@@ -284,7 +300,7 @@ export function MemoryTimeline({
                         href={`/memories/${memoryId}/contribute`}
                         className="inline-block text-[10px] text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors mt-0.5"
                       >
-                        Continua da qui →
+                        Continua da qui
                       </Link>
 
                     </div>
@@ -298,8 +314,8 @@ export function MemoryTimeline({
 
       </div>
 
-      {/* ── End of timeline — strong continuation trigger ── */}
-      <div className="mt-16 pt-10 border-t border-border/[0.08] text-center space-y-3">
+      {/* ── End breath — generous space before "E poi?" ── */}
+      <div className="mt-20 pt-12 border-t border-border/[0.07] text-center space-y-3">
         <p className="text-base font-semibold text-foreground/78">E poi?</p>
         <p className="text-sm text-muted-foreground/38 leading-relaxed">Non è finita qui</p>
         <Link

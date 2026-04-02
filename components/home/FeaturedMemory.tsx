@@ -7,7 +7,17 @@ export interface FeaturedMemoryData {
   subtext: string
 }
 
+// Maps the subtext label to a micro hook line shown above the title.
+// Same data, different emotional register — one is a label, one is a whisper.
+function getMicroHook(subtext: string): string {
+  if (subtext === 'Ti è rimasto molto')            return 'Ti è rimasto qualcosa lì'
+  if (subtext === 'Qualcuno ha aggiunto qualcosa') return 'Potrebbe valere la pena tornarci'
+  return "Non lo apri da un po'"
+}
+
 export function FeaturedMemory({ memory }: { memory: FeaturedMemoryData }) {
+  const microHook = getMicroHook(memory.subtext)
+
   return (
     <div className="px-4 space-y-2">
       <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/28">
@@ -36,14 +46,15 @@ export function FeaturedMemory({ memory }: { memory: FeaturedMemoryData }) {
 
         {/* Content */}
         <div className="absolute bottom-0 left-0 right-0 px-5 pb-6">
-          <p className="text-[10px] text-white/40 mb-1.5 uppercase tracking-wide">
-            {memory.subtext}
+          {/* Micro hook — whisper above the title */}
+          <p className="text-[10px] text-white/28 mb-1 leading-none italic">
+            {microHook}
           </p>
           <p className="text-white text-[17px] font-semibold leading-snug line-clamp-2 tracking-tight">
             {memory.title}
           </p>
-          <p className="text-white/40 text-[11px] mt-3 tracking-wide">
-            Rivivi questo momento →
+          <p className="text-white/38 text-[11px] mt-3 tracking-wide">
+            Rivivi questo momento
           </p>
         </div>
       </TransitionLink>

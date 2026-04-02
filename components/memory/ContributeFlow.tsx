@@ -13,6 +13,25 @@ interface ContributeFlowProps {
   previewUrl: string | null
 }
 
+// ── Success copy rotation ─────────────────────────────────────────────────
+// Semi-stable per session: cycles every 2 saves, never random each time.
+const SUCCESS_LINES = [
+  'Adesso è ancora più tuo',
+  'Sta prendendo forma',
+  'Si sta arricchendo',
+  'Sta crescendo',
+  'Adesso è ancora più tuo',
+  'Sta prendendo forma',
+]
+
+// Module-level save counter — persists for the session, resets on page reload.
+let sessionSaveCount = 0
+
+function getSuccessLine(): string {
+  // Advance every 2 saves so the line changes, but isn't random every time.
+  return SUCCESS_LINES[Math.floor(sessionSaveCount / 2) % SUCCESS_LINES.length]
+}
+
 export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: ContributeFlowProps) {
   const router = useRouter()
   const [flowState, setFlowState] = useState<FlowState>('idle')
@@ -21,6 +40,7 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [statusText, setStatusText] = useState('')
+  const [successLine, setSuccessLine] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -98,8 +118,15 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
         setError(result.error)
         setFlowState('idle')
       } else {
-        // Brief pause — creates perceived physical completion before state change
+        // Advance session counter + pick line BEFORE showing success screen
+        sessionSaveCount++
+        setSuccessLine(getSuccessLine())
+        // Brief pause — creates perceived physical completion
         await new Promise<void>((res) => setTimeout(res, 280))
+        // Haptic feedback on supported mobile devices
+        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+          navigator.vibrate(12)
+        }
         setFlowState('saved')
       }
     } catch (err) {
@@ -129,7 +156,7 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
             </div>
             <p className="text-xl font-semibold tracking-tight">Aggiunto</p>
             <p className="text-sm text-muted-foreground/50 max-w-[200px] leading-relaxed mt-1">
-              Adesso è ancora più tuo
+              {successLine}
             </p>
           </div>
 
