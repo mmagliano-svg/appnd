@@ -55,6 +55,9 @@ export function ImportanceStars({ memoryId, initialValue, isCreator }: Importanc
     <p className="text-[10px] text-muted-foreground/40 leading-none">
       Quanto ti è rimasto?
     </p>
+    <p className="text-[10px] text-muted-foreground/22 leading-none">
+      Ci sono giorni che restano più di altri
+    </p>
     </div>
   )
 }

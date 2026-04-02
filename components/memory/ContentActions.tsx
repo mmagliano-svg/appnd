@@ -143,7 +143,7 @@ export function ContentActions({ memoryId, initialComments = [], likeOnly = fals
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Aggiungi quello che non vuoi dimenticare"
+              placeholder="Aggiungi un dettaglio che ti è tornato in mente"
               disabled={isPending}
               className="flex-1 rounded-2xl border border-foreground/10 bg-muted px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
             />
