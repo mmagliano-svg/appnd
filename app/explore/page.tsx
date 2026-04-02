@@ -177,10 +177,10 @@ export default async function ExplorePage() {
               {/* Primary — full width, visually dominant */}
               <Link
                 href={hero.primary.href}
-                className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.06] hover:bg-foreground/[0.09] active:scale-[0.99] transition-all px-5 py-6 group"
+                className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.08] hover:bg-foreground/[0.1] active:scale-[0.99] transition-all px-5 py-6 min-h-[110px] group"
               >
                 <div className="min-w-0">
-                  <p className="text-lg font-bold leading-snug truncate">{hero.primary.subject}</p>
+                  <p className="text-xl font-semibold leading-snug truncate">{hero.primary.subject}</p>
                   <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{primaryText}</p>
                 </div>
                 <span className="text-muted-foreground/20 group-hover:text-muted-foreground/50 transition-colors shrink-0">
@@ -190,15 +190,15 @@ export default async function ExplorePage() {
 
               {/* Secondaries — 2-col grid when 2 exist, full-width when 1 */}
               {shownSecondaries.length > 0 && (
-                <div className={shownSecondaries.length === 2 ? 'grid grid-cols-2 gap-3' : ''}>
+                <div className={shownSecondaries.length === 2 ? 'grid grid-cols-2 gap-3 mt-4' : 'mt-4'}>
                   {shownSecondaries.map(({ candidate: c, text: t }) => (
                     <Link
                       key={`${c.kind}:${c.subject}`}
                       href={c.href}
-                      className="flex items-center justify-between gap-3 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.07] active:scale-[0.99] transition-all px-4 py-4 group"
+                      className="flex items-center justify-between gap-3 rounded-2xl bg-foreground/[0.04] hover:bg-foreground/[0.06] active:scale-[0.99] transition-all px-4 py-4 min-h-[70px] group"
                     >
                       <div className="min-w-0">
-                        <p className="text-[14px] font-semibold leading-snug truncate">{c.subject}</p>
+                        <p className="text-[14px] font-medium leading-snug truncate">{c.subject}</p>
                         <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{t}</p>
                       </div>
                       <span className="text-muted-foreground/20 group-hover:text-muted-foreground/40 transition-colors shrink-0">
