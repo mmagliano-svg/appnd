@@ -86,6 +86,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
   const hasOwnContribution = contributions.some((c) => c.author_id === user?.id)
 
+  // Tagged people from address book (memory_people → people)
+  const { data: rawTaggedPeople } = await supabase
+    .from('memory_people')
+    .select('person_id, people(id, name, linked_user_id)')
+    .eq('memory_id', params.id)
+
   // Memory text thread — loaded server-side, passed to ContentActions
   const rawMessages = await getMessages(params.id)
   const textThreadComments = rawMessages.map((m) => {
@@ -159,6 +165,38 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       isMe: m.author_id === user?.id,
       status: null,
     })
+  }
+
+  // 4. Tagged people from address book (memory_people → people)
+  // Covers ghost contacts (linked_user_id = NULL) not present in any other source
+  const seenPersonIds = new Set<string>()
+  for (const row of rawTaggedPeople ?? []) {
+    const person = Array.isArray(row.people) ? row.people[0] : row.people
+    if (!person) continue
+    const p = person as { id: string; name: string; linked_user_id: string | null }
+    if (p.linked_user_id) {
+      // Person has an account — skip if already shown via participants / contributions
+      if (seenUserIds.has(p.linked_user_id)) continue
+      seenUserIds.add(p.linked_user_id)
+      peopleOnMemory.push({
+        key: `tagged-user:${p.id}`,
+        name: p.name,
+        ini: initials(p.name),
+        isMe: p.linked_user_id === user?.id,
+        status: null,
+      })
+    } else {
+      // Ghost person — deduplicate by person_id (no user_id to track)
+      if (seenPersonIds.has(p.id)) continue
+      seenPersonIds.add(p.id)
+      peopleOnMemory.push({
+        key: `ghost:${p.id}`,
+        name: p.name,
+        ini: initials(p.name),
+        isMe: false,
+        status: null,
+      })
+    }
   }
 
   // Fetch creator name — used for contextual line shown to invited (non-creator) participants
