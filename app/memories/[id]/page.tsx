@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { formatMemoryDateFull, formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
+import { getMessages } from '@/actions/messages'
 import { InlineContribute } from '@/components/memory/InlineContribute'
 import { ScrollToTop } from '@/components/memory/ScrollToTop'
 import { MemoryScrollEffects } from '@/components/memory/MemoryScrollEffects'
@@ -84,6 +85,19 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   const sharingStatus = (memory as { sharing_status?: string }).sharing_status ?? 'private'
 
   const hasOwnContribution = contributions.some((c) => c.author_id === user?.id)
+
+  // Memory text thread — loaded server-side, passed to ContentActions
+  const rawMessages = await getMessages(params.id)
+  const textThreadComments = rawMessages.map((m) => {
+    const name = m.author.display_name ?? m.author.email.split('@')[0] ?? 'Anonimo'
+    const isMe = m.author_id === user?.id
+    return {
+      id: m.id,
+      authorName: isMe ? 'Tu' : name,
+      authorInitials: initials(name),
+      text: m.content,
+    }
+  })
 
   const dbImportance = (memory as { importance?: number | null }).importance
   const importanceLevel: number = dbImportance ?? ((isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2)
@@ -543,8 +557,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             </p>
           )}
 
-          {/* Text block interactions */}
-          <ContentActions />
+          {/* Text block interactions — persisted to memory_messages */}
+          <ContentActions
+            memoryId={params.id}
+            initialComments={textThreadComments}
+          />
         </div>
 
         {/* Contextual invite line — shown to non-creators in shared memories */}

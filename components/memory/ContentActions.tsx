@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useTransition, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { sendMessage } from '@/actions/messages'
 
 export interface ContentComment {
   id: string
@@ -10,15 +12,25 @@ export interface ContentComment {
 }
 
 interface ContentActionsProps {
-  comments?: ContentComment[]
+  /** When provided, comments are persisted to memory_messages. Omit for local-only (e.g. hero image). */
+  memoryId?: string
+  initialComments?: ContentComment[]
 }
 
-export function ContentActions({ comments: initialComments = [] }: ContentActionsProps) {
+export function ContentActions({ memoryId, initialComments = [] }: ContentActionsProps) {
+  const router = useRouter()
   const [liked, setLiked] = useState(false)
   const [likeCount, setLikeCount] = useState(0)
   const [comments, setComments] = useState<ContentComment[]>(initialComments)
   const [draft, setDraft] = useState('')
+  const [sendError, setSendError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Sync with server-refreshed props (after router.refresh())
+  useEffect(() => {
+    setComments(initialComments)
+  }, [initialComments])
 
   const toggleLike = () => {
     setLiked((prev) => {
@@ -29,18 +41,41 @@ export function ContentActions({ comments: initialComments = [] }: ContentAction
 
   const handleSend = () => {
     const text = draft.trim()
-    if (!text) return
+    if (!text || isPending) return
+    setSendError(null)
+
+    if (!memoryId) {
+      // Local-only mode (no memoryId provided)
+      setComments((prev) => [
+        ...prev,
+        { id: `local-${Date.now()}`, authorName: 'Tu', authorInitials: 'TU', text },
+      ])
+      setDraft('')
+      inputRef.current?.focus()
+      return
+    }
+
+    // Optimistic add
+    const optimisticId = `optimistic-${Date.now()}`
     setComments((prev) => [
       ...prev,
-      {
-        id: `local-${Date.now()}`,
-        authorName: 'Tu',
-        authorInitials: 'TU',
-        text,
-      },
+      { id: optimisticId, authorName: 'Tu', authorInitials: 'TU', text },
     ])
     setDraft('')
     inputRef.current?.focus()
+
+    startTransition(async () => {
+      const result = await sendMessage(memoryId, text)
+      if (result.error) {
+        // Revert optimistic entry and restore draft
+        setComments((prev) => prev.filter((c) => c.id !== optimisticId))
+        setDraft(text)
+        setSendError(result.error)
+      } else {
+        // Replace optimistic with real server data
+        router.refresh()
+      }
+    })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -106,11 +141,12 @@ export function ContentActions({ comments: initialComments = [] }: ContentAction
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Scrivi un ricordo o un pensiero su questo momento..."
-          className="flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors"
+          disabled={isPending}
+          className="flex-1 rounded-full border border-border bg-muted/40 px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
         />
         <button
           onClick={handleSend}
-          disabled={!draft.trim()}
+          disabled={!draft.trim() || isPending}
           aria-label="Invia"
           className="w-9 h-9 rounded-full bg-foreground flex items-center justify-center shrink-0 disabled:opacity-30 active:scale-95 transition-all"
         >
@@ -119,6 +155,10 @@ export function ContentActions({ comments: initialComments = [] }: ContentAction
           </svg>
         </button>
       </div>
+
+      {sendError && (
+        <p className="text-xs text-destructive">{sendError}</p>
+      )}
     </div>
   )
 }
