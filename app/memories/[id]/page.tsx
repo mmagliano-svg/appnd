@@ -15,6 +15,7 @@ import { MemoryTimeline, type TimelineFragment, type TimelineParticipant } from 
 import { ContentActions } from '@/components/memory/ContentActions'
 import { ImportanceStars } from '@/components/memory/ImportanceStars'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
+import { InviteShareButton } from '@/components/memory/InviteShareButton'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -35,7 +36,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         user_id,
         invited_email,
         joined_at,
-        users ( id, display_name, email )
+        users ( id, display_name, email, avatar_url )
       ),
       memory_contributions (
         id,
@@ -45,7 +46,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         caption,
         created_at,
         author_id,
-        users ( id, display_name, email )
+        users ( id, display_name, email, avatar_url )
       )
     `)
     .eq('id', params.id)
@@ -71,7 +72,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
     if (cats?.length) return cats
     return category ? [category] : []
   })()
-  const catInfo = getCategoryByValue(memoryCats[0] ?? null)
   const isFirstTime = (memory as { is_first_time?: boolean }).is_first_time ?? false
   const isAnniversary = (memory as { is_anniversary?: boolean }).is_anniversary ?? false
   const sharingStatus = (memory as { sharing_status?: string }).sharing_status ?? 'private'
@@ -101,7 +101,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   const importanceLevel: number = dbImportance ?? ((isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2)
 
   // Unified people list: all participants + all contributors, deduped by userId
-  type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | null }
+  type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | null; avatarUrl: string | null }
   const peopleOnMemory: PersonOnMemory[] = []
   const seenUserIds = new Set<string>()
 
@@ -110,13 +110,15 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
     if (p.user_id) {
       if (seenUserIds.has(p.user_id)) continue
       seenUserIds.add(p.user_id)
-      const name = p.users?.display_name ?? p.users?.email ?? '?'
+      const userData = p.users as { display_name?: string | null; email?: string | null; avatar_url?: string | null } | null
+      const name = userData?.display_name ?? userData?.email ?? '?'
       peopleOnMemory.push({
         key: p.id,
         name,
         ini: initials(name),
         isMe: p.user_id === user?.id,
         status: p.joined_at ? 'accepted' : 'invited',
+        avatarUrl: userData?.avatar_url ?? null,
       })
     } else if (p.invited_email) {
       // Pending invite — no account yet
@@ -126,6 +128,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         ini: initials(p.invited_email),
         isMe: false,
         status: 'invited',
+        avatarUrl: null,
       })
     }
   }
@@ -134,7 +137,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   for (const c of contributions) {
     if (!c.author_id || seenUserIds.has(c.author_id)) continue
     seenUserIds.add(c.author_id)
-    const authorData = (c as { users?: { display_name?: string | null; email?: string | null } }).users
+    const authorData = (c as { users?: { display_name?: string | null; email?: string | null; avatar_url?: string | null } }).users
     const name = authorData?.display_name ?? authorData?.email ?? 'Anonimo'
     peopleOnMemory.push({
       key: `contrib:${c.author_id}`,
@@ -142,6 +145,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       ini: initials(name),
       isMe: c.author_id === user?.id,
       status: null,
+      avatarUrl: authorData?.avatar_url ?? null,
     })
   }
 
@@ -156,6 +160,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       ini: initials(name),
       isMe: m.author_id === user?.id,
       status: null,
+      avatarUrl: null,
     })
   }
 
@@ -176,6 +181,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         ini: initials(p.name),
         isMe: p.linked_user_id === user?.id,
         status: null,
+        avatarUrl: null,
       })
     } else {
       // Ghost person — deduplicate by person_id (no user_id to track)
@@ -187,6 +193,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         ini: initials(p.name),
         isMe: false,
         status: null,
+        avatarUrl: null,
       })
     }
   }
@@ -501,13 +508,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         <p className="text-sm text-foreground/50">Può continuare</p>
       </div>
 
-      {/* ── Hero image actions — like only ── */}
-      {heroPhoto && (
-        <div className="max-w-lg mx-auto px-4">
-          <ContentActions likeOnly />
-        </div>
-      )}
-
       {/* ── Shared memory — primary block, immediately after hero ── */}
       {sharedMemory && (
         <div className="max-w-lg mx-auto px-4 mt-4">
@@ -535,26 +535,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* ── Memory meta — always shown below hero ── */}
         <div className="pt-6 pb-6 border-b border-border/30">
-          {/* Category tags */}
-          {memoryCats.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mb-2">
-              {memoryCats.map((cv) => {
-                const ci = getCategoryByValue(cv)
-                return ci ? (
-                  <Link
-                    key={cv}
-                    href={`/dashboard?category=${ci.value}`}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <span>{ci.emoji}</span>
-                    <span className="uppercase tracking-wider">{ci.label}</span>
-                  </Link>
-                ) : null
-              })}
-            </div>
-          )}
-
-          {/* Title */}
+            {/* Title */}
           <h1 className="text-3xl font-semibold tracking-tight leading-tight">
             {memory.title}
           </h1>
@@ -609,13 +590,21 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               <div className="flex items-start gap-3 flex-wrap">
                 {peopleOnMemory.map((p) => (
                   <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                      p.status === 'accepted' || p.status === null
-                        ? 'bg-foreground text-background'
-                        : 'bg-muted border border-dashed border-border text-muted-foreground'
-                    }`}>
-                      {p.ini}
-                    </div>
+                    {p.avatarUrl ? (
+                      <img
+                        src={p.avatarUrl}
+                        alt=""
+                        className="w-9 h-9 rounded-full object-cover border border-white/20"
+                      />
+                    ) : (
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
+                        p.status === 'accepted' || p.status === null
+                          ? 'bg-foreground text-background'
+                          : 'bg-muted border border-dashed border-border text-muted-foreground'
+                      }`}>
+                        {p.ini}
+                      </div>
+                    )}
                     <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
                       {p.isMe ? 'Tu' : p.name.split(' ')[0]}
                     </span>
@@ -630,15 +619,10 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               <p className="text-[10px] text-muted-foreground/40 mt-2">
                 Anche loro potrebbero ricordarlo in modo diverso
               </p>
-              <Link
-                href={`/memories/${params.id}/edit`}
-                className="inline-flex items-center gap-1.5 mt-3 text-xs text-muted-foreground/55 hover:text-foreground border border-border/40 rounded-full px-3 py-1.5 transition-colors hover:border-foreground/20"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
-                </svg>
-                Chiedi anche a loro
-              </Link>
+              <InviteShareButton
+                memoryId={params.id}
+                title={memory.title}
+              />
             </div>
           )}
 
@@ -807,15 +791,14 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             highlightLast={searchParams.contributed === '1'}
             participants={participants
               .filter((p) => p.user_id != null)
-              .map((p): TimelineParticipant => ({
-                userId: p.user_id!,
-                name:
-                  (p.users as { display_name?: string | null; email?: string | null } | null)
-                    ?.display_name ??
-                  (p.users as { display_name?: string | null; email?: string | null } | null)
-                    ?.email?.split('@')[0] ??
-                  '?',
-              }))}
+              .map((p): TimelineParticipant => {
+                const u = p.users as { display_name?: string | null; email?: string | null; avatar_url?: string | null } | null
+                return {
+                  userId: p.user_id!,
+                  name: u?.display_name ?? u?.email?.split('@')[0] ?? '?',
+                  avatarUrl: u?.avatar_url ?? null,
+                }
+              })}
           />
         </div>
 
@@ -825,6 +808,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       <MemoryFAB
         memoryId={params.id}
         contributeHref={`/memories/${params.id}/contribute`}
+        memoryTitle={memory.title}
       />
 
     </main>

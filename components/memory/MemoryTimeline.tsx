@@ -11,12 +11,13 @@ export interface TimelineFragment {
   caption: string | null
   created_at: string
   author_id: string
-  users?: { display_name?: string | null; email?: string | null } | null
+  users?: { display_name?: string | null; email?: string | null; avatar_url?: string | null } | null
 }
 
 export interface TimelineParticipant {
   userId: string
   name: string
+  avatarUrl?: string | null
 }
 
 interface MemoryTimelineProps {
@@ -135,7 +136,7 @@ export function MemoryTimeline({
   )
 
   // ── Multi-perspective detection ──────────────────────────────────────────
-  type Contributor = { authorId: string; firstName: string; ini: string }
+  type Contributor = { authorId: string; firstName: string; ini: string; avatarUrl: string | null }
   const contributorMap = new Map<string, Contributor>()
   for (const c of visible) {
     if (!contributorMap.has(c.author_id)) {
@@ -144,6 +145,7 @@ export function MemoryTimeline({
         authorId: c.author_id,
         firstName: firstName(name),
         ini: initials(name),
+        avatarUrl: c.users?.avatar_url ?? null,
       })
     }
   }
@@ -201,6 +203,7 @@ export function MemoryTimeline({
     authorFirstName: string
     authorIni: string
     authorDisplayName: string
+    authorAvatarUrl: string | null
     showIdentityLayer: boolean
   }
 
@@ -229,6 +232,7 @@ export function MemoryTimeline({
         authorFirstName: firstName(displayName),
         authorIni: initials(displayName),
         authorDisplayName: displayName,
+        authorAvatarUrl: c.users?.avatar_url ?? null,
         // Show identity layer for others' fragments ~70% of the time,
         // but never on consecutive fragments by the same author.
         showIdentityLayer: !isOwn && hash % 10 > 2 && (fi === 0 || group.items[fi - 1]?.author_id !== c.author_id),
@@ -265,13 +269,8 @@ export function MemoryTimeline({
             Ognuno a modo suo
           </p>
           <div className="flex items-center gap-4 flex-wrap">
-            {uniqueContributors.map(({ authorId, firstName: fn, ini }) => (
-              <div key={authorId} className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
-                  {ini}
-                </div>
-                <span className="text-[11px] text-foreground/45">{fn}</span>
-              </div>
+            {uniqueContributors.map(({ authorId, firstName: fn }) => (
+              <span key={authorId} className="text-[11px] text-foreground/45">{fn}</span>
             ))}
           </div>
         </div>
@@ -304,9 +303,6 @@ export function MemoryTimeline({
         {groups.map((group, gi) => (
           <div key={group.label} className={`relative ${gi > 0 ? 'mt-20' : ''}`}>
 
-            {/* Group marker — open circle */}
-            <div className="absolute left-[6px] top-[3px] w-3 h-3 rounded-full bg-background border-[1.5px] border-foreground/[0.20] pointer-events-none" />
-
             {/* Group label */}
             <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/32 mb-8 leading-none">
               {group.label}
@@ -321,13 +317,6 @@ export function MemoryTimeline({
                   data-fade-in
                   className={`relative${c.variant === 'spacious' ? ' mt-3' : ''}`}
                 >
-                  {/* Fragment dot — vary opacity by variant */}
-                  <div className={`absolute left-[8px] top-[9px] w-2 h-2 rounded-full ring-[2px] ring-background pointer-events-none ${
-                    c.variant === 'dim'
-                      ? 'bg-foreground/[0.10]'
-                      : 'bg-foreground/[0.18]'
-                  }`} />
-
                   {/* Content wrapper — self gets subtle warm bg */}
                   <div className={`space-y-2.5 rounded-xl ${
                     c.isOwn
@@ -335,16 +324,11 @@ export function MemoryTimeline({
                       : ''
                   }`}>
 
-                    {/* Others: avatar + first name header */}
+                    {/* Others: first name header only */}
                     {!c.isOwn && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-full bg-foreground/80 flex items-center justify-center text-[8px] font-bold text-background shrink-0">
-                          {c.authorIni}
-                        </div>
-                        <span className="text-[11px] font-medium text-foreground/40 leading-none">
-                          {c.authorFirstName}
-                        </span>
-                      </div>
+                      <span className="text-[11px] font-medium text-foreground/40 leading-none">
+                        {c.authorFirstName}
+                      </span>
                     )}
 
                     {/* Origin mark — first fragment only */}

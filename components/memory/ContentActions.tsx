@@ -15,14 +15,10 @@ interface ContentActionsProps {
   /** When provided, comments are persisted to memory_messages. Omit for local-only (e.g. hero image). */
   memoryId?: string
   initialComments?: ContentComment[]
-  /** When true, hides comments entirely — like button only. */
-  likeOnly?: boolean
 }
 
-export function ContentActions({ memoryId, initialComments = [], likeOnly = false }: ContentActionsProps) {
+export function ContentActions({ memoryId, initialComments = [] }: ContentActionsProps) {
   const router = useRouter()
-  const [liked, setLiked] = useState(false)
-  const [likeCount, setLikeCount] = useState(0)
   const [comments, setComments] = useState<ContentComment[]>(initialComments)
   const [draft, setDraft] = useState('')
   const [sendError, setSendError] = useState<string | null>(null)
@@ -33,13 +29,6 @@ export function ContentActions({ memoryId, initialComments = [], likeOnly = fals
   useEffect(() => {
     setComments(initialComments)
   }, [initialComments])
-
-  const toggleLike = () => {
-    setLiked((prev) => {
-      setLikeCount((c) => (prev ? c - 1 : c + 1))
-      return !prev
-    })
-  }
 
   const handleSend = () => {
     const text = draft.trim()
@@ -89,80 +78,47 @@ export function ContentActions({ memoryId, initialComments = [], likeOnly = fals
 
   return (
     <div className="mt-3 space-y-3">
-      {/* Heart */}
-      <button
-        onClick={toggleLike}
-        className="flex items-center gap-1.5 transition-colors active:scale-90"
-        aria-label={liked ? 'Rimuovi like' : 'Metti like'}
-      >
-        <svg
-          className={`w-[18px] h-[18px] transition-all ${
-            liked
-              ? 'fill-rose-500 stroke-rose-500'
-              : 'fill-none stroke-muted-foreground hover:stroke-rose-400'
-          }`}
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.75}
-            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-          />
-        </svg>
-        {likeCount > 0 && (
-          <span className={`text-xs tabular-nums ${liked ? 'text-rose-500' : 'text-muted-foreground'}`}>
-            {likeCount}
-          </span>
-        )}
-      </button>
-
-      {/* Comment thread + input — hidden in likeOnly mode */}
-      {!likeOnly && (
-        <>
-          {comments.length > 0 && (
-            <div className="space-y-2.5">
-              {comments.map((c) => (
-                <div key={c.id} className="flex items-start gap-2">
-                  <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
-                    {c.authorInitials}
-                  </div>
-                  <div className="min-w-0">
-                    <span className="text-xs font-semibold">{c.authorName}</span>
-                    <p className="text-sm text-foreground/75 leading-relaxed mt-0.5">{c.text}</p>
-                  </div>
-                </div>
-              ))}
+      {comments.length > 0 && (
+        <div className="space-y-2.5">
+          {comments.map((c) => (
+            <div key={c.id} className="flex items-start gap-2">
+              <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0 mt-0.5">
+                {c.authorInitials}
+              </div>
+              <div className="min-w-0">
+                <span className="text-xs font-semibold">{c.authorName}</span>
+                <p className="text-sm text-foreground/75 leading-relaxed mt-0.5">{c.text}</p>
+              </div>
             </div>
-          )}
+          ))}
+        </div>
+      )}
 
-          <div className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Aggiungi un dettaglio che ti è tornato in mente"
-              disabled={isPending}
-              className="flex-1 rounded-2xl border border-foreground/10 bg-muted px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
-            />
-            <button
-              onClick={handleSend}
-              disabled={!draft.trim() || isPending}
-              aria-label="Invia"
-              className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center shrink-0 shadow-sm disabled:opacity-30 active:scale-95 transition-all"
-            >
-              <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />
-              </svg>
-            </button>
-          </div>
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Aggiungi un dettaglio che ti è tornato in mente"
+          disabled={isPending}
+          className="flex-1 rounded-2xl border border-foreground/10 bg-muted px-4 py-2.5 text-sm placeholder:text-muted-foreground/50 focus:outline-none focus:border-foreground/30 focus:bg-background transition-colors disabled:opacity-60"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!draft.trim() || isPending}
+          aria-label="Invia"
+          className="w-10 h-10 rounded-full bg-foreground flex items-center justify-center shrink-0 shadow-sm disabled:opacity-30 active:scale-95 transition-all"
+        >
+          <svg className="w-4 h-4 text-background" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        </button>
+      </div>
 
-          {sendError && (
-            <p className="text-xs text-destructive">{sendError}</p>
-          )}
-        </>
+      {sendError && (
+        <p className="text-xs text-destructive">{sendError}</p>
       )}
     </div>
   )
