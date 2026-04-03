@@ -14,6 +14,11 @@ export interface TimelineFragment {
   users?: { display_name?: string | null; email?: string | null } | null
 }
 
+export interface TimelineParticipant {
+  userId: string
+  name: string
+}
+
 interface MemoryTimelineProps {
   contributions: TimelineFragment[]
   happenedAt: string
@@ -21,6 +26,7 @@ interface MemoryTimelineProps {
   userId: string | null
   memoryId: string
   highlightLast?: boolean
+  participants?: TimelineParticipant[]
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -45,14 +51,24 @@ function getGroupLabel(diffDays: number): string {
   return `${Math.floor(diffDays / 365)} anni dopo`
 }
 
+/**
+ * Personalized micro-label for the first fragment of each time group.
+ * Varies by whether the fragment is the current user's or someone else's.
+ */
 function getMicroLabel(
   isAbsoluteFirst: boolean,
   isFirstOfGroup: boolean,
   diffDays: number,
+  isOwn: boolean,
+  firstName: string,
 ): string | null {
-  if (isAbsoluteFirst) return null          // handled by origin mark below
+  if (isAbsoluteFirst) return null         // handled by origin mark
   if (!isFirstOfGroup) return null
-  if (diffDays > 180)  return 'Lo hai rivissuto'
+  if (!isOwn) {
+    if (diffDays > 180) return `${firstName} è tornato su questo momento`
+    return `A ${firstName} è tornato in mente`
+  }
+  if (diffDays > 180) return 'Lo hai rivissuto'
   return 'Ti è tornato in mente'
 }
 
@@ -70,9 +86,13 @@ function initials(name: string): string {
   return name.slice(0, 2).toUpperCase()
 }
 
+function firstName(name: string): string {
+  return name.split(/\s+/)[0]
+}
+
 /**
  * Stable hash derived from a fragment id.
- * Drives subtle, deterministic rendering variation — never random.
+ * Drives deterministic rendering variation — never random.
  */
 function idHash(id: string): number {
   let h = 0
@@ -80,6 +100,19 @@ function idHash(id: string): number {
     h = (h * 31 + id.charCodeAt(i)) & 0xffff
   }
   return h
+}
+
+/**
+ * Identity line shown below others' contributions.
+ * Cycles through 3 variants based on id hash.
+ */
+function getIdentityLine(name: string, hash: number): string {
+  const templates = [
+    `Ricordato da ${name}`,
+    `Aggiunto da ${name}`,
+    `Visto da ${name}`,
+  ]
+  return templates[hash % 3]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -91,6 +124,7 @@ export function MemoryTimeline({
   userId,
   memoryId,
   highlightLast,
+  participants = [],
 }: MemoryTimelineProps) {
   const visible = contributions.filter(
     (c) =>
@@ -99,6 +133,24 @@ export function MemoryTimeline({
         c.content_type === 'text' ||
         c.content_type === 'note'),
   )
+
+  // ── Multi-perspective detection ──────────────────────────────────────────
+  type Contributor = { authorId: string; firstName: string; ini: string }
+  const contributorMap = new Map<string, Contributor>()
+  for (const c of visible) {
+    if (!contributorMap.has(c.author_id)) {
+      const name = c.users?.display_name ?? c.users?.email?.split('@')[0] ?? 'Anonimo'
+      contributorMap.set(c.author_id, {
+        authorId: c.author_id,
+        firstName: firstName(name),
+        ini: initials(name),
+      })
+    }
+  }
+  const uniqueContributors = Array.from(contributorMap.values())
+  const isMultiPerspective = uniqueContributors.length >= 2
+  const singleContributorWithOthers =
+    uniqueContributors.length === 1 && participants.length >= 2
 
   // ── Empty state ──────────────────────────────────────────────────────────
   if (visible.length === 0) {
@@ -134,7 +186,7 @@ export function MemoryTimeline({
     labelToGroup.get(label)!.items.push(c)
   }
 
-  // Pre-compute micro-labels, markers, and rendering variant
+  // Pre-compute per-fragment metadata
   const lastVisibleId = visible[visible.length - 1].id
   const firstVisibleId = visible[0].id
 
@@ -145,6 +197,11 @@ export function MemoryTimeline({
     isFirst: boolean
     isLast: boolean
     variant: FragmentVariant
+    isOwn: boolean
+    authorFirstName: string
+    authorIni: string
+    authorDisplayName: string
+    showIdentityLayer: boolean
   }
 
   const groups = rawGroups.map((group, gi) => ({
@@ -153,16 +210,27 @@ export function MemoryTimeline({
       const hash = idHash(c.id)
       const variant: FragmentVariant =
         hash % 4 === 0 ? 'spacious' : hash % 7 === 0 ? 'dim' : 'normal'
+      const isOwn = c.author_id === userId
+      const displayName = c.users?.display_name ?? c.users?.email?.split('@')[0] ?? 'Anonimo'
+      const diffDays = getDiffDays(c.created_at, happenedAt)
       return {
         ...c,
         microLabel: getMicroLabel(
           gi === 0 && fi === 0,
           fi === 0,
-          getDiffDays(c.created_at, happenedAt),
+          diffDays,
+          isOwn,
+          firstName(displayName),
         ),
         isFirst: c.id === firstVisibleId,
         isLast: c.id === lastVisibleId,
         variant,
+        isOwn,
+        authorFirstName: firstName(displayName),
+        authorIni: initials(displayName),
+        authorDisplayName: displayName,
+        // Show identity layer for others' fragments ~70% of the time (hash % 10 > 2)
+        showIdentityLayer: !isOwn && hash % 10 > 2,
       }
     }),
   }))
@@ -175,14 +243,47 @@ export function MemoryTimeline({
       <TimelineHighlight active={!!highlightLast} />
 
       {/* Section header */}
-      <div className="mb-10">
+      <div className="mb-8">
         <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/32">
           Questo momento nel tempo
         </p>
         <p className="text-[11px] text-muted-foreground/20 mt-1.5">
-          Ogni dettaglio aggiunge qualcosa
+          {isMultiPerspective
+            ? 'Ognuno lo ricorda a modo suo'
+            : 'Ogni dettaglio aggiunge qualcosa'}
         </p>
       </div>
+
+      {/* ── Perspective summary (multi-perspective only) ── */}
+      {isMultiPerspective && (
+        <div className="mb-10 rounded-2xl bg-foreground/[0.03] px-4 py-4">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/32 mb-3.5">
+            Lo avete vissuto così
+          </p>
+          <div className="flex items-center gap-4 flex-wrap">
+            {uniqueContributors.map(({ authorId, firstName: fn, ini }) => (
+              <div key={authorId} className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-[9px] font-bold text-background shrink-0">
+                  {ini}
+                </div>
+                <span className="text-[11px] text-foreground/45">{fn}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Single contributor hint (social nudge) ── */}
+      {singleContributorWithOthers && (
+        <div className="mb-10 text-center space-y-1.5">
+          <p className="text-xs text-muted-foreground/35">
+            Solo tu hai aggiunto qualcosa
+          </p>
+          <p className="text-[11px] text-muted-foreground/22">
+            Chiedi anche agli altri
+          </p>
+        </div>
+      )}
 
       {/* Timeline — pl-6 (24px) positions content; line+dots center at ~12px */}
       <div className="relative pl-6">
@@ -209,104 +310,114 @@ export function MemoryTimeline({
 
             {/* Fragments */}
             <div className="space-y-11">
-              {group.items.map((c) => {
-                const authorName =
-                  c.users?.display_name ?? c.users?.email ?? 'Anonimo'
-                const isOwn = c.author_id === userId
+              {group.items.map((c) => (
+                <div
+                  key={c.id}
+                  id={c.isLast ? 'fragment-latest' : undefined}
+                  data-fade-in
+                  className={`relative${c.variant === 'spacious' ? ' mt-3' : ''}`}
+                >
+                  {/* Fragment dot — vary opacity by variant */}
+                  <div className={`absolute left-[8px] top-[9px] w-2 h-2 rounded-full ring-[2px] ring-background pointer-events-none ${
+                    c.variant === 'dim'
+                      ? 'bg-foreground/[0.10]'
+                      : 'bg-foreground/[0.18]'
+                  }`} />
 
-                return (
-                  <div
-                    key={c.id}
-                    id={c.isLast ? 'fragment-latest' : undefined}
-                    data-fade-in
-                    className={`relative${c.variant === 'spacious' ? ' mt-3' : ''}`}
-                  >
-                    {/* Fragment dot — vary opacity by variant */}
-                    <div className={`absolute left-[8px] top-[9px] w-2 h-2 rounded-full ring-[2px] ring-background pointer-events-none ${
-                      c.variant === 'dim'
-                        ? 'bg-foreground/[0.10]'
-                        : 'bg-foreground/[0.18]'
-                    }`} />
+                  {/* Content wrapper — self gets subtle warm bg */}
+                  <div className={`space-y-2.5 rounded-xl ${
+                    c.isOwn
+                      ? 'bg-foreground/[0.025] px-3 py-2.5 -mx-3'
+                      : ''
+                  }`}>
 
-                    <div className="space-y-2.5">
-
-                      {/* Origin mark — first fragment only */}
-                      {c.isFirst && (
-                        <p className="text-[9px] text-muted-foreground/22 uppercase tracking-[0.16em] leading-none">
-                          Da qui è iniziato
-                        </p>
-                      )}
-
-                      {/* Micro-label (first of non-initial groups, very subtle) */}
-                      {c.microLabel && (
-                        <p className="text-[9px] text-muted-foreground/25 uppercase tracking-[0.14em] leading-none">
-                          {c.microLabel}
-                        </p>
-                      )}
-
-                      {/* Author (if not own) + date */}
+                    {/* Others: avatar + first name header */}
+                    {!c.isOwn && (
                       <div className="flex items-center gap-2">
-                        {!isOwn && (
-                          <div className="w-5 h-5 rounded-full bg-foreground flex items-center justify-center text-[8px] font-bold text-background shrink-0">
-                            {initials(authorName)}
-                          </div>
-                        )}
-                        <p className="text-[10px] text-muted-foreground/28 leading-none">
-                          {!isOwn ? `${authorName} · ` : ''}
-                          {formatFragmentDate(c.created_at)}
-                        </p>
-                      </div>
-
-                      {/* Photo */}
-                      {c.content_type === 'photo' && c.media_url && (
-                        <div className="rounded-2xl overflow-hidden">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={c.media_url}
-                            alt={c.caption ?? ''}
-                            className="w-full object-cover"
-                            style={{ maxHeight: '280px' }}
-                            loading="lazy"
-                            draggable={false}
-                          />
+                        <div className="w-5 h-5 rounded-full bg-foreground/80 flex items-center justify-center text-[8px] font-bold text-background shrink-0">
+                          {c.authorIni}
                         </div>
-                      )}
+                        <span className="text-[11px] font-medium text-foreground/40 leading-none">
+                          {c.authorFirstName}
+                        </span>
+                      </div>
+                    )}
 
-                      {/* Caption */}
-                      {c.content_type === 'photo' && c.caption && (
-                        <p className="text-sm leading-relaxed text-foreground/58 whitespace-pre-wrap italic">
-                          {c.caption}
-                        </p>
-                      )}
+                    {/* Origin mark — first fragment only */}
+                    {c.isFirst && (
+                      <p className="text-[9px] text-muted-foreground/22 uppercase tracking-[0.16em] leading-none">
+                        Da qui è iniziato
+                      </p>
+                    )}
 
-                      {/* Text contribution */}
-                      {c.content_type === 'text' && c.text_content && (
-                        <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                    {/* Micro-label — first of each group (personalized) */}
+                    {c.microLabel && (
+                      <p className="text-[9px] text-muted-foreground/25 uppercase tracking-[0.14em] leading-none">
+                        {c.microLabel}
+                      </p>
+                    )}
+
+                    {/* Date line — no name (identity is in header/layer) */}
+                    <p className="text-[10px] text-muted-foreground/28 leading-none">
+                      {formatFragmentDate(c.created_at)}
+                    </p>
+
+                    {/* Photo */}
+                    {c.content_type === 'photo' && c.media_url && (
+                      <div className="rounded-2xl overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={c.media_url}
+                          alt={c.caption ?? ''}
+                          className="w-full object-cover"
+                          style={{ maxHeight: '280px' }}
+                          loading="lazy"
+                          draggable={false}
+                        />
+                      </div>
+                    )}
+
+                    {/* Caption */}
+                    {c.content_type === 'photo' && c.caption && (
+                      <p className="text-sm leading-relaxed text-foreground/58 whitespace-pre-wrap italic">
+                        {c.caption}
+                      </p>
+                    )}
+
+                    {/* Text contribution */}
+                    {c.content_type === 'text' && c.text_content && (
+                      <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                        {c.text_content}
+                      </p>
+                    )}
+
+                    {/* Note contribution */}
+                    {c.content_type === 'note' && c.text_content && (
+                      <div className="rounded-xl bg-muted/30 px-4 py-3">
+                        <p className="text-sm leading-relaxed text-foreground/65 whitespace-pre-wrap italic">
                           {c.text_content}
                         </p>
-                      )}
+                      </div>
+                    )}
 
-                      {/* Note contribution */}
-                      {c.content_type === 'note' && c.text_content && (
-                        <div className="rounded-xl bg-muted/30 px-4 py-3">
-                          <p className="text-sm leading-relaxed text-foreground/65 whitespace-pre-wrap italic">
-                            {c.text_content}
-                          </p>
-                        </div>
-                      )}
+                    {/* Identity layer — others only, ~70% of time */}
+                    {c.showIdentityLayer && (
+                      <p className="text-[9px] text-muted-foreground/20 leading-none mt-1">
+                        {getIdentityLine(c.authorFirstName, idHash(c.id))}
+                      </p>
+                    )}
 
-                      {/* Subtle per-fragment continue action */}
-                      <Link
-                        href={`/memories/${memoryId}/contribute`}
-                        className="inline-block text-[10px] text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors mt-0.5"
-                      >
-                        Continua da qui
-                      </Link>
+                    {/* Continue action */}
+                    <Link
+                      href={`/memories/${memoryId}/contribute`}
+                      className="inline-block text-[10px] text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors mt-0.5"
+                    >
+                      Continua da qui
+                    </Link>
 
-                    </div>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
 
           </div>

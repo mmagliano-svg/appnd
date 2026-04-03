@@ -7,10 +7,10 @@ export default async function ContributePage({ params }: { params: { id: string 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  // Fetch memory title + first photo for context header
+  // Fetch memory title + first photo + participant count for context header
   const { data: memory } = await supabase
     .from('memories')
-    .select('id, title, memory_contributions(content_type, media_url)')
+    .select('id, title, memory_contributions(content_type, media_url), memory_participants(user_id, joined_at)')
     .eq('id', params.id)
     .single()
 
@@ -24,11 +24,16 @@ export default async function ContributePage({ params }: { params: { id: string 
       }[]
     ).find((c) => c.content_type === 'photo' && c.media_url)?.media_url ?? null
 
+  const participantCount = (
+    memory.memory_participants as { user_id: string | null; joined_at: string | null }[]
+  ).filter((p) => p.joined_at != null).length
+
   return (
     <ContributeFlow
       memoryId={params.id}
       memoryTitle={memory.title}
       previewUrl={previewUrl}
+      participantCount={participantCount}
     />
   )
 }

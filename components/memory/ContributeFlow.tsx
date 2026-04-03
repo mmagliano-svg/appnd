@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { addFragment } from '@/actions/contributions'
 import { createClient } from '@/lib/supabase/client'
 
@@ -11,6 +12,7 @@ interface ContributeFlowProps {
   memoryId: string
   memoryTitle: string
   previewUrl: string | null
+  participantCount?: number
 }
 
 // ── Success copy rotation ─────────────────────────────────────────────────
@@ -32,7 +34,7 @@ function getSuccessLine(): string {
   return SUCCESS_LINES[Math.floor(sessionSaveCount / 2) % SUCCESS_LINES.length]
 }
 
-export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: ContributeFlowProps) {
+export function ContributeFlow({ memoryId, memoryTitle, previewUrl, participantCount }: ContributeFlowProps) {
   const router = useRouter()
   const [flowState, setFlowState] = useState<FlowState>('idle')
   const [text, setText] = useState('')
@@ -299,6 +301,21 @@ export function ContributeFlow({ memoryId, memoryTitle, previewUrl }: Contribute
             </p>
           )}
         </div>
+
+        {/* Multi-participant invite hint — shown only when memory already has participants */}
+        {participantCount !== undefined && participantCount >= 2 && flowState === 'idle' && (
+          <div className="mt-8 pt-6 border-t border-border/15 flex items-center justify-between gap-4">
+            <p className="text-[11px] text-muted-foreground/28 leading-snug">
+              Vuoi aggiungere anche il punto di vista di qualcuno?
+            </p>
+            <Link
+              href={`/memories/${memoryId}/edit`}
+              className="text-xs text-muted-foreground/45 hover:text-foreground transition-colors shrink-0 border border-border/30 rounded-full px-3 py-1.5 hover:border-foreground/20"
+            >
+              Invita
+            </Link>
+          </div>
+        )}
 
       </div>
     </main>

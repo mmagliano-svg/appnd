@@ -11,7 +11,7 @@ import { getAnchorLabel } from '@/lib/utils/anchors'
 import { getSharedMemoryDetail } from '@/actions/shared-memories'
 import { ShareButton } from '@/components/memory/ShareButton'
 import { MoreMenu } from '@/components/memory/MoreMenu'
-import { MemoryTimeline, type TimelineFragment } from '@/components/memory/MemoryTimeline'
+import { MemoryTimeline, type TimelineFragment, type TimelineParticipant } from '@/components/memory/MemoryTimeline'
 import { ContentActions } from '@/components/memory/ContentActions'
 import { ImportanceStars } from '@/components/memory/ImportanceStars'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
@@ -805,6 +805,17 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             userId={user?.id ?? null}
             memoryId={params.id}
             highlightLast={searchParams.contributed === '1'}
+            participants={participants
+              .filter((p) => p.user_id != null)
+              .map((p): TimelineParticipant => ({
+                userId: p.user_id!,
+                name:
+                  (p.users as { display_name?: string | null; email?: string | null } | null)
+                    ?.display_name ??
+                  (p.users as { display_name?: string | null; email?: string | null } | null)
+                    ?.email?.split('@')[0] ??
+                  '?',
+              }))}
           />
         </div>
 
