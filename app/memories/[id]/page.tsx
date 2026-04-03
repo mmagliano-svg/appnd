@@ -496,9 +496,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       </div>
 
       {/* ── Emotional lines under hero ── */}
-      <div className="max-w-lg mx-auto px-5 mt-3 space-y-1.5">
-        <p className="text-xs text-muted-foreground/45">Questo momento è ancora qui</p>
-        <p className="text-[11px] text-muted-foreground/25">Un giorno che può continuare a vivere</p>
+      <div className="max-w-lg mx-auto px-5 mt-4 space-y-0.5">
+        <p className="text-base text-foreground/70">Questo momento è ancora qui</p>
+        <p className="text-sm text-foreground/50">Può continuare</p>
       </div>
 
       {/* ── Hero image actions — like only ── */}
