@@ -229,8 +229,9 @@ export function MemoryTimeline({
         authorFirstName: firstName(displayName),
         authorIni: initials(displayName),
         authorDisplayName: displayName,
-        // Show identity layer for others' fragments ~70% of the time (hash % 10 > 2)
-        showIdentityLayer: !isOwn && hash % 10 > 2,
+        // Show identity layer for others' fragments ~70% of the time,
+        // but never on consecutive fragments by the same author.
+        showIdentityLayer: !isOwn && hash % 10 > 2 && (fi === 0 || group.items[fi - 1]?.author_id !== c.author_id),
       }
     }),
   }))
@@ -257,8 +258,11 @@ export function MemoryTimeline({
       {/* ── Perspective summary (multi-perspective only) ── */}
       {isMultiPerspective && (
         <div className="mb-10 rounded-2xl bg-foreground/[0.03] px-4 py-4">
-          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/32 mb-3.5">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/32 mb-0.5">
             Lo avete vissuto così
+          </p>
+          <p className="text-[10px] text-muted-foreground/50 leading-tight mb-3.5">
+            Ognuno a modo suo
           </p>
           <div className="flex items-center gap-4 flex-wrap">
             {uniqueContributors.map(({ authorId, firstName: fn, ini }) => (
