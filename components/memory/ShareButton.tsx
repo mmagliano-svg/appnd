@@ -29,10 +29,14 @@ export function ShareButton({ title, url, heroMode }: ShareButtonProps) {
           : 'text-muted-foreground hover:text-foreground hover:bg-muted'
       }`}
     >
-      {/* iOS-style share: arrow up from box */}
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 3v13M7 8l5-5 5 5" />
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M5 16v2a2 2 0 002 2h10a2 2 0 002-2v-2" />
+      {/* Custom curved-arrow share icon */}
+      <svg
+        className="w-[22px] h-[22px]"
+        viewBox="0 0 512 512"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M 307.8 72.1 L 499.7 216.8 L 307.8 361.4 L 307.8 270.6 C 188.2 270.6 104.3 308.9 46.2 391.5 C 46.2 260.2 113.3 135.1 307.8 113.0 Z" />
       </svg>
     </button>
   )
