@@ -60,7 +60,7 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
         {/* Memory text — constrained to left, max 80% width */}
-        <div className="absolute bottom-0 left-0 px-5 pb-9 max-w-[80%] animate-hero-text relative z-10">
+        <div className="absolute bottom-0 left-0 px-5 pb-9 max-w-[80%] animate-hero-text z-10">
           <p
             className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
           >
