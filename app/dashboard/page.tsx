@@ -107,14 +107,23 @@ export default async function DashboardPage() {
     }))
 
   // ── Life Clusters ──────────────────────────────────────────────────────────
-  // People
-  const peopleClusters: ClusterItem[] = peopleRaw.slice(0, 3).map((p) => ({
-    id: p.id,
-    label: p.name,
-    count: p.memoryCount ?? 0,
-    href: `/people/${p.id}`,
-    previewUrl: p.previewPhotoUrl ?? p.avatarUrl ?? null,
-  }))
+  // People — deduplicate preview images so no two people share the same photo.
+  // Priority per person: avatarUrl (profile photo) → unique previewPhotoUrl → null (initials)
+  const usedPreviewUrls = new Set<string>()
+  const peopleClusters: ClusterItem[] = peopleRaw.slice(0, 3).map((p) => {
+    // Profile avatar is person-specific — always use it if present
+    if (p.avatarUrl) {
+      usedPreviewUrls.add(p.avatarUrl)
+      return { id: p.id, label: p.name, count: p.memoryCount ?? 0, href: `/people/${p.id}`, previewUrl: p.avatarUrl }
+    }
+    // Use memory preview only if not already claimed by an earlier person
+    if (p.previewPhotoUrl && !usedPreviewUrls.has(p.previewPhotoUrl)) {
+      usedPreviewUrls.add(p.previewPhotoUrl)
+      return { id: p.id, label: p.name, count: p.memoryCount ?? 0, href: `/people/${p.id}`, previewUrl: p.previewPhotoUrl }
+    }
+    // Fallback: no image — ClusterCard will render initials
+    return { id: p.id, label: p.name, count: p.memoryCount ?? 0, href: `/people/${p.id}`, previewUrl: null }
+  })
 
   // Places — most frequent locations with preview
   const placeMap = new Map<string, { count: number; previewUrl: string | null }>()

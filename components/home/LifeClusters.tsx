@@ -14,6 +14,12 @@ interface LifeClustersProps {
   chapters: ClusterItem[]
 }
 
+function labelInitials(label: string): string {
+  const parts = label.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase()
+  return label.slice(0, 2).toUpperCase()
+}
+
 function ClusterCard({ item }: { item: ClusterItem }) {
   return (
     <Link
@@ -30,7 +36,11 @@ function ClusterCard({ item }: { item: ClusterItem }) {
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full bg-muted/50" />
+          <div className="w-full h-full bg-foreground/[0.06] flex items-center justify-center">
+            <span className="text-base font-semibold text-foreground/30 select-none">
+              {labelInitials(item.label)}
+            </span>
+          </div>
         )}
       </div>
       <div className="px-0.5">
