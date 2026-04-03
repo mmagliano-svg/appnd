@@ -41,19 +41,19 @@ export function FeaturedMemory({ memory }: { memory: FeaturedMemoryData }) {
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900" />
         )}
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/28 to-transparent" />
+        {/* Gradient overlay — strong enough to guarantee readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
 
-        {/* Content */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 pb-6">
-          {/* Micro hook — whisper above the title */}
-          <p className="text-[10px] text-white/28 mb-1 leading-none italic">
+        {/* Content — bottom-left, max 75% width */}
+        <div className="absolute bottom-0 left-0 px-5 pb-5 max-w-[75%]">
+          {/* Micro hook */}
+          <p className="text-xs text-white/70 italic mb-1.5 leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
             {microHook}
           </p>
-          <p className="text-white text-[17px] font-semibold leading-snug line-clamp-2 tracking-tight">
+          <p className="text-white text-[17px] font-semibold leading-tight line-clamp-2 tracking-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
             {memory.title}
           </p>
-          <p className="text-white/38 text-[11px] mt-3 tracking-wide">
+          <p className="text-white/80 text-sm mt-2.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
             Rivivi questo momento
           </p>
         </div>
