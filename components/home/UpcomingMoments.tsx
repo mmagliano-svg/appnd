@@ -59,18 +59,18 @@ export function UpcomingMoments({ moments }: UpcomingMomentsProps) {
             <TransitionLink
               key={moment.id}
               href={href(moment)}
-              className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.04] px-4 py-4 min-h-[64px] group active:scale-[0.99] transition-all hover:bg-foreground/[0.07]"
+              className="flex items-center justify-between gap-4 rounded-2xl bg-foreground/[0.04] px-4 py-4 group active:scale-[0.99] transition-all hover:bg-foreground/[0.07]"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <span className="text-base select-none shrink-0" aria-hidden>
+              {/* Left block — stacked, left-aligned */}
+              <div className="flex flex-col items-start text-left space-y-1 min-w-0">
+                <span className="text-base select-none leading-none" aria-hidden>
                   {moment.kind === 'birthday' ? '🎂' : '✦'}
                 </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-snug line-clamp-1">{headline}</p>
-                  <p className="text-xs text-muted-foreground/50 mt-0.5">{subText(moment.memoryCount)}</p>
-                </div>
+                <p className="text-sm font-medium leading-snug line-clamp-2">{headline}</p>
+                <p className="text-xs text-muted-foreground/50">{subText(moment.memoryCount)}</p>
               </div>
-              <span className="text-xs text-muted-foreground/30 group-hover:text-muted-foreground/55 transition-colors shrink-0 whitespace-nowrap">
+              {/* CTA — right side, vertically centered */}
+              <span className="text-xs text-muted-foreground/30 group-hover:text-muted-foreground/55 transition-colors shrink-0 whitespace-nowrap self-center">
                 Aggiorna →
               </span>
             </TransitionLink>
