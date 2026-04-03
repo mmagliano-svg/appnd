@@ -54,23 +54,18 @@ export function ContinueStory({ memories }: ContinueStoryProps) {
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-neutral-100 to-neutral-200 dark:from-neutral-800 dark:to-neutral-900" />
                 )}
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    background: 'linear-gradient(to bottom, transparent 44%, rgba(0,0,0,0.52) 100%)',
-                  }}
-                />
-                <div className="absolute bottom-0 left-0 right-0 p-3">
-                  <p
-                    className="text-white/85 text-[11px] font-medium leading-snug line-clamp-2"
-                    style={{ textShadow: '0 1px 6px rgba(0,0,0,0.22)' }}
-                  >
+                {/* Gradient overlay — matches hero/featured language */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/25 to-transparent" />
+
+                {/* Text — bottom-left, consistent hierarchy */}
+                <div className="absolute bottom-0 left-0 px-4 pb-4 space-y-1">
+                  <p className="text-white text-[12px] font-semibold leading-snug line-clamp-2 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
                     {memory.title}
                   </p>
-                  <p className="text-white/50 text-[10px] mt-1">
+                  <p className="text-white/80 text-xs drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">
                     {formatMemoryDate(memory.start_date, memory.end_date)}
                   </p>
-                  <p className="text-white/30 text-[10px] mt-1.5">Continua da qui</p>
+                  <p className="text-white/80 text-xs drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]">Continua da qui</p>
                 </div>
               </TransitionLink>
             )
