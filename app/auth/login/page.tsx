@@ -136,13 +136,18 @@ function LoginForm() {
               className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.97] disabled:opacity-40"
               style={{ background: '#6B5FE8', color: '#ffffff' }}
             >
-              {status === 'loading' ? 'Invio in corso…' : 'Invia il link'}
+              {status === 'loading' ? 'Invio in corso…' : 'Continua con email'}
             </button>
           </form>
 
-          <p className="text-center text-[12px]" style={{ color: 'rgba(17,17,17,0.22)' }}>
-            Nessuna password. Solo un link via email.
-          </p>
+          <div className="space-y-1 text-center">
+            <p className="text-[12px]" style={{ color: 'rgba(17,17,17,0.22)' }}>
+              Nessuna password. Solo un link via email.
+            </p>
+            <p className="text-[12px] font-medium" style={{ color: 'rgba(17,17,17,0.35)' }}>
+              Non perderai nulla. Te lo promettiamo.
+            </p>
+          </div>
 
         </div>
       </main>

@@ -34,7 +34,7 @@ const SCREENS: ScreenData[] = [
     key: 'definition',
     title: 'Questo è un momento',
     subtitle: 'Non solo una foto',
-    body: 'È dove succede tutto.',
+    body: 'È dove eri davvero.',
     visual: 'card',
   },
   {
