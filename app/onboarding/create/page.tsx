@@ -1,140 +1,199 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { createMemoryReturnId } from '@/actions/memories'
 
-export default function CreatePage() {
+// ── Draft stored in localStorage before auth ──────────────────────────────
+export interface MemoryDraft {
+  title: string
+  description: string
+  start_date: string
+}
+
+export const DRAFT_KEY = 'appnd_ob_draft'
+
+// ── Pre-auth memory creation form ─────────────────────────────────────────
+// User fills in title + date + description WITHOUT needing an account.
+// On submit: draft is saved to localStorage, user is redirected to auth.
+// After auth, /onboarding/restore reads the draft and creates the memory.
+
+export default function OnboardingCreatePage() {
   const router = useRouter()
-
-  const [title, setTitle] = useState('')
-  const [date, setDate] = useState('')
-  const [location, setLocation] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [ready, setReady] = useState(false)
+  const titleRef = useRef<HTMLInputElement>(null)
 
   const today = new Date().toISOString().split('T')[0]
+  const [title, setTitle] = useState('')
+  const [date, setDate] = useState(today)
+  const [description, setDescription] = useState('')
+  const [error, setError] = useState('')
 
-  // Hydrate from sessionStorage; redirect back if nothing to work with
-  useEffect(() => {
-    const stored = sessionStorage.getItem('onboarding_title') ?? ''
-    if (!stored) {
-      router.replace('/onboarding')
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+
+    const trimmedTitle = title.trim()
+    if (!trimmedTitle) {
+      setError('Dai un nome al momento per continuare.')
+      titleRef.current?.focus()
       return
     }
-    setTitle(stored)
-    setReady(true)
-  }, [router])
 
-  async function handleSave() {
-    const trimmedTitle = title.trim()
-    if (!trimmedTitle) return
-    setLoading(true)
-    setError('')
-    try {
-      const memoryId = await createMemoryReturnId({
-        title: trimmedTitle,
-        start_date: date || today,
-        location_name: location.trim() || undefined,
-        categories: [],
-        tags: [],
-      })
-      // Update stored title with final (possibly edited) value
-      sessionStorage.setItem('onboarding_title', trimmedTitle)
-      sessionStorage.setItem('onboarding_memoryId', memoryId)
-      router.push('/onboarding/enrich')
-    } catch {
-      setError('Qualcosa è andato storto. Riprova.')
-      setLoading(false)
+    const draft: MemoryDraft = {
+      title: trimmedTitle,
+      description: description.trim(),
+      start_date: date || today,
     }
+
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    } catch {
+      // localStorage unavailable — /onboarding/restore handles missing draft gracefully
+    }
+
+    router.push('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
   }
 
-  if (!ready) return null
-
   return (
-    <main className="min-h-screen bg-background flex flex-col">
-      <div className="flex-1 flex flex-col max-w-lg mx-auto w-full px-6 py-12">
-        <div className="flex-1 flex flex-col justify-between">
+    <main
+      className="h-[100dvh] flex flex-col overflow-hidden"
+      style={{ background: '#F7F7F5' }}
+    >
 
-          <div className="flex-1 flex flex-col gap-7">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50 mb-4">
-                Il tuo primo ricordo
-              </p>
-              <h1 className="text-2xl font-bold leading-tight">
-                Raccontaci di più
-              </h1>
-            </div>
+      {/* ── Top bar ────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center px-5 pb-3"
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}
+      >
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="w-9 h-9 -ml-2 flex items-center justify-center transition-opacity active:opacity-50"
+          aria-label="Indietro"
+          style={{ color: 'rgba(17,17,17,0.30)' }}
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      </div>
 
-            {/* Title */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Titolo
-              </label>
-              <input
-                autoFocus
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSave()}
-                placeholder="Es. Cena con Marco a Roma"
-                className="w-full bg-transparent text-lg font-medium placeholder:text-muted-foreground/40 focus:outline-none border-b border-border pb-2.5 leading-snug"
-              />
-            </div>
+      {/* ── Form ──────────────────────────────────────────────────── */}
+      <form
+        onSubmit={handleSubmit}
+        className="flex-1 flex flex-col px-6 pt-4 pb-0 overflow-y-auto"
+      >
 
-            {/* Date */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Quando?{' '}
-                <span className="normal-case font-normal opacity-60">(opzionale)</span>
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                max={today}
-                className="w-full bg-transparent text-base text-foreground focus:outline-none border-b border-border pb-2.5"
-              />
-            </div>
+        {/* Heading */}
+        <div className="mb-8">
+          <h1
+            className="text-[28px] font-semibold leading-tight tracking-[-0.02em] mb-1.5"
+            style={{ color: '#111111' }}
+          >
+            Qual è questo momento?
+          </h1>
+          <p className="text-[15px]" style={{ color: '#ABABAB' }}>
+            Anche due parole bastano per iniziare.
+          </p>
+        </div>
 
-            {/* Location */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Dove?{' '}
-                <span className="normal-case font-normal opacity-60">(opzionale)</span>
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Es. Roma, casa di Luca…"
-                className="w-full bg-transparent text-base placeholder:text-muted-foreground/40 focus:outline-none border-b border-border pb-2.5"
-              />
-            </div>
+        {/* Fields */}
+        <div className="space-y-7">
+
+          {/* Title */}
+          <div>
+            <input
+              ref={titleRef}
+              type="text"
+              value={title}
+              onChange={(e) => { setTitle(e.target.value); setError('') }}
+              placeholder="Dagli un nome…"
+              autoFocus
+              className="w-full bg-transparent text-[22px] font-semibold placeholder:font-normal focus:outline-none border-b pb-3 leading-snug tracking-tight"
+              style={{
+                color: '#111111',
+                borderColor: 'rgba(17,17,17,0.12)',
+                caretColor: '#6B5FE8',
+              }}
+            />
+            {error && (
+              <p className="mt-2 text-[13px]" style={{ color: '#E05252' }}>{error}</p>
+            )}
           </div>
 
-          <div className="space-y-3 pt-6">
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
-            <button
-              onClick={handleSave}
-              disabled={!title.trim() || loading}
-              className="w-full rounded-full bg-foreground text-background py-4 text-base font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          {/* Date */}
+          <div>
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+              style={{ color: 'rgba(17,17,17,0.35)' }}
             >
-              {loading ? 'Salvataggio…' : 'Salva questo momento'}
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+              Quando è successo?
+            </p>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              max={today}
+              className="w-full bg-transparent text-base focus:outline-none border-b pb-2.5 min-h-[44px]"
+              style={{
+                color: '#111111',
+                borderColor: 'rgba(17,17,17,0.12)',
+              }}
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest mb-2"
+              style={{ color: 'rgba(17,17,17,0.35)' }}
             >
-              Salta per ora
-            </button>
+              Qualcosa che vuoi ricordare
+              <span className="ml-1 normal-case font-normal" style={{ color: 'rgba(17,17,17,0.22)' }}>
+                — facoltativo
+              </span>
+            </p>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Com'era? Chi c'era? Come ti sentivi?"
+              rows={4}
+              className="w-full rounded-2xl px-4 py-3 text-base focus:outline-none resize-none leading-relaxed"
+              style={{
+                background: 'rgba(17,17,17,0.04)',
+                border: '1px solid rgba(17,17,17,0.08)',
+                color: '#111111',
+                caretColor: '#6B5FE8',
+              }}
+            />
           </div>
 
         </div>
-      </div>
+
+        {/* Flex spacer pushes CTA note up naturally with form */}
+        <div className="flex-1 min-h-6" />
+
+        {/* Privacy note above CTA */}
+        <p
+          className="text-center text-[12px] pb-3"
+          style={{ color: 'rgba(17,17,17,0.22)' }}
+        >
+          Per salvarlo hai bisogno di un account gratuito.
+        </p>
+
+        {/* CTA inside the form so Enter submits */}
+        <div
+          className="px-0 pt-0"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 40px)' }}
+        >
+          <button
+            type="submit"
+            className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.985]"
+            style={{ background: '#6B5FE8', color: '#ffffff' }}
+          >
+            Salva questo momento
+          </button>
+        </div>
+
+      </form>
     </main>
   )
 }

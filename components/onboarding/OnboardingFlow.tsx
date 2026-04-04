@@ -11,9 +11,9 @@ interface ScreenData {
   key: string
   title: string
   subtitle: string
+  body?: string        // second line — softer, explanatory
   visual: VisualType
   ctaLabel?: string
-  // purple accent CTA override
   accentCta?: boolean
 }
 
@@ -27,37 +27,35 @@ const SCREENS: ScreenData[] = [
   {
     key: 'reality',
     title: 'I momenti passano',
-    subtitle: 'Anche quelli che sembravano importanti',
-    visual: 'none',
-  },
-  {
-    key: 'shift',
-    title: 'E se non finissero davvero?',
-    subtitle: 'Se potessero continuare a vivere',
+    subtitle: 'Ma i dettagli no',
+    body: 'Foto, persone, emozioni. Tutto insieme.',
     visual: 'none',
   },
   {
     key: 'definition',
     title: 'Questo è un momento',
-    subtitle: 'Foto, persone e dettagli nello stesso posto',
+    subtitle: 'Non solo una foto',
+    body: 'È dove succede tutto.',
     visual: 'card',
   },
   {
     key: 'perspective',
     title: 'Non solo il tuo punto di vista',
     subtitle: 'Chi era con te può aggiungere il suo',
+    body: 'Ogni ricordo diventa condiviso',
     visual: 'perspective',
   },
   {
     key: 'continuity',
     title: 'E non finisce lì',
-    subtitle: 'Puoi tornarci e aggiungere ciò che conta',
+    subtitle: 'Puoi tornarci quando vuoi',
+    body: 'Aggiungere, completare, ricordare meglio',
     visual: 'timeline',
   },
   {
     key: 'legacy',
     title: 'Tra anni, sarà ancora lì',
-    subtitle: 'E racconterà qualcosa in più',
+    subtitle: 'E racconterà di più',
     visual: 'legacy',
   },
   {
@@ -70,25 +68,17 @@ const SCREENS: ScreenData[] = [
   },
 ]
 
-const SAVE_SCREEN: ScreenData = {
-  key: 'save',
-  title: 'Non perderlo',
-  subtitle: "Salvalo. È solo l'inizio",
-  visual: 'none',
-  ctaLabel: 'Continua',
-}
-
 // ── Component ─────────────────────────────────────────────────────────────
 
 export function OnboardingFlow() {
   const router = useRouter()
   const [step, setStep] = useState(0)
-  const [isSaveStep, setIsSaveStep] = useState(false)
+  // screenKey changes on each step change — triggers CSS re-animation
   const [screenKey, setScreenKey] = useState(0)
 
-  const screen = isSaveStep ? SAVE_SCREEN : SCREENS[step]
-  const isLastEducational = step === SCREENS.length - 1
-  const showProgress = !isSaveStep
+  const screen = SCREENS[step]
+  const isLastScreen = step === SCREENS.length - 1
+  const showProgress = true
 
   const advance = useCallback((fn: () => void) => {
     fn()
@@ -96,41 +86,29 @@ export function OnboardingFlow() {
   }, [])
 
   const handleNext = useCallback(() => {
-    if (isSaveStep) {
-      router.push('/auth/login?next=' + encodeURIComponent('/memories/new?from=onboarding'))
-      return
-    }
-    if (isLastEducational) {
-      advance(() => setIsSaveStep(true))
+    if (isLastScreen) {
+      // Go directly to memory creation — no auth required yet
+      router.push('/onboarding/create')
       return
     }
     advance(() => setStep(s => s + 1))
-  }, [isSaveStep, isLastEducational, advance, router])
+  }, [isLastScreen, advance, router])
 
   const handleBack = useCallback(() => {
-    if (isSaveStep) {
-      advance(() => {
-        setIsSaveStep(false)
-        setStep(SCREENS.length - 1)
-      })
-      return
-    }
     if (step > 0) {
       advance(() => setStep(s => s - 1))
     }
-  }, [isSaveStep, step, advance])
+  }, [step, advance])
 
   const handleSkip = useCallback(() => {
     router.push('/auth/login')
   }, [router])
 
-  const canGoBack = step > 0 || isSaveStep
+  const canGoBack = step > 0
 
   // CTA styles
   const ctaStyle = screen.accentCta
     ? { background: '#6B5FE8', color: '#ffffff' }
-    : isSaveStep
-    ? { background: '#111111', color: '#ffffff' }
     : { background: 'rgba(17,17,17,0.06)', color: '#111111' }
 
   return (
@@ -165,8 +143,8 @@ export function OnboardingFlow() {
           <OnboardingProgress total={SCREENS.length} current={step} />
         )}
 
-        {/* Skip — only on screens 0–6 */}
-        {!isSaveStep && step < SCREENS.length - 1 ? (
+        {/* Skip — only on screens 0–5 */}
+        {step < SCREENS.length - 1 ? (
           <button
             onClick={handleSkip}
             className="text-[12px] px-1 transition-opacity active:opacity-50"
@@ -186,29 +164,13 @@ export function OnboardingFlow() {
       >
         {/* Visual area */}
         {screen.visual !== 'none' && (
-          <div className="mb-12 flex justify-center">
+          <div className="mb-12 flex justify-center w-full">
             <OnboardingVisual type={screen.visual} />
           </div>
         )}
 
-        {/* Save step: lock icon */}
-        {isSaveStep && (
-          <div className="mb-12 flex justify-center">
-            <div
-              className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center"
-              style={{ boxShadow: '0 1px 8px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)' }}
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-                style={{ color: 'rgba(17,17,17,0.25)' }}>
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-          </div>
-        )}
-
         {/* Text */}
-        <div className="text-center space-y-4 max-w-[300px]">
+        <div className="text-center space-y-3 max-w-[300px]">
           <h1
             className="text-[32px] font-semibold leading-tight tracking-[-0.02em] whitespace-pre-line"
             style={{ color: '#111111' }}
@@ -217,10 +179,18 @@ export function OnboardingFlow() {
           </h1>
           {screen.subtitle ? (
             <p
-              className="text-[17px] leading-snug"
-              style={{ color: '#909090' }}
+              className="text-[17px] leading-snug font-medium"
+              style={{ color: '#555555' }}
             >
               {screen.subtitle}
+            </p>
+          ) : null}
+          {screen.body ? (
+            <p
+              className="text-[15px] leading-snug"
+              style={{ color: '#ABABAB' }}
+            >
+              {screen.body}
             </p>
           ) : null}
         </div>
