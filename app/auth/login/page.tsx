@@ -1,12 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 
-export default function LoginPage() {
+// ── Inner component — reads searchParams ──────────────────────────────────
+
+function LoginForm() {
+  const searchParams = useSearchParams()
+  const next = searchParams.get('next') ?? ''
+
+  // Emotional mode: user is coming from onboarding with a pending draft
+  const isFromOnboarding = next.includes('/onboarding/restore')
+
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState('')
@@ -23,11 +29,11 @@ export default function LoginPage() {
     setStatus('loading')
     setErrorMessage('')
 
+    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback${next ? '?next=' + encodeURIComponent(next) : ''}`
+
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`,
-      },
+      options: { emailRedirectTo: redirectTo },
     })
 
     if (error) {
@@ -38,20 +44,39 @@ export default function LoginPage() {
     }
   }
 
+  // ── Sent state ─────────────────────────────────────────────────────────
   if (status === 'sent') {
     return (
-      <main className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-sm text-center space-y-3">
-          <div className="text-4xl">✉️</div>
-          <h1 className="text-xl font-semibold tracking-tight">Controlla la tua email</h1>
-          <p className="text-sm text-muted-foreground">
-            Abbiamo inviato un link magico a <strong>{email}</strong>.
-            <br />
-            Clicca il link per accedere.
-          </p>
+      <main
+        className="flex min-h-screen items-center justify-center p-6"
+        style={isFromOnboarding ? { background: '#F7F7F5' } : {}}
+      >
+        <div className="w-full max-w-sm text-center space-y-4">
+          <div
+            className="mx-auto w-14 h-14 rounded-2xl flex items-center justify-center text-2xl"
+            style={{ background: 'rgba(17,17,17,0.05)' }}
+          >
+            ✉️
+          </div>
+          <div className="space-y-2">
+            <h1
+              className="text-[22px] font-semibold tracking-[-0.02em]"
+              style={{ color: '#111111' }}
+            >
+              Controlla la tua email
+            </h1>
+            <p className="text-[15px]" style={{ color: '#909090' }}>
+              Abbiamo inviato un link a{' '}
+              <span style={{ color: '#555555', fontWeight: 500 }}>{email}</span>.
+              {isFromOnboarding
+                ? ' Clicca il link per salvare il tuo momento.'
+                : ' Clicca il link per accedere.'}
+            </p>
+          </div>
           <button
             onClick={() => setStatus('idle')}
-            className="text-xs text-muted-foreground underline underline-offset-4 mt-4"
+            className="text-[13px] underline underline-offset-4 mt-2"
+            style={{ color: 'rgba(17,17,17,0.35)' }}
           >
             Usa un'altra email
           </button>
@@ -60,6 +85,71 @@ export default function LoginPage() {
     )
   }
 
+  // ── Idle / error state ─────────────────────────────────────────────────
+  if (isFromOnboarding) {
+    // ── Onboarding-specific emotional layout ──────────────────────────────
+    return (
+      <main
+        className="flex min-h-screen items-center justify-center p-6"
+        style={{ background: '#F7F7F5' }}
+      >
+        <div className="w-full max-w-sm space-y-8">
+
+          <div className="space-y-2">
+            <h1
+              className="text-[30px] font-semibold leading-tight tracking-[-0.02em]"
+              style={{ color: '#111111' }}
+            >
+              Non perderlo
+            </h1>
+            <p className="text-[16px]" style={{ color: '#909090' }}>
+              Ti mandiamo un link per salvarlo per sempre.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="email"
+                placeholder="La tua email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                autoFocus
+                className="w-full bg-transparent text-[17px] focus:outline-none border-b pb-3"
+                style={{
+                  color: '#111111',
+                  borderColor: 'rgba(17,17,17,0.12)',
+                  caretColor: '#6B5FE8',
+                }}
+              />
+            </div>
+
+            {status === 'error' && (
+              <p className="text-[13px]" style={{ color: '#E05252' }}>{errorMessage}</p>
+            )}
+
+            <button
+              type="submit"
+              disabled={status === 'loading' || !email.trim()}
+              className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.97] disabled:opacity-40"
+              style={{ background: '#6B5FE8', color: '#ffffff' }}
+            >
+              {status === 'loading' ? 'Invio in corso…' : 'Invia il link'}
+            </button>
+          </form>
+
+          <p className="text-center text-[12px]" style={{ color: 'rgba(17,17,17,0.22)' }}>
+            Nessuna password. Solo un link via email.
+          </p>
+
+        </div>
+      </main>
+    )
+  }
+
+  // ── Generic login layout ───────────────────────────────────────────────
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-8">
@@ -72,8 +162,8 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input
+            <label htmlFor="email" className="text-sm font-medium">Email</label>
+            <input
               id="email"
               type="email"
               placeholder="la@tuaemail.com"
@@ -82,6 +172,7 @@ export default function LoginPage() {
               required
               autoComplete="email"
               autoFocus
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
@@ -89,13 +180,13 @@ export default function LoginPage() {
             <p className="text-sm text-destructive">{errorMessage}</p>
           )}
 
-          <Button
+          <button
             type="submit"
-            className="w-full"
             disabled={status === 'loading' || !email.trim()}
+            className="w-full rounded-md bg-primary text-primary-foreground py-2 text-sm font-medium hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
           >
             {status === 'loading' ? 'Invio in corso…' : 'Continua con email'}
-          </Button>
+          </button>
         </form>
 
         <p className="text-center text-xs text-muted-foreground">
@@ -103,5 +194,15 @@ export default function LoginPage() {
         </p>
       </div>
     </main>
+  )
+}
+
+// ── Page export — Suspense required for useSearchParams ───────────────────
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }

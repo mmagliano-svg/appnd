@@ -1,11 +1,7 @@
 // ── Decorative visual elements for onboarding screens 3–6 ─────────────────
-// Screen 3 — card: real memory card UI mock
-// Screen 4 — perspective: two contributor cards
-// Screen 5 — timeline: continuity line
-// Screen 6 — legacy: typography-only years
 
 export type VisualType =
-  | 'card'         // screen 3 — real memory card UI
+  | 'card'         // screen 3 — realistic memory preview
   | 'perspective'  // screen 4 — two contributors
   | 'timeline'     // screen 5 — continuity
   | 'legacy'       // screen 6 — years
@@ -21,54 +17,89 @@ export function OnboardingVisual({ type }: { type: VisualType }) {
   }
 }
 
-// ── Real memory card UI mock ───────────────────────────────────────────────
-// Looks like actual product — photo, title, date, contributor avatars
+// ── Realistic memory card ─────────────────────────────────────────────────
+// No skeleton bars — real text, real avatars, real date, real note snippet.
+// Uses a warm amber photo stand-in that feels like an actual photo, not UI.
 
 function CardVisual() {
   return (
     <div
       className="w-72 rounded-3xl overflow-hidden bg-white"
-      style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.04)' }}
+      style={{ boxShadow: '0 6px 32px rgba(0,0,0,0.11), 0 0 0 1px rgba(0,0,0,0.04)' }}
     >
-      {/* Photo area */}
-      <div className="h-44 bg-gradient-to-br from-stone-100 to-stone-200 relative">
-        {/* Overlay bottom gradient */}
+      {/* "Photo" — warm amber/sunset tone, feels like a real moment */}
+      <div
+        className="h-44 relative"
+        style={{
+          background: 'linear-gradient(145deg, #D4956A 0%, #C17A4A 40%, #A85E35 100%)',
+        }}
+      >
+        {/* Subtle texture overlay */}
         <div
-          className="absolute inset-x-0 bottom-0 h-16"
-          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.18), transparent)' }}
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 30% 40%, rgba(255,255,255,0.3) 0%, transparent 60%), radial-gradient(circle at 80% 70%, rgba(0,0,0,0.2) 0%, transparent 50%)',
+          }}
         />
-        {/* Participant avatars bottom-left */}
+        {/* Bottom scrim */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-14"
+          style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.22), transparent)' }}
+        />
+        {/* Participant avatars — bottom left */}
         <div className="absolute bottom-3 left-4 flex items-center">
-          <div className="w-6 h-6 rounded-full bg-white/80 border-2 border-white flex items-center justify-center">
-            <span className="text-[7px] font-bold text-stone-500">M</span>
-          </div>
-          <div className="w-6 h-6 rounded-full bg-white/80 border-2 border-white -ml-1.5 flex items-center justify-center">
-            <span className="text-[7px] font-bold text-stone-500">L</span>
-          </div>
+          {[
+            { init: 'M', bg: '#8B7355' },
+            { init: 'L', bg: '#7A6248' },
+            { init: 'S', bg: '#6B543C' },
+          ].map(({ init, bg }, i) => (
+            <div
+              key={init}
+              className="w-6 h-6 rounded-full border-2 border-white/70 flex items-center justify-center text-white text-[8px] font-bold"
+              style={{ background: bg, marginLeft: i === 0 ? 0 : '-6px', zIndex: 3 - i }}
+            >
+              {init}
+            </div>
+          ))}
         </div>
-        {/* Date chip top-right */}
-        <div className="absolute top-3 right-3 bg-black/30 backdrop-blur-sm rounded-full px-2 py-0.5">
-          <span className="text-[9px] text-white/90">15 mar</span>
+        {/* Date chip — top right */}
+        <div
+          className="absolute top-3 right-3 rounded-full px-2.5 py-0.5 text-[9px] text-white/90 font-medium"
+          style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(4px)' }}
+        >
+          {new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'short' })}
         </div>
       </div>
 
       {/* Card body */}
-      <div className="px-4 pt-3 pb-4 space-y-2.5">
+      <div className="px-4 pt-3.5 pb-4">
         {/* Title */}
-        <div className="h-3.5 w-3/4 rounded-full bg-black/12" />
-        {/* Location row */}
-        <div className="flex items-center gap-1.5">
+        <p
+          className="text-[15px] font-semibold leading-tight mb-1"
+          style={{ color: '#111111' }}
+        >
+          Cena da Marco, finalmente
+        </p>
+        {/* Location */}
+        <div className="flex items-center gap-1 mb-3">
           <svg className="w-2.5 h-2.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-            style={{ color: 'rgba(0,0,0,0.25)' }}>
+            style={{ color: 'rgba(0,0,0,0.28)' }}>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
               d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
           </svg>
-          <div className="h-2 w-1/3 rounded-full bg-black/07" />
+          <span className="text-[12px]" style={{ color: 'rgba(0,0,0,0.35)' }}>
+            Roma, Pigneto
+          </span>
         </div>
-        {/* Contribution text preview */}
-        <div className="pt-1 space-y-1.5 border-t border-black/[0.05]">
-          <div className="h-2 w-full rounded-full bg-black/06" />
-          <div className="h-2 w-4/5 rounded-full bg-black/04" />
+        {/* Note snippet */}
+        <div
+          className="rounded-xl px-3 py-2.5"
+          style={{ background: 'rgba(17,17,17,0.04)', border: '1px solid rgba(17,17,17,0.06)' }}
+        >
+          <p className="text-[12px] leading-relaxed" style={{ color: '#555555' }}>
+            <span style={{ color: 'rgba(17,17,17,0.35)' }}>Mattia —</span>
+            {' '}Ti ricordi quando siamo rimasti fino alle 2?
+          </p>
         </div>
       </div>
     </div>
@@ -80,14 +111,16 @@ function CardVisual() {
 function PerspectiveVisual() {
   return (
     <div className="flex gap-3 w-full max-w-[260px]">
-      {/* Contributor A */}
       <div
         className="flex-1 rounded-2xl bg-white p-4 space-y-2.5"
         style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)' }}
       >
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-stone-200 flex items-center justify-center shrink-0">
-            <span className="text-[7px] font-bold text-stone-500">M</span>
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[7px] font-bold text-white"
+            style={{ background: '#8B7355' }}
+          >
+            M
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-black/30">Mattia</p>
         </div>
@@ -95,14 +128,16 @@ function PerspectiveVisual() {
         <div className="h-1.5 w-4/5 rounded-full bg-black/05" />
         <div className="h-1.5 w-2/3 rounded-full bg-black/04" />
       </div>
-      {/* Contributor B — offset for depth */}
       <div
         className="flex-1 rounded-2xl bg-white p-4 space-y-2.5 mt-5"
         style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.06), 0 0 0 1px rgba(0,0,0,0.04)' }}
       >
         <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-stone-200 flex items-center justify-center shrink-0">
-            <span className="text-[7px] font-bold text-stone-500">L</span>
+          <div
+            className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-[7px] font-bold text-white"
+            style={{ background: '#6B543C' }}
+          >
+            L
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-widest text-black/30">Luca</p>
         </div>
@@ -119,7 +154,6 @@ function PerspectiveVisual() {
 function TimelineVisual() {
   return (
     <div className="flex items-center gap-0 w-full max-w-[240px]">
-      {/* Point A */}
       <div className="flex flex-col items-center gap-2">
         <div
           className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"
@@ -129,9 +163,7 @@ function TimelineVisual() {
         </div>
         <span className="text-[9px] text-black/25 uppercase tracking-wider">Ieri</span>
       </div>
-      {/* Solid line */}
       <div className="flex-1 h-px bg-black/10" />
-      {/* Point B */}
       <div className="flex flex-col items-center gap-2">
         <div
           className="w-10 h-10 rounded-xl bg-white flex items-center justify-center"
@@ -141,14 +173,12 @@ function TimelineVisual() {
         </div>
         <span className="text-[9px] text-black/25 uppercase tracking-wider">Oggi</span>
       </div>
-      {/* Dashed extension */}
       <div
         className="flex-1 h-px"
         style={{
           background: 'repeating-linear-gradient(90deg, rgba(0,0,0,0.10) 0, rgba(0,0,0,0.10) 4px, transparent 4px, transparent 8px)',
         }}
       />
-      {/* Point C — future, faded */}
       <div className="flex flex-col items-center gap-2 opacity-25">
         <div className="w-10 h-10 rounded-xl bg-white border border-dashed border-black/20" />
         <span className="text-[9px] text-black/25 uppercase tracking-wider">+</span>
@@ -157,7 +187,7 @@ function TimelineVisual() {
   )
 }
 
-// ── Legacy / years — typography only ──────────────────────────────────────
+// ── Legacy / years ─────────────────────────────────────────────────────────
 
 function LegacyVisual() {
   const entries = [

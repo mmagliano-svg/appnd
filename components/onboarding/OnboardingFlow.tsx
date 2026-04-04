@@ -11,7 +11,7 @@ interface ScreenData {
   key: string
   title: string
   subtitle: string
-  body?: string        // second line — softer, explanatory
+  body?: string
   visual: VisualType
   ctaLabel?: string
   accentCta?: boolean
@@ -27,8 +27,7 @@ const SCREENS: ScreenData[] = [
   {
     key: 'reality',
     title: 'I momenti passano',
-    subtitle: 'Ma i dettagli no',
-    body: 'Foto, persone, emozioni. Tutto insieme.',
+    subtitle: 'Ma quello che hai vissuto no',
     visual: 'none',
   },
   {
@@ -47,9 +46,8 @@ const SCREENS: ScreenData[] = [
   },
   {
     key: 'continuity',
-    title: 'E non finisce lì',
-    subtitle: 'Puoi tornarci quando vuoi',
-    body: 'Aggiungere, completare, ricordare meglio',
+    title: 'E continua a crescere',
+    subtitle: 'Ogni volta che ci torni',
     visual: 'timeline',
   },
   {
@@ -73,12 +71,10 @@ const SCREENS: ScreenData[] = [
 export function OnboardingFlow() {
   const router = useRouter()
   const [step, setStep] = useState(0)
-  // screenKey changes on each step change — triggers CSS re-animation
   const [screenKey, setScreenKey] = useState(0)
 
   const screen = SCREENS[step]
   const isLastScreen = step === SCREENS.length - 1
-  const showProgress = true
 
   const advance = useCallback((fn: () => void) => {
     fn()
@@ -87,7 +83,6 @@ export function OnboardingFlow() {
 
   const handleNext = useCallback(() => {
     if (isLastScreen) {
-      // Go directly to memory creation — no auth required yet
       router.push('/onboarding/create')
       return
     }
@@ -106,10 +101,10 @@ export function OnboardingFlow() {
 
   const canGoBack = step > 0
 
-  // CTA styles
+  // ── CTA style — #5 contrast improvement ──────────────────────────────────
   const ctaStyle = screen.accentCta
     ? { background: '#6B5FE8', color: '#ffffff' }
-    : { background: 'rgba(17,17,17,0.06)', color: '#111111' }
+    : { background: '#E8E8E5', color: '#111111' }
 
   return (
     <div
@@ -138,10 +133,8 @@ export function OnboardingFlow() {
           <div className="w-9" />
         )}
 
-        {/* Progress bar */}
-        {showProgress && (
-          <OnboardingProgress total={SCREENS.length} current={step} />
-        )}
+        {/* Progress — #6 step count added */}
+        <OnboardingProgress total={SCREENS.length} current={step} />
 
         {/* Skip — only on screens 0–5 */}
         {step < SCREENS.length - 1 ? (
@@ -162,14 +155,12 @@ export function OnboardingFlow() {
         key={screenKey}
         className="flex-1 flex flex-col items-center justify-center px-8 animate-ob-screen"
       >
-        {/* Visual area */}
         {screen.visual !== 'none' && (
           <div className="mb-12 flex justify-center w-full">
             <OnboardingVisual type={screen.visual} />
           </div>
         )}
 
-        {/* Text */}
         <div className="text-center space-y-3 max-w-[300px]">
           <h1
             className="text-[32px] font-semibold leading-tight tracking-[-0.02em] whitespace-pre-line"
@@ -203,7 +194,7 @@ export function OnboardingFlow() {
       >
         <button
           onClick={handleNext}
-          className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.985]"
+          className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.97]"
           style={ctaStyle}
         >
           {screen.ctaLabel ?? 'Continua'}
