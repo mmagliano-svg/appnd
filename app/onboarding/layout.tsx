@@ -1,16 +1,15 @@
-import { redirect } from 'next/navigation'
-import { createServerClient } from '@/lib/supabase/server'
-
-export default async function OnboardingLayout({
+/**
+ * Onboarding layout — covers the global BottomNav and needs no auth.
+ * Uses fixed+inset so it sits above everything else in the root layout.
+ */
+export default function OnboardingLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createServerClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (!user) redirect('/auth/login')
-
-  return <>{children}</>
+  return (
+    <div className="fixed inset-0 z-[60] bg-background overflow-hidden">
+      {children}
+    </div>
+  )
 }

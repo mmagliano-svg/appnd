@@ -1,0 +1,98 @@
+import { redirect } from 'next/navigation'
+import { createServerClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+
+interface Props {
+  searchParams: Promise<{ id?: string }>
+}
+
+export default async function CelebratePage({ searchParams }: Props) {
+  const supabase = await createServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) redirect('/auth/login')
+
+  const { id } = await searchParams
+  if (!id) redirect('/dashboard')
+
+  const { data: memory } = await supabase
+    .from('memories')
+    .select('id, title, happened_at')
+    .eq('id', id)
+    .eq('created_by', user.id)
+    .single()
+
+  if (!memory) redirect('/dashboard')
+
+  const happenedLabel = memory.happened_at
+    ? new Date(memory.happened_at).toLocaleDateString('it-IT', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null
+
+  return (
+    <main
+      className="h-[100dvh] flex flex-col items-center justify-center px-7 text-center"
+      style={{ background: '#F7F7F5' }}
+    >
+
+      {/* Celebration card */}
+      <div className="animate-ob-celebrate w-full max-w-sm space-y-10">
+
+        {/* Sparkle */}
+        <p className="text-4xl select-none" aria-hidden style={{ color: 'rgba(17,17,17,0.18)' }}>✦</p>
+
+        {/* Copy */}
+        <div className="space-y-3">
+          <h1
+            className="text-[30px] font-semibold leading-tight tracking-[-0.02em]"
+            style={{ color: '#111111' }}
+          >
+            Questo momento esiste
+          </h1>
+          <p className="text-[17px] leading-snug" style={{ color: '#909090' }}>
+            E può crescere nel tempo
+          </p>
+        </div>
+
+        {/* Memory preview card */}
+        <div
+          className="rounded-2xl bg-white px-5 py-4 text-left"
+          style={{ boxShadow: '0 2px 16px rgba(0,0,0,0.07), 0 0 0 1px rgba(0,0,0,0.05)' }}
+        >
+          <p
+            className="text-base font-semibold leading-tight line-clamp-2 mb-1.5"
+            style={{ color: '#111111' }}
+          >
+            {memory.title}
+          </p>
+          {happenedLabel && (
+            <p className="text-[13px]" style={{ color: '#ABABAB' }}>{happenedLabel}</p>
+          )}
+        </div>
+
+        {/* CTAs */}
+        <div className="space-y-3">
+          <Link
+            href={`/memories/${memory.id}`}
+            className="block w-full rounded-2xl py-4 text-[16px] font-medium text-center active:scale-[0.985] transition-transform"
+            style={{ background: '#6B5FE8', color: '#ffffff' }}
+          >
+            Vai al tuo momento
+          </Link>
+          <Link
+            href="/dashboard"
+            className="block w-full py-3 text-[14px] text-center"
+            style={{ color: 'rgba(17,17,17,0.30)' }}
+          >
+            Vai alla home
+          </Link>
+        </div>
+      </div>
+    </main>
+  )
+}

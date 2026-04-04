@@ -60,8 +60,9 @@ function NewMemoryForm() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null)
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null)
 
-  const periodFromUrl = searchParams.get('period')
-  const groupFromUrl  = searchParams.get('group')
+  const periodFromUrl   = searchParams.get('period')
+  const groupFromUrl    = searchParams.get('group')
+  const fromOnboarding  = searchParams.get('from') === 'onboarding'
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
@@ -183,7 +184,7 @@ function NewMemoryForm() {
           .from('memory-media')
           .upload(path, mediaFile, { upsert: false })
         if (uploadError) {
-          router.push(`/memories/${memoryId}`)
+          router.push(fromOnboarding ? `/onboarding/celebrate?id=${memoryId}` : `/memories/${memoryId}`)
           return
         }
         const { data: { publicUrl } } = supabase.storage
@@ -193,7 +194,9 @@ function NewMemoryForm() {
         await addMediaContribution(memoryId, publicUrl)
       }
 
-      if (selectedPeople.length > 0) {
+      if (fromOnboarding) {
+        router.push(`/onboarding/celebrate?id=${memoryId}`)
+      } else if (selectedPeople.length > 0) {
         router.push(`/memories/${memoryId}/share`)
       } else {
         router.push(`/memories/${memoryId}`)
