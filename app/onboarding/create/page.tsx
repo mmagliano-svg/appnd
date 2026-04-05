@@ -6,9 +6,6 @@ import { useRouter } from 'next/navigation'
 import type { MemoryDraft } from '@/lib/onboarding/draft'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
 
-export type { MemoryDraft }
-export { DRAFT_KEY }
-
 const PLACEHOLDERS = [
   'Estate insieme al mare',
   'Quel giorno sulla neve',
