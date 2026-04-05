@@ -77,9 +77,6 @@ const PLACEHOLDERS = [
 ]
 
 // ── Create-form animation phases ─────────────────────────────────────────
-// card      → card springs in (150–400ms)
-// input     → input area fades up (400–600ms)
-// breathing → card pulse (600–900ms), steady afterward
 type CreatePhase = 'card' | 'input' | 'breathing'
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -89,19 +86,17 @@ export function OnboardingFlow() {
   const [step, setStep] = useState(0)
   const [screenKey, setScreenKey] = useState(0)
 
-  // ── Layout switch (shows create form instead of onboarding screen) ─────
+  // ── Layout switch ──────────────────────────────────────────────────────
   const [showCreate, setShowCreate] = useState(false)
-
-  // ── Heading fade on last screen (before layout switch) ────────────────
   const [headingFading, setHeadingFading] = useState(false)
-
-  // ── Create-form animation phase ────────────────────────────────────────
   const [createPhase, setCreatePhase] = useState<CreatePhase>('card')
 
   // ── Create-form state ──────────────────────────────────────────────────
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [createError, setCreateError] = useState('')
+  const [inputFocused, setInputFocused] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
   const titleRef = useRef<HTMLInputElement>(null)
@@ -111,7 +106,7 @@ export function OnboardingFlow() {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  // Cycling placeholder — only active when input is visible
+  // ── Cycling placeholder ────────────────────────────────────────────────
   useEffect(() => {
     if (createPhase !== 'input' && createPhase !== 'breathing') return
     const id = setInterval(() => {
@@ -124,7 +119,7 @@ export function OnboardingFlow() {
     return () => clearInterval(id)
   }, [createPhase])
 
-  // Auto-focus title input when it becomes interactive
+  // ── Auto-focus on input phase ──────────────────────────────────────────
   useEffect(() => {
     if (createPhase === 'input') {
       const t = setTimeout(() => titleRef.current?.focus(), 200)
@@ -132,11 +127,19 @@ export function OnboardingFlow() {
     }
   }, [createPhase])
 
+  // ── Submit: animate card then navigate ────────────────────────────────
+  useEffect(() => {
+    if (!isSubmitting) return
+    const t = setTimeout(() => {
+      const trimmed = title.trim()
+      const draft = { title: trimmed, description: description.trim(), start_date: today }
+      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
+      router.push('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
+    }, 200)
+    return () => clearTimeout(t)
+  }, [isSubmitting, title, description, today, router])
+
   // ── Transition sequence ────────────────────────────────────────────────
-  // Step 1 (0–150ms):  fade out heading on onboarding screen
-  // Step 2 (150ms):    switch to create layout, card starts at scale(0.92)
-  // Step 3 (400ms):    input area fades up
-  // Step 4 (600ms):    breathing pulse on card
   function startCreateTransition() {
     setHeadingFading(true)
     setTimeout(() => {
@@ -156,9 +159,7 @@ export function OnboardingFlow() {
       titleRef.current?.focus()
       return
     }
-    const draft = { title: trimmed, description: description.trim(), start_date: today }
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
-    router.push('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
+    setIsSubmitting(true)
   }
 
   // ── Onboarding navigation ──────────────────────────────────────────────
@@ -180,13 +181,13 @@ export function OnboardingFlow() {
 
   const handleBack = useCallback(() => {
     if (showCreate) {
-      // Return to last onboarding screen
       setShowCreate(false)
       setHeadingFading(false)
       setCreatePhase('card')
       setTitle('')
       setDescription('')
       setCreateError('')
+      setIsSubmitting(false)
       return
     }
     if (step > 0) {
@@ -200,20 +201,25 @@ export function OnboardingFlow() {
 
   const canGoBack = showCreate || step > 0
 
-  // ── Computed animation values ─────────────────────────────────────────
-  const cardIn   = createPhase === 'card' || createPhase === 'input' || createPhase === 'breathing'
-  const inputIn  = createPhase === 'input' || createPhase === 'breathing'
-  const doBreathe = createPhase === 'breathing'
+  // ── Animation flags ───────────────────────────────────────────────────
+  const cardIn    = createPhase === 'card' || createPhase === 'input' || createPhase === 'breathing'
+  const inputIn   = createPhase === 'input' || createPhase === 'breathing'
+  const doBreathe = createPhase === 'breathing' && !isSubmitting
 
-  // ── CTA style ─────────────────────────────────────────────────────────
-  const ctaStyle = screen.accentCta
+  // ── CTA + input styles ────────────────────────────────────────────────
+  const ctaStyle  = screen.accentCta
     ? { background: '#6B5FE8', color: '#ffffff' }
     : { background: '#E8E8E5', color: '#111111' }
 
-  // ── Preview card title ────────────────────────────────────────────────
   const previewTitle = title.trim()
+  const hasTitle     = previewTitle.length > 0
 
-  // ── CREATE LAYOUT ──────────────────────────────────────────────────────
+  // Input border: purple when focused, standard otherwise
+  const inputBorderColor = inputFocused
+    ? '#6B5FE8'
+    : hasTitle ? 'rgba(17,17,17,0.20)' : 'rgba(17,17,17,0.10)'
+
+  // ── CREATE LAYOUT ─────────────────────────────────────────────────────
   if (showCreate) {
     return (
       <div
@@ -243,7 +249,7 @@ export function OnboardingFlow() {
           className="flex-1 flex flex-col px-6 pt-2 overflow-y-auto"
         >
 
-          {/* ── Preview card — springs in ──────────────────────────── */}
+          {/* ── Preview card — spring-in wrapper ──────────────────── */}
           <div
             style={{
               opacity: cardIn ? 1 : 0,
@@ -253,73 +259,63 @@ export function OnboardingFlow() {
               marginBottom: '2rem',
             }}
           >
-            <div
-              className="rounded-2xl overflow-hidden"
-              style={{
-                boxShadow: '0 4px 24px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.05)',
-                background: 'white',
-              }}
-            >
-              {/* Card photo area */}
+            {/* Tilt wrapper */}
+            <div style={{ transform: 'rotate(-0.8deg)' }}>
               <div
-                className="h-28 relative"
+                className="rounded-2xl overflow-hidden"
                 style={{
-                  background: 'linear-gradient(145deg, #D4956A 0%, #C17A4A 45%, #A85E35 100%)',
+                  boxShadow: '0 4px 28px rgba(0,0,0,0.09), 0 0 0 1px rgba(0,0,0,0.05)',
+                  background: 'white',
+                  animation: isSubmitting ? 'ob-card-submit 200ms ease-in-out' : undefined,
                 }}
               >
+                {/* Photo area — soft warm gradient */}
                 <div
-                  className="absolute inset-0 opacity-15"
-                  style={{
-                    backgroundImage: 'radial-gradient(circle at 25% 35%, rgba(255,255,255,0.4) 0%, transparent 55%)',
-                  }}
-                />
-                <div
-                  className="absolute inset-x-0 bottom-0 h-10"
-                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.20), transparent)' }}
-                />
-                {/* Avatar placeholder */}
-                <div className="absolute bottom-2.5 left-3 flex">
+                  className="h-28 relative"
+                  style={{ background: 'linear-gradient(135deg, #E8E6E1, #DCD8CF)' }}
+                >
                   <div
-                    className="w-5 h-5 rounded-full border-[1.5px] border-white/60 flex items-center justify-center text-white text-[7px] font-bold"
-                    style={{ background: 'rgba(60,40,20,0.70)' }}
+                    className="absolute inset-x-0 bottom-0 h-10"
+                    style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.08), transparent)' }}
+                  />
+                  {/* Date chip */}
+                  <div
+                    className="absolute top-2.5 right-2.5 rounded-full px-2 py-0.5 text-[8px] font-medium"
+                    style={{
+                      background: 'rgba(255,255,255,0.70)',
+                      backdropFilter: 'blur(6px)',
+                      color: 'rgba(17,17,17,0.55)',
+                    }}
                   >
-                    ○
+                    {todayLabel}
                   </div>
                 </div>
-                {/* Date chip */}
-                <div
-                  className="absolute top-2.5 right-2.5 rounded-full px-2 py-0.5 text-[8px] font-medium text-white/90"
-                  style={{ background: 'rgba(0,0,0,0.28)', backdropFilter: 'blur(6px)' }}
-                >
-                  {todayLabel}
-                </div>
-              </div>
 
-              {/* Live title preview */}
-              <div className="px-3.5 py-3">
-                {previewTitle ? (
-                  <p
-                    className="text-[14px] font-semibold leading-tight"
-                    style={{ color: '#111111', transition: 'color 150ms' }}
-                  >
-                    {previewTitle}
-                  </p>
-                ) : (
-                  <p
-                    className="text-[14px] font-medium leading-tight"
-                    style={{ color: 'rgba(17,17,17,0.22)' }}
-                  >
-                    Il nome del tuo momento…
-                  </p>
-                )}
-                <p className="text-[11px] mt-1" style={{ color: 'rgba(17,17,17,0.30)' }}>
-                  in creazione
-                </p>
+                {/* Live title preview */}
+                <div className="px-3.5 py-3 min-h-[52px]">
+                  {previewTitle ? (
+                    <p
+                      key="title-set"
+                      className="text-[14px] font-semibold leading-tight animate-ob-title-in"
+                      style={{ color: '#111111' }}
+                    >
+                      {previewTitle}
+                    </p>
+                  ) : (
+                    <p
+                      key="title-empty"
+                      className="text-[14px] font-medium leading-tight"
+                      style={{ color: 'rgba(17,17,17,0.22)' }}
+                    >
+                      Il nome del tuo momento…
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* ── Heading — fades up with input ─────────────────────── */}
+          {/* ── Heading ──────────────────────────────────────────────── */}
           <div
             style={{
               opacity: inputIn ? 1 : 0,
@@ -339,7 +335,7 @@ export function OnboardingFlow() {
             </p>
           </div>
 
-          {/* ── Title input ──────────────────────────────────────────── */}
+          {/* ── Title input ───────────────────────────────────────────── */}
           <div
             style={{
               opacity: inputIn ? 1 : 0,
@@ -353,13 +349,15 @@ export function OnboardingFlow() {
               type="text"
               value={title}
               onChange={(e) => { setTitle(e.target.value); setCreateError('') }}
+              onFocus={() => setInputFocused(true)}
+              onBlur={() => setInputFocused(false)}
               placeholder={placeholderVisible ? PLACEHOLDERS[placeholderIndex] : ''}
               className="w-full bg-transparent text-[21px] font-semibold focus:outline-none border-b pb-3 leading-snug tracking-tight"
               style={{
                 color: '#111111',
-                borderColor: title ? 'rgba(17,17,17,0.20)' : 'rgba(17,17,17,0.10)',
+                borderColor: inputBorderColor,
                 caretColor: '#6B5FE8',
-                transition: 'border-color 200ms',
+                transition: 'border-color 180ms ease',
               }}
             />
             {createError && (
@@ -367,7 +365,7 @@ export function OnboardingFlow() {
             )}
           </div>
 
-          {/* ── Optional description ──────────────────────────────── */}
+          {/* ── Optional description ──────────────────────────────────── */}
           <div
             style={{
               opacity: inputIn ? 1 : 0,
@@ -379,7 +377,7 @@ export function OnboardingFlow() {
               className="text-[10px] font-semibold uppercase tracking-widest mb-2.5"
               style={{ color: 'rgba(17,17,17,0.28)' }}
             >
-              C&apos;è qualcosa che vuoi ricordare subito?
+              C&apos;era qualcosa che non vuoi dimenticare?
               <span className="ml-1 normal-case font-normal" style={{ color: 'rgba(17,17,17,0.18)' }}>
                 — facoltativo
               </span>
@@ -401,7 +399,7 @@ export function OnboardingFlow() {
 
           <div className="flex-1 min-h-4" />
 
-          {/* ── Privacy note + CTA ───────────────────────────────── */}
+          {/* ── Privacy note + CTA ────────────────────────────────────── */}
           <div
             style={{
               opacity: inputIn ? 1 : 0,
@@ -417,8 +415,15 @@ export function OnboardingFlow() {
             </p>
             <button
               type="submit"
-              className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.97]"
-              style={{ background: '#6B5FE8', color: '#ffffff' }}
+              disabled={!hasTitle || isSubmitting}
+              className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] active:scale-[0.97]"
+              style={{
+                background: '#6B5FE8',
+                color: '#ffffff',
+                opacity: hasTitle ? 1 : 0.4,
+                transition: 'opacity 150ms ease, transform 100ms ease',
+                pointerEvents: hasTitle ? 'auto' : 'none',
+              }}
             >
               Salva questo momento
             </button>
@@ -436,7 +441,7 @@ export function OnboardingFlow() {
       style={{ background: '#F7F7F5' }}
     >
 
-      {/* ── Top bar ──────────────────────────────────────────────────── */}
+      {/* Top bar */}
       <div
         className="flex items-center justify-between px-5 pb-3"
         style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 20px)' }}
@@ -471,7 +476,7 @@ export function OnboardingFlow() {
         )}
       </div>
 
-      {/* ── Screen content ────────────────────────────────────────── */}
+      {/* Screen content */}
       <div
         key={screenKey}
         className="flex-1 flex flex-col items-center justify-center px-8 animate-ob-screen"
@@ -482,7 +487,6 @@ export function OnboardingFlow() {
           </div>
         )}
 
-        {/* Heading block — fades out on last screen when CTA is clicked */}
         <div
           className="text-center space-y-3 max-w-[300px]"
           style={{
@@ -497,25 +501,19 @@ export function OnboardingFlow() {
             {screen.title}
           </h1>
           {screen.subtitle ? (
-            <p
-              className="text-[17px] leading-snug font-medium"
-              style={{ color: '#555555' }}
-            >
+            <p className="text-[17px] leading-snug font-medium" style={{ color: '#555555' }}>
               {screen.subtitle}
             </p>
           ) : null}
           {screen.body ? (
-            <p
-              className="text-[15px] leading-snug"
-              style={{ color: '#ABABAB' }}
-            >
+            <p className="text-[15px] leading-snug" style={{ color: '#ABABAB' }}>
               {screen.body}
             </p>
           ) : null}
         </div>
       </div>
 
-      {/* ── CTA ──────────────────────────────────────────────────────── */}
+      {/* CTA */}
       <div
         className="px-6 pt-4"
         style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 40px)' }}

@@ -145,7 +145,7 @@ function LoginForm() {
               Nessuna password. Solo un link via email.
             </p>
             <p className="text-[12px] font-medium" style={{ color: 'rgba(17,17,17,0.35)' }}>
-              Non perderai nulla. Te lo promettiamo.
+              Non perderai nulla.
             </p>
           </div>
 
