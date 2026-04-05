@@ -288,6 +288,7 @@ export function OnboardingFlow() {
                       src={lastOnboardingImage}
                       alt=""
                       className="absolute inset-0 w-full h-full object-cover"
+                      style={{ objectPosition: 'center 25%' }}
                     />
                   )}
                   {/* Subtle overlay — keeps date chip readable */}
@@ -313,8 +314,8 @@ export function OnboardingFlow() {
                   {previewTitle ? (
                     <p
                       key="title-set"
-                      className="text-[14px] font-semibold leading-tight animate-ob-title-in"
-                      style={{ color: '#111111' }}
+                      className="text-[14px] font-bold leading-tight animate-ob-title-in"
+                      style={{ color: '#000000' }}
                     >
                       {previewTitle}
                     </p>
@@ -493,10 +494,12 @@ export function OnboardingFlow() {
         )}
       </div>
 
-      {/* Screen content */}
+      {/* Screen content — screen 7 ('create') starts near top to close gap above image */}
       <div
         key={screenKey}
-        className="flex-1 flex flex-col items-center justify-center px-8 animate-ob-screen"
+        className={`flex-1 flex flex-col items-center px-8 animate-ob-screen ${
+          screen.visual === 'create' ? 'justify-start pt-8' : 'justify-center'
+        }`}
       >
         {screen.visual !== 'none' && (
           <div className="mb-12 flex justify-center w-full">

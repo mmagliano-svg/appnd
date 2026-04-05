@@ -143,8 +143,8 @@ export default function OnboardingCreatePage() {
               {previewTitle ? (
                 <p
                   key="title-set"
-                  className="text-[14px] font-semibold leading-tight animate-ob-title-in"
-                  style={{ color: '#111111' }}
+                  className="text-[14px] font-bold leading-tight animate-ob-title-in"
+                  style={{ color: '#000000' }}
                 >
                   {previewTitle}
                 </p>

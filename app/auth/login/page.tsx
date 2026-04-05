@@ -140,14 +140,9 @@ function LoginForm() {
             </button>
           </form>
 
-          <div className="space-y-1 text-center">
-            <p className="text-[12px]" style={{ color: 'rgba(17,17,17,0.22)' }}>
-              Nessuna password. Solo un link via email.
-            </p>
-            <p className="text-[12px] font-medium" style={{ color: 'rgba(17,17,17,0.35)' }}>
-              Non perderai nulla.
-            </p>
-          </div>
+          <p className="text-center text-[12px]" style={{ color: 'rgba(17,17,17,0.30)' }}>
+            Ti mandiamo un link e il tuo momento sarà salvo.
+          </p>
 
         </div>
       </main>
