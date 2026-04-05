@@ -14,6 +14,7 @@ interface ScreenData {
   subtitle: string
   body?: string
   visual: VisualType
+  heroImage?: string   // passed into create card so same image "becomes" the card
   ctaLabel?: string
   accentCta?: boolean
 }
@@ -61,7 +62,8 @@ const SCREENS: ScreenData[] = [
     key: 'create',
     title: 'Inizia dal tuo\nprimo momento',
     subtitle: '',
-    visual: 'none',
+    visual: 'create',
+    heroImage: '/onboarding/photo-christmas.jpg',
     ctaLabel: 'Crea il tuo primo momento',
     accentCta: true,
   },
@@ -90,6 +92,9 @@ export function OnboardingFlow() {
   const [showCreate, setShowCreate] = useState(false)
   const [headingFading, setHeadingFading] = useState(false)
   const [createPhase, setCreatePhase] = useState<CreatePhase>('card')
+
+  // ── Hero image carried from last onboarding screen into create card ───
+  const [lastOnboardingImage, setLastOnboardingImage] = useState<string | null>(null)
 
   // ── Create-form state ──────────────────────────────────────────────────
   const [title, setTitle] = useState('')
@@ -141,6 +146,8 @@ export function OnboardingFlow() {
 
   // ── Transition sequence ────────────────────────────────────────────────
   function startCreateTransition() {
+    // Carry the hero image from the current screen (screen 7) into the card
+    setLastOnboardingImage(screen.heroImage ?? null)
     setHeadingFading(true)
     setTimeout(() => {
       setShowCreate(true)
@@ -188,6 +195,7 @@ export function OnboardingFlow() {
       setDescription('')
       setCreateError('')
       setIsSubmitting(false)
+      setLastOnboardingImage(null)
       return
     }
     if (step > 0) {
@@ -269,22 +277,31 @@ export function OnboardingFlow() {
                   animation: isSubmitting ? 'ob-card-submit 200ms ease-in-out' : undefined,
                 }}
               >
-                {/* Photo area — soft warm gradient */}
+                {/* Photo area — real image if carried from onboarding, else warm gradient */}
                 <div
-                  className="h-28 relative"
+                  className="h-28 relative overflow-hidden"
                   style={{ background: 'linear-gradient(135deg, #E8E6E1, #DCD8CF)' }}
                 >
+                  {lastOnboardingImage && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={lastOnboardingImage}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+                  {/* Subtle overlay — keeps date chip readable */}
                   <div
-                    className="absolute inset-x-0 bottom-0 h-10"
-                    style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.08), transparent)' }}
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.12))' }}
                   />
                   {/* Date chip */}
                   <div
                     className="absolute top-2.5 right-2.5 rounded-full px-2 py-0.5 text-[8px] font-medium"
                     style={{
-                      background: 'rgba(255,255,255,0.70)',
+                      background: 'rgba(0,0,0,0.28)',
                       backdropFilter: 'blur(6px)',
-                      color: 'rgba(17,17,17,0.55)',
+                      color: 'rgba(255,255,255,0.90)',
                     }}
                   >
                     {todayLabel}

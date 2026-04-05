@@ -13,6 +13,7 @@ export type VisualType =
   | 'perspective'  // screen 4 — snow photo with note bubbles
   | 'timeline'     // screen 5 — christmas photo with time hints
   | 'legacy'       // screen 6 — year typography
+  | 'create'       // screen 7 — conversion: christmas photo, full frame
   | 'none'
 
 export function OnboardingVisual({ type }: { type: VisualType }) {
@@ -21,6 +22,7 @@ export function OnboardingVisual({ type }: { type: VisualType }) {
     case 'perspective': return <PerspectiveVisual />
     case 'timeline':    return <TimelineVisual />
     case 'legacy':      return <LegacyVisual />
+    case 'create':      return <CreateVisual />
     default:            return null
   }
 }
@@ -219,6 +221,34 @@ function TimelineVisual() {
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// ── SCREEN 7 — conversion: "this moment already exists, save it" ─────────
+// Uses photo-christmas.jpg. Full-frame card, no decorations — the image
+// that will visually "become" the create card when the user taps CTA.
+
+function CreateVisual() {
+  return (
+    <div
+      className="w-[280px] rounded-3xl overflow-hidden"
+      style={{ boxShadow: '0 8px 40px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.04)' }}
+    >
+      <div className="relative h-56 overflow-hidden bg-red-50">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/onboarding/photo-christmas.jpg"
+          alt=""
+          className="w-full h-full object-cover animate-ob-photo"
+          style={{ transformOrigin: 'center center' }}
+        />
+        {/* Very subtle warm overlay — almost invisible */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.05))' }}
+        />
+      </div>
     </div>
   )
 }
