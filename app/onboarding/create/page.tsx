@@ -3,13 +3,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
-export interface MemoryDraft {
-  title: string
-  description: string
-  start_date: string
-}
+import type { MemoryDraft } from '@/lib/onboarding/draft'
+import { DRAFT_KEY } from '@/lib/onboarding/draft'
 
-export const DRAFT_KEY = 'appnd_ob_draft'
+export type { MemoryDraft }
+export { DRAFT_KEY }
 
 const PLACEHOLDERS = [
   'Estate insieme al mare',

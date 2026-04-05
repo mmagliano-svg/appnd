@@ -13,8 +13,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createMemoryReturnId } from '@/actions/memories'
 import { createClient } from '@/lib/supabase/client'
-import type { MemoryDraft } from '@/app/onboarding/create/page'
-import { DRAFT_KEY } from '@/app/onboarding/create/page'
+import type { MemoryDraft } from '@/lib/onboarding/draft'
+import { DRAFT_KEY } from '@/lib/onboarding/draft'
 
 type RestoreState = 'loading' | 'saving' | 'error' | 'no-draft'
 
