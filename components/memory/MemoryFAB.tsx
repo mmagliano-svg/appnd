@@ -54,7 +54,7 @@ export function MemoryFAB({ memoryId, contributeHref, memoryTitle }: MemoryFABPr
             </div>
             <div className="px-3 space-y-0.5">
 
-              {/* Contribute */}
+              {/* Add photo */}
               <Link
                 href={contributeHref}
                 onClick={() => setOpen(false)}
@@ -62,12 +62,29 @@ export function MemoryFAB({ memoryId, contributeHref, memoryTitle }: MemoryFABPr
               >
                 <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
                   <svg className="w-4 h-4 text-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-medium leading-none">Aggiungi qualcosa</p>
-                  <p className="text-xs text-muted-foreground/55 mt-1">Foto o pensiero</p>
+                  <p className="text-sm font-medium leading-none">Aggiungi una foto</p>
+                  <p className="text-xs text-muted-foreground/55 mt-1">Un momento di quel giorno</p>
+                </div>
+              </Link>
+
+              {/* Write a detail */}
+              <Link
+                href={`${contributeHref}?type=text`}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3.5 px-3 py-3.5 rounded-2xl hover:bg-muted/50 transition-colors active:bg-muted"
+              >
+                <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <svg className="w-4 h-4 text-foreground/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-medium leading-none">Scrivi un dettaglio</p>
+                  <p className="text-xs text-muted-foreground/55 mt-1">Qualcosa che ti è tornato in mente</p>
                 </div>
               </Link>
 

@@ -31,7 +31,7 @@ export function InviteShareButton({ memoryId, title }: InviteShareButtonProps) {
       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
       </svg>
-      Chiedi anche a loro
+      Invita chi era con te
     </button>
   )
 }

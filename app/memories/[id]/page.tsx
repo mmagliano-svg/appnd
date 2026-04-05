@@ -502,11 +502,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       </div>
 
-      {/* ── Emotional lines under hero ── */}
-      <div className="max-w-lg mx-auto px-5 mt-4 space-y-0.5">
-        <p className="text-base text-foreground/70">Questo momento è ancora qui</p>
-        <p className="text-sm text-foreground/50">Può continuare</p>
-      </div>
 
       {/* ── Shared memory — primary block, immediately after hero ── */}
       {sharedMemory && (
@@ -557,8 +552,32 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             )}
           </div>
 
+          {/* ── Emotional continuity lines ── */}
+          <div className="mt-5 space-y-1">
+            <p className="text-base text-foreground/70">Questo momento è ancora qui</p>
+            <p className="text-sm text-foreground/40">Un giorno che può continuare a vivere</p>
+          </div>
+
+          {/* ── Categories ── */}
+          {memoryCats.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-4">
+              {memoryCats.map((cat) => {
+                const c = getCategoryByValue(cat)
+                if (!c) return null
+                return (
+                  <span
+                    key={cat}
+                    className="inline-flex items-center gap-1 rounded-full border border-border/50 px-2.5 py-1 text-[11px] text-muted-foreground/60"
+                  >
+                    {c.emoji} {c.label}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+
           {/* Importance + badges row */}
-          <div className="flex flex-wrap items-center gap-2 mt-4">
+          <div className="flex flex-wrap items-center gap-2 mt-6">
             <ImportanceStars
               memoryId={params.id}
               initialValue={importanceLevel}
@@ -629,12 +648,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           {/* Description */}
           {memory.description && (
             <>
-              <p className="text-[10px] text-muted-foreground/35 mt-6 mb-0.5">Ti ricordi quando...</p>
-              <p data-fade-in className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap">
+              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mt-8 mb-2">Ti ricordi quando...</p>
+              <p data-fade-in className="text-lg leading-relaxed text-foreground/85 whitespace-pre-wrap">
                 {memory.description}
               </p>
-              <p className="text-sm text-muted-foreground/45 mt-5 leading-relaxed">
-                C'è qualcosa che ti è tornato in mente dopo?
+              <p className="text-sm text-foreground/40 mt-6 leading-relaxed italic">
+                C&apos;è qualcosa che ti è tornato in mente dopo?
               </p>
             </>
           )}
@@ -755,22 +774,37 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         )}
 
         {/* ── Living memory activation block ── */}
-        <div className="mt-8 mb-2">
-          <p className="text-[9px] uppercase tracking-widest text-muted-foreground/25 mb-4">
+        <div className="mt-10 mb-6">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-4">
             Questo momento può continuare
           </p>
-          <div className="space-y-0">
-            <div className="flex items-center gap-3 py-1.5">
-              <span className="text-[10px] text-muted-foreground/20 w-3 shrink-0 text-center leading-none">✦</span>
-              <p className="text-xs text-muted-foreground/45 leading-snug">Aggiungi qualcosa che ti è tornato in mente</p>
+          <div className="rounded-2xl border border-border/40 overflow-hidden divide-y divide-border/30">
+            <div className="flex items-center gap-4 px-4 py-3.5">
+              <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">
+                ✦
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-none text-foreground/80">Aggiungi un dettaglio</p>
+                <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Qualcosa che ti è tornato in mente ora</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 py-1.5">
-              <span className="text-[10px] text-muted-foreground/20 w-3 shrink-0 text-center leading-none">○</span>
-              <p className="text-xs text-muted-foreground/45 leading-snug">Invita chi era con te per vedere anche il loro punto di vista</p>
+            <div className="flex items-center gap-4 px-4 py-3.5">
+              <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">
+                ○
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-none text-foreground/80">Invita chi era con te</p>
+                <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Per vedere anche il loro punto di vista</p>
+              </div>
             </div>
-            <div className="flex items-center gap-3 py-1.5">
-              <span className="text-[10px] text-muted-foreground/20 w-3 shrink-0 text-center leading-none">↺</span>
-              <p className="text-xs text-muted-foreground/45 leading-snug">Quando questo momento ritorna, puoi aggiornarlo</p>
+            <div className="flex items-center gap-4 px-4 py-3.5">
+              <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">
+                ↺
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium leading-none text-foreground/80">Rivivilo nel tempo</p>
+                <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Quando questo momento ritorna, puoi aggiornarlo</p>
+              </div>
             </div>
           </div>
         </div>
@@ -780,8 +814,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <InlineContribute memoryId={params.id} />
         )}
 
-        {/* ── Memory timeline ── */}
+        {/* ── Fragments / gallery section ── */}
         <div id="contributi">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/35 mb-5">
+            Frammenti di quel giorno
+          </p>
           <MemoryTimeline
             contributions={contributions as TimelineFragment[]}
             happenedAt={memoryStartDate}
