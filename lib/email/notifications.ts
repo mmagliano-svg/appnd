@@ -1,6 +1,7 @@
 import { Resend } from 'resend'
+import { getServerAppUrl } from '@/lib/utils/app-url'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+const appUrl = getServerAppUrl()
 
 // ── Join notification ──────────────────────────────────────────────────────
 // Sent to the memory creator when someone accepts their invite.

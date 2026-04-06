@@ -2,6 +2,7 @@
 
 import { createServerClient, createAdminClient } from '@/lib/supabase/server'
 import { generateInviteToken } from '@/lib/utils/invite'
+import { getServerAppUrl } from '@/lib/utils/app-url'
 import { redirect } from 'next/navigation'
 import { Resend } from 'resend'
 import { sendJoinNotification } from '@/lib/email/notifications'
@@ -54,7 +55,7 @@ export async function createInvite(memoryId: string, email?: string) {
     throw new Error('Impossibile creare l\'invito. Riprova.')
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getServerAppUrl()
   const inviteUrl = `${appUrl}/invite/${token}`
   const inviterName = inviter?.display_name ?? inviter?.email ?? 'Qualcuno'
   const memoryTitle = memory?.title ?? 'un ricordo condiviso'
@@ -191,7 +192,7 @@ export async function createMemoryInvite(
   if (!personLink) throw new Error('Questa persona non è associata al ricordo.')
 
   const admin = createAdminClient()
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+  const appUrl = getServerAppUrl()
 
   // Reuse existing non-expired invite if present
   const { data: existing } = await admin
