@@ -524,7 +524,7 @@ export function OnboardingFlow() {
             <div className="space-y-3">
               {/* Option: photo */}
               <button
-                onClick={() => startCreateTransition()}
+                onClick={() => router.push('/create/photo')}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-transform active:scale-[0.97]"
                 style={{
                   background: 'white',
@@ -555,7 +555,7 @@ export function OnboardingFlow() {
 
               {/* Option: text */}
               <button
-                onClick={() => startCreateTransition()}
+                onClick={() => router.push('/create/text')}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-transform active:scale-[0.97]"
                 style={{
                   background: 'white',
