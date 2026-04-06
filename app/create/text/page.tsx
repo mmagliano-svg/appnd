@@ -12,7 +12,8 @@ export default function CreateTextPage() {
 
   const [title, setTitle]             = useState('')
   const [description, setDescription] = useState('')
-  const [inputFocused, setInputFocused] = useState(false)
+  const [inputFocused, setInputFocused]   = useState(false)
+  const [textareaFocused, setTextareaFocused] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Auto-focus on mount
@@ -83,7 +84,7 @@ export default function CreateTextPage() {
             className="text-[28px] font-semibold leading-tight tracking-[-0.02em] mb-2"
             style={{ color: '#111111' }}
           >
-            Come lo chiameresti?
+            Come lo chiami?
           </h1>
           <p className="text-[15px]" style={{ color: '#ABABAB' }}>
             Il nome che gli daresti se lo raccontassi a qualcuno.
@@ -100,12 +101,13 @@ export default function CreateTextPage() {
             onFocus={() => setInputFocused(true)}
             onBlur={() => setInputFocused(false)}
             placeholder="Natale tutti insieme"
-            className="w-full bg-transparent text-[24px] font-semibold focus:outline-none border-b pb-3 leading-snug tracking-tight"
+            className="w-full bg-transparent text-[24px] focus:outline-none border-b pb-3 leading-snug tracking-tight"
             style={{
-              color: '#111111',
+              color: hasTitle ? 'rgba(0,0,0,1)' : 'rgba(0,0,0,0.45)',
+              fontWeight: hasTitle ? 600 : 400,
               borderColor: inputBorderColor,
               caretColor: '#6B5FE8',
-              transition: 'border-color 180ms ease',
+              transition: 'border-color 180ms ease, color 120ms ease, font-weight 120ms ease',
             }}
           />
         </div>
@@ -124,14 +126,17 @@ export default function CreateTextPage() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onFocus={() => setTextareaFocused(true)}
+            onBlur={() => setTextareaFocused(false)}
             placeholder="Com'era? Chi c'era? Come ti sentivi?"
             rows={4}
             className="w-full rounded-2xl px-4 py-3 text-[15px] focus:outline-none resize-none leading-relaxed"
             style={{
               background: 'rgba(17,17,17,0.04)',
-              border: '1px solid rgba(17,17,17,0.07)',
+              border: `1px solid ${textareaFocused ? 'rgba(107,95,232,1)' : 'rgba(17,17,17,0.07)'}`,
               color: '#111111',
               caretColor: '#6B5FE8',
+              transition: 'border-color 150ms ease',
             }}
           />
         </div>
@@ -148,7 +153,7 @@ export default function CreateTextPage() {
               background: '#6B5FE8',
               color: '#ffffff',
               opacity: hasTitle ? 1 : 0.4,
-              transition: 'opacity 150ms ease, transform 100ms ease',
+              transition: 'all 150ms ease',
               pointerEvents: hasTitle ? 'auto' : 'none',
             }}
           >

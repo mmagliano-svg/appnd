@@ -17,7 +17,8 @@ export default function CreatePhotoPage() {
   const [imageUrl, setImageUrl]         = useState<string | null>(null)
   const [title, setTitle]               = useState('')
   const [description, setDescription]   = useState('')
-  const [inputFocused, setInputFocused] = useState(false)
+  const [inputFocused, setInputFocused]     = useState(false)
+  const [textareaFocused, setTextareaFocused] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Auto-focus title once image is selected
@@ -94,22 +95,21 @@ export default function CreatePhotoPage() {
               src="/onboarding/photo-christmas.jpg"
               alt=""
               className="w-full h-full object-cover"
-              style={{ opacity: 0.6, filter: 'blur(2px)', transform: 'scale(1.04)' }}
+              style={{ opacity: 0.75, filter: 'blur(1px)', transform: 'scale(1.04)' }}
             />
+            {/* Dark scrim for text legibility */}
+            <div className="absolute inset-0 bg-black/25" />
             {/* Bottom fade */}
             <div
               className="absolute inset-x-0 bottom-0 h-20 pointer-events-none"
-              style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.05))' }}
+              style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.10))' }}
             />
             {/* Overlay text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-              <p
-                className="text-[19px] font-semibold leading-snug tracking-[-0.02em] mb-1"
-                style={{ color: '#111111' }}
-              >
+              <p className="text-[19px] font-semibold leading-snug tracking-[-0.02em] mb-1 text-white">
                 Parti da una foto che conta
               </p>
-              <p className="text-[13px]" style={{ color: 'rgba(17,17,17,0.50)' }}>
+              <p className="text-[13px] text-white/80">
                 Ogni momento inizia da qualcosa che hai già
               </p>
             </div>
@@ -222,7 +222,7 @@ export default function CreatePhotoPage() {
             </div>
 
             {/* Live title preview */}
-            <div className="px-3.5 py-3 min-h-[52px]">
+            <div className="px-3.5 pt-4 pb-3 min-h-[56px]">
               {title.trim() ? (
                 <p
                   key="title-set"
@@ -278,14 +278,17 @@ export default function CreatePhotoPage() {
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onFocus={() => setTextareaFocused(true)}
+            onBlur={() => setTextareaFocused(false)}
             placeholder="Com'era? Chi c'era? Come ti sentivi?"
             rows={3}
             className="w-full rounded-2xl px-4 py-3 text-[14px] focus:outline-none resize-none leading-relaxed"
             style={{
               background: 'rgba(17,17,17,0.04)',
-              border: '1px solid rgba(17,17,17,0.07)',
+              border: `1px solid ${textareaFocused ? 'rgba(107,95,232,1)' : 'rgba(17,17,17,0.07)'}`,
               color: '#111111',
               caretColor: '#6B5FE8',
+              transition: 'border-color 150ms ease',
             }}
           />
         </div>
@@ -308,7 +311,7 @@ export default function CreatePhotoPage() {
               background: '#6B5FE8',
               color: '#ffffff',
               opacity: canSubmit ? 1 : 0.4,
-              transition: 'opacity 150ms ease, transform 100ms ease',
+              transition: 'all 150ms ease',
               pointerEvents: canSubmit ? 'auto' : 'none',
             }}
           >
