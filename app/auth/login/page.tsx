@@ -30,7 +30,7 @@ function LoginForm() {
     setStatus('loading')
     setErrorMessage('')
 
-    const redirectTo = `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback${next ? '?next=' + encodeURIComponent(next) : ''}`
+    const redirectTo = `${window.location.origin}/auth/callback${next ? '?next=' + encodeURIComponent(next) : ''}`
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
