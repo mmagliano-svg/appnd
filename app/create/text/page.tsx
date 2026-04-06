@@ -27,7 +27,9 @@ export default function CreateTextPage() {
     const t = setTimeout(() => {
       const draft = { title: title.trim(), description: description.trim(), start_date: today }
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
-      router.push('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
+      const authUrl = '/auth/login?next=' + encodeURIComponent('/onboarding/restore') +
+        '&title=' + encodeURIComponent(title.trim())
+      router.push(authUrl)
     }, 180)
     return () => clearTimeout(t)
   }, [isSubmitting, title, description, today, router])
@@ -71,6 +73,12 @@ export default function CreateTextPage() {
       >
         {/* Heading */}
         <div className="mb-10">
+          <p
+            className="text-[13px] mb-3"
+            style={{ color: 'rgba(17,17,17,0.35)' }}
+          >
+            Ogni momento inizia da una frase
+          </p>
           <h1
             className="text-[28px] font-semibold leading-tight tracking-[-0.02em] mb-2"
             style={{ color: '#111111' }}

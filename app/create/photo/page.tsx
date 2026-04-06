@@ -33,7 +33,9 @@ export default function CreatePhotoPage() {
     const t = setTimeout(() => {
       const draft = { title: title.trim(), description: description.trim(), start_date: today }
       try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
-      router.push('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
+      const authUrl = '/auth/login?next=' + encodeURIComponent('/onboarding/restore') +
+        '&title=' + encodeURIComponent(title.trim())
+      router.push(authUrl)
     }, 180)
     return () => clearTimeout(t)
   }, [isSubmitting, title, description, today, router])
@@ -80,18 +82,37 @@ export default function CreatePhotoPage() {
           </button>
         </div>
 
-        <div className="flex-1 flex flex-col px-6 pt-4 overflow-y-auto">
-          {/* Heading */}
-          <div className="mb-10">
-            <h1
-              className="text-[28px] font-semibold leading-tight tracking-[-0.02em] mb-2"
-              style={{ color: '#111111' }}
-            >
-              Aggiungi una foto
-            </h1>
-            <p className="text-[15px]" style={{ color: '#ABABAB' }}>
-              Da qualcosa che hai già
-            </p>
+        <div className="flex-1 flex flex-col px-6 pt-2 overflow-y-auto">
+
+          {/* ── Visual block ─────────────────────────────────────────────── */}
+          <div
+            className="w-full rounded-2xl overflow-hidden relative mb-8"
+            style={{ aspectRatio: '16/9' }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/onboarding/photo-christmas.jpg"
+              alt=""
+              className="w-full h-full object-cover"
+              style={{ opacity: 0.6, filter: 'blur(2px)', transform: 'scale(1.04)' }}
+            />
+            {/* Bottom fade */}
+            <div
+              className="absolute inset-x-0 bottom-0 h-20 pointer-events-none"
+              style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.05))' }}
+            />
+            {/* Overlay text */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+              <p
+                className="text-[19px] font-semibold leading-snug tracking-[-0.02em] mb-1"
+                style={{ color: '#111111' }}
+              >
+                Parti da una foto che conta
+              </p>
+              <p className="text-[13px]" style={{ color: 'rgba(17,17,17,0.50)' }}>
+                Ogni momento inizia da qualcosa che hai già
+              </p>
+            </div>
           </div>
 
           {/* Upload area */}
@@ -102,7 +123,7 @@ export default function CreatePhotoPage() {
             style={{
               aspectRatio: '4/3',
               background: 'rgba(17,17,17,0.04)',
-              border: '1.5px dashed rgba(17,17,17,0.14)',
+              border: '1.5px dashed rgba(17,17,17,0.18)',
             }}
           >
             <div
@@ -139,7 +160,7 @@ export default function CreatePhotoPage() {
   // ── STEP 2 — image selected, show card preview + form ─────────────────────
   return (
     <main
-      className="h-[100dvh] flex flex-col overflow-hidden"
+      className="h-[100dvh] flex flex-col overflow-hidden animate-create-step2-in"
       style={{ background: '#F7F7F5' }}
     >
       {/* Top bar */}

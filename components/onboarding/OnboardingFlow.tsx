@@ -165,6 +165,16 @@ export function OnboardingFlow() {
     }, 150)
   }
 
+  // ── Navigate with View Transition (fade-out → new page) ──────────────
+  function navigateTo(path: string) {
+    if (typeof document !== 'undefined' && 'startViewTransition' in document) {
+      (document as Document & { startViewTransition: (cb: () => void) => void })
+        .startViewTransition(() => router.push(path))
+    } else {
+      router.push(path)
+    }
+  }
+
   // ── Create-form submit ─────────────────────────────────────────────────
   function handleCreateSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -524,7 +534,7 @@ export function OnboardingFlow() {
             <div className="space-y-3">
               {/* Option: photo */}
               <button
-                onClick={() => router.push('/create/photo')}
+                onClick={() => navigateTo('/create/photo')}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-transform active:scale-[0.97]"
                 style={{
                   background: 'white',
@@ -555,7 +565,7 @@ export function OnboardingFlow() {
 
               {/* Option: text */}
               <button
-                onClick={() => router.push('/create/text')}
+                onClick={() => navigateTo('/create/text')}
                 className="w-full text-left rounded-2xl px-5 py-4 transition-transform active:scale-[0.97]"
                 style={{
                   background: 'white',

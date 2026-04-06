@@ -9,6 +9,7 @@ import { createBrowserClient } from '@supabase/ssr'
 function LoginForm() {
   const searchParams = useSearchParams()
   const next = searchParams.get('next') ?? ''
+  const momentTitle = searchParams.get('title') ?? ''
 
   // Emotional mode: user is coming from onboarding with a pending draft
   const isFromOnboarding = next.includes('/onboarding/restore')
@@ -103,7 +104,10 @@ function LoginForm() {
               Non perderlo
             </h1>
             <p className="text-[16px]" style={{ color: '#909090' }}>
-              Ti mandiamo un link per salvarlo per sempre.
+              {momentTitle
+                ? <>Ti mandiamo un link per salvare <span style={{ color: '#555555', fontWeight: 500 }}>&ldquo;{momentTitle}&rdquo;</span>.</>
+                : 'Ti mandiamo un link per salvarlo per sempre.'
+              }
             </p>
           </div>
 
