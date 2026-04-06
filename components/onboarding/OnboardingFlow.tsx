@@ -14,7 +14,8 @@ interface ScreenData {
   subtitle: string
   body?: string
   visual: VisualType
-  heroImage?: string   // passed into create card so same image "becomes" the card
+  screenType?: 'standard' | 'choice'  // 'choice' renders two-card picker instead of standard
+  heroImage?: string                   // passed into create card so same image "becomes" the card
   ctaLabel?: string
   accentCta?: boolean
 }
@@ -60,12 +61,19 @@ const SCREENS: ScreenData[] = [
   },
   {
     key: 'create',
-    title: 'Inizia dal tuo\nprimo momento',
-    subtitle: '',
+    title: 'Quel momento\nesiste già',
+    subtitle: 'Adesso puoi iniziare',
     visual: 'create',
     heroImage: '/onboarding/photo-christmas.jpg',
-    ctaLabel: 'Crea il tuo primo momento',
-    accentCta: true,
+    ctaLabel: 'Continua',
+  },
+  {
+    key: 'choice',
+    title: 'Da dove vuoi partire?',
+    subtitle: '',
+    visual: 'none',
+    screenType: 'choice',
+    heroImage: '/onboarding/photo-christmas.jpg', // carried into create card
   },
 ]
 
@@ -494,58 +502,142 @@ export function OnboardingFlow() {
         )}
       </div>
 
-      {/* Screen content — screen 7 ('create') starts near top to close gap above image */}
+      {/* Screen content */}
       <div
         key={screenKey}
-        className={`flex-1 flex flex-col items-center px-8 animate-ob-screen ${
-          screen.visual === 'create' ? 'justify-start pt-8' : 'justify-center'
+        className={`flex-1 flex flex-col items-center px-6 animate-ob-screen ${
+          screen.visual === 'create' ? 'justify-start pt-8 px-8'
+          : screen.screenType === 'choice' ? 'justify-center'
+          : 'justify-center px-8'
         }`}
       >
-        {screen.visual !== 'none' && (
-          <div className="mb-12 flex justify-center w-full">
-            <OnboardingVisual type={screen.visual} />
+        {/* ── Choice screen ─────────────────────────────────────────── */}
+        {screen.screenType === 'choice' ? (
+          <div className="w-full max-w-sm">
+            <h1
+              className="text-[28px] font-semibold leading-tight tracking-[-0.02em] mb-8 text-center"
+              style={{ color: '#111111' }}
+            >
+              {screen.title}
+            </h1>
+
+            <div className="space-y-3">
+              {/* Option: photo */}
+              <button
+                onClick={() => startCreateTransition()}
+                className="w-full text-left rounded-2xl px-5 py-4 transition-transform active:scale-[0.97]"
+                style={{
+                  background: 'white',
+                  border: '1px solid rgba(17,17,17,0.08)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[18px]"
+                    style={{ background: 'rgba(17,17,17,0.05)' }}
+                  >
+                    🖼️
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[16px] font-semibold leading-none" style={{ color: '#111111' }}>
+                      Aggiungi una foto
+                    </p>
+                    <p className="text-[13px] mt-1 leading-snug" style={{ color: 'rgba(17,17,17,0.40)' }}>
+                      Da qualcosa che hai già
+                    </p>
+                  </div>
+                  <svg className="w-4 h-4 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'rgba(17,17,17,0.20)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+              {/* Option: text */}
+              <button
+                onClick={() => startCreateTransition()}
+                className="w-full text-left rounded-2xl px-5 py-4 transition-transform active:scale-[0.97]"
+                style={{
+                  background: 'white',
+                  border: '1px solid rgba(17,17,17,0.08)',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-[18px]"
+                    style={{ background: 'rgba(17,17,17,0.05)' }}
+                  >
+                    ✏️
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[16px] font-semibold leading-none" style={{ color: '#111111' }}>
+                      Scrivi un momento
+                    </p>
+                    <p className="text-[13px] mt-1 leading-snug" style={{ color: 'rgba(17,17,17,0.40)' }}>
+                      Parti da quello che ricordi
+                    </p>
+                  </div>
+                  <svg className="w-4 h-4 shrink-0 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'rgba(17,17,17,0.20)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+            </div>
           </div>
+
+        ) : (
+          /* ── Standard screen ──────────────────────────────────────── */
+          <>
+            {screen.visual !== 'none' && (
+              <div className="mb-12 flex justify-center w-full">
+                <OnboardingVisual type={screen.visual} />
+              </div>
+            )}
+
+            <div
+              className="text-center space-y-3 max-w-[300px]"
+              style={{
+                opacity: headingFading ? 0 : 1,
+                transition: headingFading ? 'opacity 150ms ease' : undefined,
+              }}
+            >
+              <h1
+                className="text-[32px] font-semibold leading-tight tracking-[-0.02em] whitespace-pre-line"
+                style={{ color: '#111111' }}
+              >
+                {screen.title}
+              </h1>
+              {screen.subtitle ? (
+                <p className="text-[17px] leading-snug font-medium" style={{ color: '#555555' }}>
+                  {screen.subtitle}
+                </p>
+              ) : null}
+              {screen.body ? (
+                <p className="text-[15px] leading-snug" style={{ color: '#ABABAB' }}>
+                  {screen.body}
+                </p>
+              ) : null}
+            </div>
+          </>
         )}
+      </div>
 
+      {/* CTA — hidden for choice screen (cards are the CTAs) */}
+      {screen.screenType !== 'choice' && (
         <div
-          className="text-center space-y-3 max-w-[300px]"
-          style={{
-            opacity: headingFading ? 0 : 1,
-            transition: headingFading ? 'opacity 150ms ease' : undefined,
-          }}
+          className="px-6 pt-4"
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 40px)' }}
         >
-          <h1
-            className="text-[32px] font-semibold leading-tight tracking-[-0.02em] whitespace-pre-line"
-            style={{ color: '#111111' }}
+          <button
+            onClick={handleNext}
+            className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.97]"
+            style={ctaStyle}
           >
-            {screen.title}
-          </h1>
-          {screen.subtitle ? (
-            <p className="text-[17px] leading-snug font-medium" style={{ color: '#555555' }}>
-              {screen.subtitle}
-            </p>
-          ) : null}
-          {screen.body ? (
-            <p className="text-[15px] leading-snug" style={{ color: '#ABABAB' }}>
-              {screen.body}
-            </p>
-          ) : null}
+            {screen.ctaLabel ?? 'Continua'}
+          </button>
         </div>
-      </div>
-
-      {/* CTA */}
-      <div
-        className="px-6 pt-4"
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 40px)' }}
-      >
-        <button
-          onClick={handleNext}
-          className="w-full rounded-2xl py-4 text-[16px] font-medium tracking-[-0.01em] transition-transform active:scale-[0.97]"
-          style={ctaStyle}
-        >
-          {screen.ctaLabel ?? 'Continua'}
-        </button>
-      </div>
+      )}
 
     </div>
   )
