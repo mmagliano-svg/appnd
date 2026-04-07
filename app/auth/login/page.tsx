@@ -8,7 +8,8 @@ import { createBrowserClient } from '@supabase/ssr'
 
 function LoginForm() {
   const searchParams = useSearchParams()
-  const next = searchParams.get('next') ?? ''
+  const next        = searchParams.get('next')  ?? ''
+  const draft       = searchParams.get('draft') ?? ''
   const momentTitle = searchParams.get('title') ?? ''
 
   // Emotional mode: user is coming from onboarding with a pending draft
@@ -30,7 +31,14 @@ function LoginForm() {
     setStatus('loading')
     setErrorMessage('')
 
-    const redirectTo = `${window.location.origin}/auth/callback${next ? '?next=' + encodeURIComponent(next) : ''}`
+    // Build the callback URL with flat, top-level params only.
+    // draft and next are separate params — no nested query strings — so
+    // Supabase's emailRedirectTo allow-list matching works correctly and
+    // the token survives URL-encoding through the full email redirect chain.
+    const callbackParams = new URLSearchParams()
+    if (next)  callbackParams.set('next',  next)
+    if (draft) callbackParams.set('draft', draft)
+    const redirectTo = `${window.location.origin}/auth/callback?${callbackParams.toString()}`
 
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),

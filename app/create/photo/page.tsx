@@ -152,18 +152,16 @@ export default function CreatePhotoPage() {
       }
     }
 
-    // ── 4. Navigate to auth — draft token embedded in the next URL ──────────
-    // The full path /onboarding/restore?draft=TOKEN becomes the `next` param,
-    // so it survives URL-encoding through emailRedirectTo → callback → redirect.
-    const nextPath = draftToken
-      ? `/onboarding/restore?draft=${draftToken}`
-      : '/onboarding/restore'
+    // ── 4. Navigate to auth — flat params, no nested query strings ──────────
+    // draft and next are separate top-level params so they survive the full
+    // emailRedirectTo → callback → redirect chain without nested encoding.
+    const authParams = new URLSearchParams({
+      next:  '/onboarding/restore',
+      title: title.trim(),
+    })
+    if (draftToken) authParams.set('draft', draftToken)
 
-    const authUrl =
-      '/auth/login?next=' + encodeURIComponent(nextPath) +
-      '&title='           + encodeURIComponent(title.trim())
-
-    router.push(authUrl)
+    router.push('/auth/login?' + authParams.toString())
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────

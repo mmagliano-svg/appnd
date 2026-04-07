@@ -6,8 +6,10 @@ import type { Database } from '@/lib/supabase/types'
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
-  const next = requestUrl.searchParams.get('next') ?? '/dashboard'
+  const code  = requestUrl.searchParams.get('code')
+  // next and draft are flat top-level params — never nested inside each other
+  const next  = requestUrl.searchParams.get('next')  ?? '/dashboard'
+  const draft = requestUrl.searchParams.get('draft') ?? ''
 
   if (code) {
     const cookieStore = await cookies()
@@ -60,7 +62,14 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      return NextResponse.redirect(new URL(next, requestUrl.origin))
+      // Build the final destination URL.
+      // If a draft token was passed, append it explicitly to the destination so
+      // /onboarding/restore can fetch the server-persisted draft regardless of
+      // which browser or app context opened this link.
+      const destination = new URL(next, requestUrl.origin)
+      if (draft) destination.searchParams.set('draft', draft)
+
+      return NextResponse.redirect(destination)
     }
   }
 

@@ -60,16 +60,14 @@ export default function CreateTextPage() {
     }
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
 
-    // ── 3. Navigate to auth — draft token embedded in the next URL ──────────
-    const nextPath = draftToken
-      ? `/onboarding/restore?draft=${draftToken}`
-      : '/onboarding/restore'
+    // ── 3. Navigate to auth — flat params, no nested query strings ──────────
+    const authParams = new URLSearchParams({
+      next:  '/onboarding/restore',
+      title: title.trim(),
+    })
+    if (draftToken) authParams.set('draft', draftToken)
 
-    const authUrl =
-      '/auth/login?next=' + encodeURIComponent(nextPath) +
-      '&title='           + encodeURIComponent(title.trim())
-
-    router.push(authUrl)
+    router.push('/auth/login?' + authParams.toString())
   }
 
   // ── People helpers ─────────────────────────────────────────────────────────
