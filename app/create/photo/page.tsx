@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
-import type { MemoryDraft } from '@/lib/onboarding/draft'
+import type { MemoryDraft, DraftPerson } from '@/lib/onboarding/draft'
 
 // ── Image compression ────────────────────────────────────────────────────────
 // Shrinks user photo to ≤ 1280px wide at 80% JPEG quality before encoding to
@@ -61,6 +61,7 @@ export default function CreatePhotoPage() {
   const [imageFile,         setImageFile]         = useState<File | null>(null)
   const [title,             setTitle]             = useState('')
   const [description,       setDescription]       = useState('')
+  const [people,            setPeople]            = useState<DraftPerson[]>([])
   const [inputFocused,      setInputFocused]      = useState(false)
   const [textareaFocused,   setTextareaFocused]   = useState(false)
   const [isSubmitting,      setIsSubmitting]      = useState(false)
@@ -74,6 +75,18 @@ export default function CreatePhotoPage() {
   }, [imageUrl])
 
   // ── Handlers ───────────────────────────────────────────────────────────────
+
+  // ── People helpers ─────────────────────────────────────────────────────────
+  function addPerson() {
+    if (people.length >= 5) return
+    setPeople([...people, { value: '' }])
+  }
+  function updatePerson(i: number, value: string) {
+    setPeople(people.map((p, idx) => idx === i ? { value } : p))
+  }
+  function removePerson(i: number) {
+    setPeople(people.filter((_, idx) => idx !== i))
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -100,10 +113,11 @@ export default function CreatePhotoPage() {
 
     // ── 2. Build and persist draft ──────────────────────────────────────────
     const draft: MemoryDraft = {
-      title:       title.trim(),
-      description: description.trim(),
-      start_date:  today,
+      title:         title.trim(),
+      description:   description.trim(),
+      start_date:    today,
       image_data_url,
+      people:        people.filter(p => p.value.trim()).map(p => ({ value: p.value.trim() })),
     }
 
     try {
@@ -370,6 +384,69 @@ export default function CreatePhotoPage() {
               transition: 'border-color 150ms ease',
             }}
           />
+        </div>
+
+        {/* ── People section ──────────────────────────────────────── */}
+        <div className="mt-6 mb-2">
+          <div className="flex items-center justify-between mb-3">
+            <p
+              className="text-[10px] font-semibold uppercase tracking-widest"
+              style={{ color: 'rgba(17,17,17,0.28)' }}
+            >
+              Chi era con te?
+            </p>
+            <span className="text-[10px]" style={{ color: 'rgba(17,17,17,0.18)' }}>
+              — facoltativo
+            </span>
+          </div>
+
+          {people.length > 0 && (
+            <div className="space-y-2 mb-2">
+              {people.map((person, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={person.value}
+                    onChange={(e) => updatePerson(i, e.target.value)}
+                    placeholder="Nome o email"
+                    autoFocus={i === people.length - 1}
+                    className="flex-1 rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
+                    style={{
+                      background: 'rgba(17,17,17,0.04)',
+                      border:     '1px solid rgba(17,17,17,0.07)',
+                      color:      '#111111',
+                      caretColor: '#6B5FE8',
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePerson(i)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-transform"
+                    aria-label="Rimuovi"
+                    style={{ color: 'rgba(17,17,17,0.28)' }}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {people.length < 5 && (
+            <button
+              type="button"
+              onClick={addPerson}
+              className="flex items-center gap-1.5 text-[13px] active:opacity-50 transition-opacity"
+              style={{ color: '#6B5FE8' }}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Aggiungi una persona
+            </button>
+          )}
         </div>
 
         <div className="flex-1 min-h-4" />

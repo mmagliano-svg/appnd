@@ -17,11 +17,19 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createMemoryReturnId } from '@/actions/memories'
 import { addFragment } from '@/actions/contributions'
+import { createInvite } from '@/actions/invites'
 import { createClient } from '@/lib/supabase/client'
 import type { MemoryDraft } from '@/lib/onboarding/draft'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
 
-type RestoreState = 'loading' | 'saving' | 'uploading' | 'error' | 'no-draft'
+type RestoreState = 'loading' | 'saving' | 'uploading' | 'inviting' | 'error' | 'no-draft'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Returns true when a string looks like an email address */
+function looksLikeEmail(s: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -157,7 +165,24 @@ export default function OnboardingRestorePage() {
         await attachDraftPhoto(supabase, memoryId, draft.image_data_url)
       }
 
-      // Step 5 — clean up localStorage and navigate
+      // Step 5 — create invites for any email-based people in the draft
+      const emailPeople = (draft.people ?? [])
+        .map(p => p.value.trim())
+        .filter(v => v && looksLikeEmail(v))
+
+      if (emailPeople.length > 0) {
+        if (!cancelled) setState('inviting')
+        for (const email of emailPeople) {
+          try {
+            await createInvite(memoryId, email)
+          } catch (err) {
+            // An individual invite failure must never block the flow
+            console.error('[restore] invite failed for', email, err)
+          }
+        }
+      }
+
+      // Step 6 — clean up localStorage and navigate
       try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
 
       if (!cancelled) router.replace(`/onboarding/celebrate?id=${memoryId}`)
@@ -248,8 +273,9 @@ export default function OnboardingRestorePage() {
 
   // ── Loading / saving / uploading state (default) ─────────────────────────────
   const statusLabel =
-    state === 'saving'    ? 'Salvando il tuo momento…' :
-    state === 'uploading' ? 'Caricando la foto…'        :
+    state === 'saving'    ? 'Salvando il tuo momento…'   :
+    state === 'uploading' ? 'Caricando la foto…'          :
+    state === 'inviting'  ? 'Avvisando le persone…'       :
     'Un momento…'
 
   return (

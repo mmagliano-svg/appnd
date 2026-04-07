@@ -26,6 +26,15 @@ export default async function CelebratePage({ searchParams }: Props) {
 
   if (!memory) redirect('/dashboard')
 
+  // Count how many OTHER people have already been invited
+  const { count: inviteCount } = await supabase
+    .from('memory_participants')
+    .select('id', { count: 'exact', head: true })
+    .eq('memory_id', id)
+    .neq('user_id', user.id)
+
+  const invited = inviteCount ?? 0
+
   const happenedLabel = memory.happened_at
     ? new Date(memory.happened_at).toLocaleDateString('it-IT', {
         day: 'numeric',
@@ -39,8 +48,6 @@ export default async function CelebratePage({ searchParams }: Props) {
       className="h-[100dvh] flex flex-col items-center justify-center px-7 text-center"
       style={{ background: '#F7F7F5' }}
     >
-
-      {/* Celebration card */}
       <div className="animate-ob-celebrate w-full max-w-sm space-y-10">
 
         {/* Sparkle */}
@@ -55,7 +62,11 @@ export default async function CelebratePage({ searchParams }: Props) {
             Questo momento esiste
           </h1>
           <p className="text-[17px] leading-snug" style={{ color: '#909090' }}>
-            E può crescere nel tempo
+            {invited > 0
+              ? invited === 1
+                ? 'Abbiamo avvisato 1 persona che era con te'
+                : `Abbiamo avvisato ${invited} persone che erano con te`
+              : 'E può crescere nel tempo'}
           </p>
         </div>
 
@@ -77,13 +88,31 @@ export default async function CelebratePage({ searchParams }: Props) {
 
         {/* CTAs */}
         <div className="space-y-3">
+          {/* Primary: open the memory */}
           <Link
             href={`/memories/${memory.id}`}
             className="block w-full rounded-2xl py-4 text-[16px] font-medium text-center active:scale-[0.985] transition-transform"
             style={{ background: '#6B5FE8', color: '#ffffff' }}
           >
-            Vai al tuo momento
+            Continua questo momento →
           </Link>
+
+          {/* Secondary: invite someone if no one was added yet */}
+          {invited === 0 && (
+            <Link
+              href={`/memories/${memory.id}`}
+              className="block w-full rounded-2xl py-3.5 text-[15px] font-medium text-center active:scale-[0.985] transition-transform"
+              style={{
+                background: 'white',
+                border:     '1px solid rgba(17,17,17,0.10)',
+                color:      '#111111',
+                boxShadow:  '0 1px 8px rgba(0,0,0,0.04)',
+              }}
+            >
+              Invita chi era con te
+            </Link>
+          )}
+
           <Link
             href="/dashboard"
             className="block w-full py-3 text-[14px] text-center"
