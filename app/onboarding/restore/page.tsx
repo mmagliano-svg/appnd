@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createMemoryReturnId } from '@/actions/memories'
 import { addFragment } from '@/actions/contributions'
-import { createInvite } from '@/actions/invites'
+import { createInvite, addNameParticipant } from '@/actions/invites'
 import { createClient } from '@/lib/supabase/client'
 import type { MemoryDraft } from '@/lib/onboarding/draft'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
@@ -165,19 +165,27 @@ export default function OnboardingRestorePage() {
         await attachDraftPhoto(supabase, memoryId, draft.image_data_url)
       }
 
-      // Step 5 — create invites for any email-based people in the draft
-      const emailPeople = (draft.people ?? [])
-        .map(p => p.value.trim())
-        .filter(v => v && looksLikeEmail(v))
+      // Step 5 — process people from the draft
+      //   • value with @ → email invite (user will receive a magic link)
+      //   • value without @ → name-only participant row (no email sent)
+      //   • empty value → skip
+      const draftPeople = (draft.people ?? []).map(p => p.value.trim()).filter(Boolean)
 
-      if (emailPeople.length > 0) {
+      if (draftPeople.length > 0) {
         if (!cancelled) setState('inviting')
-        for (const email of emailPeople) {
-          try {
-            await createInvite(memoryId, email)
-          } catch (err) {
-            // An individual invite failure must never block the flow
-            console.error('[restore] invite failed for', email, err)
+        for (const value of draftPeople) {
+          if (looksLikeEmail(value)) {
+            try {
+              await createInvite(memoryId, value)
+            } catch (err) {
+              console.error('[restore] email invite failed for', value, err)
+            }
+          } else {
+            try {
+              await addNameParticipant(memoryId, value)
+            } catch (err) {
+              console.error('[restore] name participant failed for', value, err)
+            }
           }
         }
       }

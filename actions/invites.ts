@@ -228,6 +228,56 @@ export async function createMemoryInvite(
   return { token, inviteUrl: `${appUrl}/join/${token}` }
 }
 
+/**
+ * addNameParticipant
+ *
+ * Creates a name-only participant row on a memory.
+ * No email is stored, no invite email is sent.
+ * Used when the user adds someone by name only in the create flow.
+ *
+ * Requires the caller to be an authenticated participant of the memory.
+ * Uses the admin client to bypass RLS for the insert.
+ */
+export async function addNameParticipant(
+  memoryId: string,
+  name: string,
+): Promise<void> {
+  const supabase = await createServerClient()
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  if (userError || !user) throw new Error('Non autenticato.')
+
+  const name_trimmed = name.trim()
+  if (!name_trimmed) return   // empty — skip silently
+
+  // Verify caller participates in the memory
+  const { data: participant } = await supabase
+    .from('memory_participants')
+    .select('id')
+    .eq('memory_id', memoryId)
+    .eq('user_id', user.id)
+    .not('joined_at', 'is', null)
+    .maybeSingle()
+
+  if (!participant) throw new Error('Non sei autorizzato a modificare questo ricordo.')
+
+  const admin = createAdminClient()
+  const { error: insertError } = await admin
+    .from('memory_participants')
+    .insert({
+      memory_id:    memoryId,
+      display_name: name_trimmed,
+      user_id:      null,
+      invited_email: null,
+      invite_token: generateInviteToken(),  // still required by schema (unique)
+      joined_at:    null,                   // not joined — presence-only
+    })
+
+  if (insertError) {
+    throw new Error('Impossibile aggiungere la persona. Riprova.')
+  }
+}
+
 export async function removeParticipant(
   memoryId: string,
   participantId: string,

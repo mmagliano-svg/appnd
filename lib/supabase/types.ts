@@ -364,6 +364,7 @@ export interface Database {
           memory_id: string
           user_id: string | null
           invited_email: string | null
+          display_name: string | null
           invite_token: string
           joined_at: string | null
         }
@@ -372,6 +373,7 @@ export interface Database {
           memory_id: string
           user_id?: string | null
           invited_email?: string | null
+          display_name?: string | null
           invite_token: string
           joined_at?: string | null
         }
@@ -380,6 +382,7 @@ export interface Database {
           memory_id?: string
           user_id?: string | null
           invited_email?: string | null
+          display_name?: string | null
           invite_token?: string
           joined_at?: string | null
         }
