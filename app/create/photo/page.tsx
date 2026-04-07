@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
 import type { MemoryDraft, DraftPerson } from '@/lib/onboarding/draft'
+import { saveDraft } from '@/actions/drafts'
 
 // ── Image compression ────────────────────────────────────────────────────────
 // Shrinks user photo to ≤ 1280px wide at 80% JPEG quality before encoding to
@@ -108,43 +109,60 @@ export default function CreatePhotoPage() {
       image_data_url = await compressImageToDataUrl(imageFile)
     } catch {
       // Compression failed — continue without image rather than blocking the flow.
-      // The memory will still be created; only the photo won't be attached.
     }
 
-    // ── 2. Build and persist draft ──────────────────────────────────────────
+    const filteredPeople = people.filter(p => p.value.trim()).map(p => ({ value: p.value.trim() }))
+
+    // ── 2. Persist draft server-side (primary — survives cross-browser magic link) ──
+    let draftToken: string | undefined
+    try {
+      const result = await saveDraft({
+        title:       title.trim(),
+        description: description.trim(),
+        start_date:  today,
+        image_data:  image_data_url,
+        people:      filteredPeople,
+      })
+      draftToken = result.token
+    } catch (err) {
+      // Server draft failed — log and fall through to localStorage-only path.
+      // The user can still complete the flow if they stay in the same browser.
+      console.error('[create/photo] saveDraft failed:', err)
+    }
+
+    // ── 3. Also write to localStorage as secondary fallback (same-browser) ──
     const draft: MemoryDraft = {
       title:         title.trim(),
       description:   description.trim(),
       start_date:    today,
       image_data_url,
-      people:        people.filter(p => p.value.trim()).map(p => ({ value: p.value.trim() })),
+      people:        filteredPeople,
     }
-
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
-    } catch (err) {
-      // localStorage full — try again without the image so the memory at least saves
+    } catch {
+      // localStorage full — retry without the image
       if (image_data_url) {
         try {
           const { image_data_url: _dropped, ...withoutImage } = draft
           localStorage.setItem(DRAFT_KEY, JSON.stringify(withoutImage))
         } catch {
-          // Still failing — surface an error so the user knows
-          setIsSubmitting(false)
-          setSubmitError('Memoria del dispositivo piena. Rimuovi alcune app e riprova.')
-          return
+          // Ignore — server draft is the primary store
         }
-      } else {
-        setIsSubmitting(false)
-        setSubmitError('Impossibile salvare il momento. Riprova.')
-        return
       }
     }
 
-    // ── 3. Navigate to auth ─────────────────────────────────────────────────
+    // ── 4. Navigate to auth — draft token embedded in the next URL ──────────
+    // The full path /onboarding/restore?draft=TOKEN becomes the `next` param,
+    // so it survives URL-encoding through emailRedirectTo → callback → redirect.
+    const nextPath = draftToken
+      ? `/onboarding/restore?draft=${draftToken}`
+      : '/onboarding/restore'
+
     const authUrl =
-      '/auth/login?next=' + encodeURIComponent('/onboarding/restore') +
+      '/auth/login?next=' + encodeURIComponent(nextPath) +
       '&title='           + encodeURIComponent(title.trim())
+
     router.push(authUrl)
   }
 

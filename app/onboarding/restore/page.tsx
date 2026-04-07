@@ -1,23 +1,30 @@
 'use client'
 
 // ── /onboarding/restore ────────────────────────────────────────────────────
-// Landing page after auth in the onboarding flow.
-// Reads the memory draft stored in localStorage by /create/photo or /create/text,
-// creates the memory via server action, uploads any saved photo, then redirects.
 //
-// Auth flow:
+// Landing page after auth in the onboarding flow.
+//
+// Draft recovery priority:
+//   1. Server-side draft  → fetched by token from URL (?draft=TOKEN)
+//      This is the primary path and works across any browser context,
+//      including Gmail webview and other mobile apps.
+//   2. localStorage fallback → used when no token in URL (old flow / same browser)
+//
+// Full flow:
 //   /create/photo (or /create/text)
-//     → localStorage draft (title, description, start_date, image_data_url?)
-//     → /auth/login?next=/onboarding/restore
-//     → /onboarding/restore
-//     → createMemoryReturnId + optional photo upload
-//     → /onboarding/celebrate?id=xxx
+//     → saveDraft() → token
+//     → /auth/login?next=/onboarding/restore?draft=TOKEN
+//     → magic link email: emailRedirectTo includes next= with token
+//     → user clicks link (any browser/context)
+//     → /auth/callback → redirect to /onboarding/restore?draft=TOKEN
+//     → this page: fetchDraft(TOKEN) → create memory → celebrate
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createMemoryReturnId } from '@/actions/memories'
 import { addFragment } from '@/actions/contributions'
 import { createInvite, addNameParticipant } from '@/actions/invites'
+import { fetchDraft, consumeDraft } from '@/actions/drafts'
 import { createClient } from '@/lib/supabase/client'
 import type { MemoryDraft } from '@/lib/onboarding/draft'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
@@ -26,14 +33,10 @@ type RestoreState = 'loading' | 'saving' | 'uploading' | 'inviting' | 'error' | 
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-/** Returns true when a string looks like an email address */
 function looksLikeEmail(s: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim())
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Convert a base64 data-URL into a Blob */
 async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
   const res = await fetch(dataUrl)
   return res.blob()
@@ -42,23 +45,20 @@ async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
 /**
  * Upload the draft photo (base64 data-URL) to Supabase Storage, then create
  * a photo contribution linked to the newly created memory.
- * Returns silently on any failure — the memory is already saved, so a photo
- * upload failure should never break the flow.
+ * Returns silently on any failure — memory is already saved.
  */
 async function attachDraftPhoto(
   supabase: ReturnType<typeof createClient>,
   memoryId: string,
   imageDataUrl: string,
 ): Promise<void> {
-  // 1. Convert base64 → Blob
   let blob: Blob
   try {
     blob = await dataUrlToBlob(imageDataUrl)
   } catch {
-    return // conversion failed — silent fallback
+    return
   }
 
-  // 2. Upload to Supabase Storage (same bucket + path format as ContributeFlow)
   const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
   const path = `${memoryId}/${Date.now()}.${ext}`
 
@@ -71,14 +71,12 @@ async function attachDraftPhoto(
     return
   }
 
-  // 3. Get public URL
   const { data: { publicUrl } } = supabase.storage
     .from('memory-media')
     .getPublicUrl(path)
 
   if (!publicUrl) return
 
-  // 4. Create a photo contribution — links the image to the memory
   const result = await addFragment({
     memoryId,
     content_type: 'photo',
@@ -90,11 +88,14 @@ async function attachDraftPhoto(
   }
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Inner component (reads searchParams) ──────────────────────────────────────
 
-export default function OnboardingRestorePage() {
-  const router = useRouter()
-  const [state, setState] = useState<RestoreState>('loading')
+function RestoreContent() {
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const draftToken   = searchParams.get('draft') ?? ''
+
+  const [state,    setState]    = useState<RestoreState>('loading')
   const [errorMsg, setErrorMsg] = useState('')
 
   useEffect(() => {
@@ -112,17 +113,45 @@ export default function OnboardingRestorePage() {
       }
 
       if (!user) {
-        router.replace('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
+        // Re-attach draft token so recovery survives a re-login
+        const redirectBack = draftToken
+          ? `/onboarding/restore?draft=${draftToken}`
+          : '/onboarding/restore'
+        router.replace('/auth/login?next=' + encodeURIComponent(redirectBack))
         return
       }
 
-      // Step 2 — read draft from localStorage
+      // Step 2 — read draft
+      //   Primary:   server-side fetch by token (works in any browser context)
+      //   Fallback:  localStorage (same-browser path, backward compat)
       let draft: MemoryDraft | null = null
-      try {
-        const raw = localStorage.getItem(DRAFT_KEY)
-        if (raw) draft = JSON.parse(raw) as MemoryDraft
-      } catch {
-        // parse failed — show fallback
+
+      if (draftToken) {
+        try {
+          const serverDraft = await fetchDraft(draftToken)
+          if (serverDraft) {
+            draft = {
+              title:         serverDraft.title,
+              description:   serverDraft.description,
+              start_date:    serverDraft.start_date,
+              image_data_url: serverDraft.image_data,
+              people:        serverDraft.people,
+            }
+          }
+        } catch (err) {
+          console.error('[restore] fetchDraft failed:', err)
+          // Fall through to localStorage
+        }
+      }
+
+      // localStorage fallback (same-browser case, or server draft unavailable)
+      if (!draft?.title?.trim()) {
+        try {
+          const raw = localStorage.getItem(DRAFT_KEY)
+          if (raw) draft = JSON.parse(raw) as MemoryDraft
+        } catch {
+          // parse failed
+        }
       }
 
       if (!draft?.title?.trim()) {
@@ -166,31 +195,27 @@ export default function OnboardingRestorePage() {
       }
 
       // Step 5 — process people from the draft
-      //   • value with @ → email invite (user will receive a magic link)
-      //   • value without @ → name-only participant row (no email sent)
-      //   • empty value → skip
+      //   email → invite (magic link sent)
+      //   name  → presence-only participant row (no email)
       const draftPeople = (draft.people ?? []).map(p => p.value.trim()).filter(Boolean)
 
       if (draftPeople.length > 0) {
         if (!cancelled) setState('inviting')
         for (const value of draftPeople) {
           if (looksLikeEmail(value)) {
-            try {
-              await createInvite(memoryId, value)
-            } catch (err) {
-              console.error('[restore] email invite failed for', value, err)
-            }
+            try { await createInvite(memoryId, value) }
+            catch (err) { console.error('[restore] email invite failed for', value, err) }
           } else {
-            try {
-              await addNameParticipant(memoryId, value)
-            } catch (err) {
-              console.error('[restore] name participant failed for', value, err)
-            }
+            try { await addNameParticipant(memoryId, value) }
+            catch (err) { console.error('[restore] name participant failed for', value, err) }
           }
         }
       }
 
-      // Step 6 — clean up localStorage and navigate
+      // Step 6 — mark draft consumed + clean up localStorage
+      if (draftToken) {
+        try { await consumeDraft(draftToken) } catch { /* non-blocking */ }
+      }
       try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
 
       if (!cancelled) router.replace(`/onboarding/celebrate?id=${memoryId}`)
@@ -198,13 +223,17 @@ export default function OnboardingRestorePage() {
 
     restore()
     return () => { cancelled = true }
-  }, [router])
+  }, [router, draftToken])
 
   // ── Manual retry ────────────────────────────────────────────────────────────
   function handleRetry() {
     setState('loading')
     setErrorMsg('')
-    router.replace('/onboarding/restore')
+    // Preserve draft token on retry so recovery still works
+    const retryUrl = draftToken
+      ? `/onboarding/restore?draft=${draftToken}`
+      : '/onboarding/restore'
+    router.replace(retryUrl)
   }
 
   // ── No-draft fallback ────────────────────────────────────────────────────────
@@ -281,9 +310,9 @@ export default function OnboardingRestorePage() {
 
   // ── Loading / saving / uploading state (default) ─────────────────────────────
   const statusLabel =
-    state === 'saving'    ? 'Salvando il tuo momento…'   :
-    state === 'uploading' ? 'Caricando la foto…'          :
-    state === 'inviting'  ? 'Avvisando le persone…'       :
+    state === 'saving'    ? 'Salvando il tuo momento…'  :
+    state === 'uploading' ? 'Caricando la foto…'         :
+    state === 'inviting'  ? 'Avvisando le persone…'      :
     'Un momento…'
 
   return (
@@ -304,5 +333,27 @@ export default function OnboardingRestorePage() {
         </p>
       </div>
     </main>
+  )
+}
+
+// ── Page export — Suspense required for useSearchParams ───────────────────────
+
+export default function OnboardingRestorePage() {
+  return (
+    <Suspense
+      fallback={
+        <main
+          className="h-[100dvh] flex flex-col items-center justify-center px-8 text-center"
+          style={{ background: '#F7F7F5' }}
+        >
+          <div
+            className="w-10 h-10 rounded-full border-2 animate-spin"
+            style={{ borderColor: 'rgba(17,17,17,0.08)', borderTopColor: '#6B5FE8' }}
+          />
+        </main>
+      }
+    >
+      <RestoreContent />
+    </Suspense>
   )
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
 import type { MemoryDraft, DraftPerson } from '@/lib/onboarding/draft'
+import { saveDraft } from '@/actions/drafts'
 
 export default function CreateTextPage() {
   const router    = useRouter()
@@ -25,29 +26,50 @@ export default function CreateTextPage() {
     return () => clearTimeout(t)
   }, [])
 
-  // Navigate after submit animation
-  useEffect(() => {
-    if (!isSubmitting) return
-    const t = setTimeout(() => {
-      const draft: MemoryDraft = {
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!title.trim() || isSubmitting) return
+    setIsSubmitting(true)
+
+    // Small delay so the button shows "Un momento…" before the async work starts
+    await new Promise(r => setTimeout(r, 100))
+
+    const filteredPeople = people.filter(p => p.value.trim()).map(p => ({ value: p.value.trim() }))
+
+    // ── 1. Persist draft server-side (primary — survives cross-browser magic link) ──
+    let draftToken: string | undefined
+    try {
+      const result = await saveDraft({
         title:       title.trim(),
         description: description.trim(),
         start_date:  today,
-        people:      people.filter(p => p.value.trim()).map(p => ({ value: p.value.trim() })),
-      }
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
-      const authUrl =
-        '/auth/login?next=' + encodeURIComponent('/onboarding/restore') +
-        '&title='           + encodeURIComponent(title.trim())
-      router.push(authUrl)
-    }, 180)
-    return () => clearTimeout(t)
-  }, [isSubmitting, title, description, people, today, router])
+        people:      filteredPeople,
+      })
+      draftToken = result.token
+    } catch (err) {
+      // Server draft failed — fall through to localStorage-only path
+      console.error('[create/text] saveDraft failed:', err)
+    }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!title.trim()) return
-    setIsSubmitting(true)
+    // ── 2. Also write to localStorage as secondary fallback (same-browser) ──
+    const draft: MemoryDraft = {
+      title:       title.trim(),
+      description: description.trim(),
+      start_date:  today,
+      people:      filteredPeople,
+    }
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
+
+    // ── 3. Navigate to auth — draft token embedded in the next URL ──────────
+    const nextPath = draftToken
+      ? `/onboarding/restore?draft=${draftToken}`
+      : '/onboarding/restore'
+
+    const authUrl =
+      '/auth/login?next=' + encodeURIComponent(nextPath) +
+      '&title='           + encodeURIComponent(title.trim())
+
+    router.push(authUrl)
   }
 
   // ── People helpers ─────────────────────────────────────────────────────────

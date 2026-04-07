@@ -16,6 +16,45 @@ export type RelationshipType = 'family' | 'partner' | 'child' | 'parent' | 'sibl
 export interface Database {
   public: {
     Tables: {
+      onboarding_drafts: {
+        Row: {
+          id: string
+          token: string
+          title: string
+          description: string | null
+          start_date: string
+          image_data: string | null
+          people: Json | null
+          consumed_at: string | null
+          expires_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          token?: string
+          title: string
+          description?: string | null
+          start_date?: string
+          image_data?: string | null
+          people?: Json | null
+          consumed_at?: string | null
+          expires_at?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          token?: string
+          title?: string
+          description?: string | null
+          start_date?: string
+          image_data?: string | null
+          people?: Json | null
+          consumed_at?: string | null
+          expires_at?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       people: {
         Row: {
           id: string
