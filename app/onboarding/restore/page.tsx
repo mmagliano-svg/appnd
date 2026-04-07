@@ -2,21 +2,87 @@
 
 // ── /onboarding/restore ────────────────────────────────────────────────────
 // Landing page after auth in the onboarding flow.
-// Reads the memory draft stored in localStorage by /onboarding/create,
-// creates the memory via server action, then redirects to celebrate page.
+// Reads the memory draft stored in localStorage by /create/photo or /create/text,
+// creates the memory via server action, uploads any saved photo, then redirects.
 //
 // Auth flow:
-//   /onboarding/create → localStorage draft → /auth/login?next=/onboarding/restore
-//   → /onboarding/restore → createMemoryReturnId → /onboarding/celebrate?id=xxx
+//   /create/photo (or /create/text)
+//     → localStorage draft (title, description, start_date, image_data_url?)
+//     → /auth/login?next=/onboarding/restore
+//     → /onboarding/restore
+//     → createMemoryReturnId + optional photo upload
+//     → /onboarding/celebrate?id=xxx
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createMemoryReturnId } from '@/actions/memories'
+import { addFragment } from '@/actions/contributions'
 import { createClient } from '@/lib/supabase/client'
 import type { MemoryDraft } from '@/lib/onboarding/draft'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
 
-type RestoreState = 'loading' | 'saving' | 'error' | 'no-draft'
+type RestoreState = 'loading' | 'saving' | 'uploading' | 'error' | 'no-draft'
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Convert a base64 data-URL into a Blob */
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const res = await fetch(dataUrl)
+  return res.blob()
+}
+
+/**
+ * Upload the draft photo (base64 data-URL) to Supabase Storage, then create
+ * a photo contribution linked to the newly created memory.
+ * Returns silently on any failure — the memory is already saved, so a photo
+ * upload failure should never break the flow.
+ */
+async function attachDraftPhoto(
+  supabase: ReturnType<typeof createClient>,
+  memoryId: string,
+  imageDataUrl: string,
+): Promise<void> {
+  // 1. Convert base64 → Blob
+  let blob: Blob
+  try {
+    blob = await dataUrlToBlob(imageDataUrl)
+  } catch {
+    return // conversion failed — silent fallback
+  }
+
+  // 2. Upload to Supabase Storage (same bucket + path format as ContributeFlow)
+  const ext  = blob.type === 'image/png' ? 'png' : 'jpg'
+  const path = `${memoryId}/${Date.now()}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('memory-media')
+    .upload(path, blob, { contentType: blob.type, upsert: false })
+
+  if (uploadError) {
+    console.error('[restore] photo upload failed:', uploadError.message)
+    return
+  }
+
+  // 3. Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('memory-media')
+    .getPublicUrl(path)
+
+  if (!publicUrl) return
+
+  // 4. Create a photo contribution — links the image to the memory
+  const result = await addFragment({
+    memoryId,
+    content_type: 'photo',
+    media_url: publicUrl,
+  })
+
+  if (result.error) {
+    console.error('[restore] addFragment failed:', result.error)
+  }
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function OnboardingRestorePage() {
   const router = useRouter()
@@ -27,7 +93,7 @@ export default function OnboardingRestorePage() {
     let cancelled = false
 
     async function restore() {
-      // Step 1 — ensure user is authenticated (retry up to 5× for session propagation lag)
+      // Step 1 — ensure user is authenticated (retry up to 5× for session lag)
       const supabase = createClient()
       let user = null
 
@@ -38,7 +104,6 @@ export default function OnboardingRestorePage() {
       }
 
       if (!user) {
-        // Session never established — send back to auth
         router.replace('/auth/login?next=' + encodeURIComponent('/onboarding/restore'))
         return
       }
@@ -49,11 +114,10 @@ export default function OnboardingRestorePage() {
         const raw = localStorage.getItem(DRAFT_KEY)
         if (raw) draft = JSON.parse(raw) as MemoryDraft
       } catch {
-        // parse failed — proceed without draft (show fallback)
+        // parse failed — show fallback
       }
 
       if (!draft?.title?.trim()) {
-        // No draft found — let user create directly (already logged in)
         if (!cancelled) setState('no-draft')
         return
       }
@@ -61,52 +125,56 @@ export default function OnboardingRestorePage() {
       if (cancelled) return
       setState('saving')
 
-      // Step 3 — create memory (retry once on transient server error)
+      // Step 3 — create memory (retry once on transient error)
+      let memoryId: string | null = null
+
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
-          const memoryId = await createMemoryReturnId({
-            title: draft.title,
-            start_date: draft.start_date,
+          memoryId = await createMemoryReturnId({
+            title:       draft.title,
+            start_date:  draft.start_date,
             description: draft.description || undefined,
-            categories: [],
-            tags: [],
+            categories:  [],
+            tags:        [],
           })
-
-          // Clean up draft
-          try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
-
-          if (!cancelled) router.replace(`/onboarding/celebrate?id=${memoryId}`)
-          return
+          break
         } catch (err) {
           if (attempt < 1) {
-            // Wait before retry
             await new Promise((r) => setTimeout(r, 1000))
             continue
           }
-          // Both attempts failed
           const msg = err instanceof Error ? err.message : 'Qualcosa è andato storto.'
-          if (!cancelled) {
-            setState('error')
-            setErrorMsg(msg)
-          }
+          if (!cancelled) { setState('error'); setErrorMsg(msg) }
           return
         }
       }
+
+      if (!memoryId || cancelled) return
+
+      // Step 4 — upload photo if the draft carried one
+      if (draft.image_data_url) {
+        if (!cancelled) setState('uploading')
+        await attachDraftPhoto(supabase, memoryId, draft.image_data_url)
+      }
+
+      // Step 5 — clean up localStorage and navigate
+      try { localStorage.removeItem(DRAFT_KEY) } catch { /* noop */ }
+
+      if (!cancelled) router.replace(`/onboarding/celebrate?id=${memoryId}`)
     }
 
     restore()
     return () => { cancelled = true }
   }, [router])
 
-  // ── Manual retry ──────────────────────────────────────────────────────────
+  // ── Manual retry ────────────────────────────────────────────────────────────
   function handleRetry() {
     setState('loading')
     setErrorMsg('')
-    // Re-run the effect by navigating to the same page
     router.replace('/onboarding/restore')
   }
 
-  // ── No draft fallback ────────────────────────────────────────────────────
+  // ── No-draft fallback ────────────────────────────────────────────────────────
   if (state === 'no-draft') {
     return (
       <main
@@ -142,7 +210,7 @@ export default function OnboardingRestorePage() {
     )
   }
 
-  // ── Error state ───────────────────────────────────────────────────────────
+  // ── Error state ──────────────────────────────────────────────────────────────
   if (state === 'error') {
     return (
       <main
@@ -178,23 +246,27 @@ export default function OnboardingRestorePage() {
     )
   }
 
-  // ── Loading / saving state (default) ─────────────────────────────────────
+  // ── Loading / saving / uploading state (default) ─────────────────────────────
+  const statusLabel =
+    state === 'saving'    ? 'Salvando il tuo momento…' :
+    state === 'uploading' ? 'Caricando la foto…'        :
+    'Un momento…'
+
   return (
     <main
       className="h-[100dvh] flex flex-col items-center justify-center px-8 text-center"
       style={{ background: '#F7F7F5' }}
     >
       <div className="space-y-4">
-        {/* Spinner */}
         <div
           className="mx-auto w-10 h-10 rounded-full border-2 animate-spin"
           style={{
-            borderColor: 'rgba(17,17,17,0.08)',
+            borderColor:    'rgba(17,17,17,0.08)',
             borderTopColor: '#6B5FE8',
           }}
         />
         <p className="text-[15px]" style={{ color: '#ABABAB' }}>
-          {state === 'saving' ? 'Salvando il tuo momento…' : 'Un momento…'}
+          {statusLabel}
         </p>
       </div>
     </main>

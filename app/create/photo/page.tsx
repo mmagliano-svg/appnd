@@ -3,23 +3,68 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { DRAFT_KEY } from '@/lib/onboarding/draft'
+import type { MemoryDraft } from '@/lib/onboarding/draft'
+
+// ── Image compression ────────────────────────────────────────────────────────
+// Shrinks user photo to ≤ 1280px wide at 80% JPEG quality before encoding to
+// base64.  Typical result: 80–250 KB as base64 string — well inside the 5 MB
+// localStorage budget.
+
+async function compressImageToDataUrl(file: File): Promise<string> {
+  const MAX_WIDTH = 1280
+  const QUALITY  = 0.80
+
+  return new Promise((resolve, reject) => {
+    const img    = new Image()
+    const blobUrl = URL.createObjectURL(file)
+
+    img.onload = () => {
+      URL.revokeObjectURL(blobUrl)
+
+      let { width, height } = img
+      if (width > MAX_WIDTH) {
+        height = Math.round(height * MAX_WIDTH / width)
+        width  = MAX_WIDTH
+      }
+
+      const canvas = document.createElement('canvas')
+      canvas.width  = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { reject(new Error('canvas ctx')); return }
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', QUALITY))
+    }
+
+    img.onerror = () => {
+      URL.revokeObjectURL(blobUrl)
+      reject(new Error('image load failed'))
+    }
+    img.src = blobUrl
+  })
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function CreatePhotoPage() {
-  const router = useRouter()
+  const router      = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const titleRef = useRef<HTMLInputElement>(null)
+  const titleRef    = useRef<HTMLInputElement>(null)
 
-  const today = new Date().toISOString().split('T')[0]
+  const today      = new Date().toISOString().split('T')[0]
   const todayLabel = new Date().toLocaleDateString('it-IT', {
     day: 'numeric', month: 'long', year: 'numeric',
   })
 
-  const [imageUrl, setImageUrl]         = useState<string | null>(null)
-  const [title, setTitle]               = useState('')
-  const [description, setDescription]   = useState('')
-  const [inputFocused, setInputFocused]     = useState(false)
-  const [textareaFocused, setTextareaFocused] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [imageUrl,          setImageUrl]          = useState<string | null>(null)
+  const [imageFile,         setImageFile]         = useState<File | null>(null)
+  const [title,             setTitle]             = useState('')
+  const [description,       setDescription]       = useState('')
+  const [inputFocused,      setInputFocused]      = useState(false)
+  const [textareaFocused,   setTextareaFocused]   = useState(false)
+  const [isSubmitting,      setIsSubmitting]      = useState(false)
+  const [submitError,       setSubmitError]       = useState('')
 
   // Auto-focus title once image is selected
   useEffect(() => {
@@ -28,37 +73,77 @@ export default function CreatePhotoPage() {
     return () => clearTimeout(t)
   }, [imageUrl])
 
-  // Navigate after submit animation
-  useEffect(() => {
-    if (!isSubmitting) return
-    const t = setTimeout(() => {
-      const draft = { title: title.trim(), description: description.trim(), start_date: today }
-      try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)) } catch { /* noop */ }
-      const authUrl = '/auth/login?next=' + encodeURIComponent('/onboarding/restore') +
-        '&title=' + encodeURIComponent(title.trim())
-      router.push(authUrl)
-    }, 180)
-    return () => clearTimeout(t)
-  }, [isSubmitting, title, description, today, router])
+  // ── Handlers ───────────────────────────────────────────────────────────────
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
-    const url = URL.createObjectURL(file)
-    setImageUrl(url)
+    setImageFile(file)
+    setImageUrl(URL.createObjectURL(file))
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !imageUrl) return
+    if (!title.trim() || !imageUrl || !imageFile || isSubmitting) return
+
     setIsSubmitting(true)
+    setSubmitError('')
+
+    // ── 1. Compress image to base64 ─────────────────────────────────────────
+    let image_data_url: string | undefined
+    try {
+      image_data_url = await compressImageToDataUrl(imageFile)
+    } catch {
+      // Compression failed — continue without image rather than blocking the flow.
+      // The memory will still be created; only the photo won't be attached.
+    }
+
+    // ── 2. Build and persist draft ──────────────────────────────────────────
+    const draft: MemoryDraft = {
+      title:       title.trim(),
+      description: description.trim(),
+      start_date:  today,
+      image_data_url,
+    }
+
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+    } catch (err) {
+      // localStorage full — try again without the image so the memory at least saves
+      if (image_data_url) {
+        try {
+          const { image_data_url: _dropped, ...withoutImage } = draft
+          localStorage.setItem(DRAFT_KEY, JSON.stringify(withoutImage))
+        } catch {
+          // Still failing — surface an error so the user knows
+          setIsSubmitting(false)
+          setSubmitError('Memoria del dispositivo piena. Rimuovi alcune app e riprova.')
+          return
+        }
+      } else {
+        setIsSubmitting(false)
+        setSubmitError('Impossibile salvare il momento. Riprova.')
+        return
+      }
+    }
+
+    // ── 3. Navigate to auth ─────────────────────────────────────────────────
+    const authUrl =
+      '/auth/login?next=' + encodeURIComponent('/onboarding/restore') +
+      '&title='           + encodeURIComponent(title.trim())
+    router.push(authUrl)
   }
 
-  const hasTitle         = title.trim().length > 0
-  const canSubmit        = hasTitle && !!imageUrl
-  const inputBorderColor = inputFocused ? '#6B5FE8' : hasTitle ? 'rgba(17,17,17,0.20)' : 'rgba(17,17,17,0.10)'
+  // ── Derived ────────────────────────────────────────────────────────────────
+  const hasTitle    = title.trim().length > 0
+  const canSubmit   = hasTitle && !!imageUrl
+  const borderColor = inputFocused
+    ? '#6B5FE8'
+    : hasTitle
+    ? 'rgba(17,17,17,0.20)'
+    : 'rgba(17,17,17,0.10)'
 
-  // ── STEP 1 — no image selected ────────────────────────────────────────────
+  // ── STEP 1 — no image selected ─────────────────────────────────────────────
   if (!imageUrl) {
     return (
       <main
@@ -97,14 +182,11 @@ export default function CreatePhotoPage() {
               className="w-full h-full object-cover"
               style={{ opacity: 0.75, filter: 'blur(1px)', transform: 'scale(1.04)' }}
             />
-            {/* Dark scrim for text legibility */}
             <div className="absolute inset-0 bg-black/25" />
-            {/* Bottom fade */}
             <div
               className="absolute inset-x-0 bottom-0 h-20 pointer-events-none"
               style={{ background: 'linear-gradient(to bottom, transparent, rgba(0,0,0,0.10))' }}
             />
-            {/* Overlay text */}
             <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
               <p className="text-[19px] font-semibold leading-snug tracking-[-0.02em] mb-1 text-white">
                 Parti da una foto che conta
@@ -135,10 +217,7 @@ export default function CreatePhotoPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M12 4v16m8-8H4" />
               </svg>
             </div>
-            <span
-              className="text-[15px] font-medium"
-              style={{ color: 'rgba(17,17,17,0.40)' }}
-            >
+            <span className="text-[15px] font-medium" style={{ color: 'rgba(17,17,17,0.40)' }}>
               Scegli dalla libreria
             </span>
           </button>
@@ -157,7 +236,7 @@ export default function CreatePhotoPage() {
     )
   }
 
-  // ── STEP 2 — image selected, show card preview + form ─────────────────────
+  // ── STEP 2 — image selected, show card preview + form ──────────────────────
   return (
     <main
       className="h-[100dvh] flex flex-col overflow-hidden animate-create-step2-in"
@@ -170,7 +249,7 @@ export default function CreatePhotoPage() {
       >
         <button
           type="button"
-          onClick={() => setImageUrl(null)}
+          onClick={() => { setImageUrl(null); setImageFile(null) }}
           className="w-9 h-9 -ml-2 flex items-center justify-center transition-opacity active:opacity-50"
           aria-label="Indietro"
           style={{ color: 'rgba(17,17,17,0.30)' }}
@@ -257,7 +336,7 @@ export default function CreatePhotoPage() {
             className="w-full bg-transparent text-[21px] font-semibold focus:outline-none border-b pb-3 leading-snug tracking-tight"
             style={{
               color: '#111111',
-              borderColor: inputBorderColor,
+              borderColor: borderColor,
               caretColor: '#6B5FE8',
               transition: 'border-color 180ms ease',
             }}
@@ -297,6 +376,11 @@ export default function CreatePhotoPage() {
 
         {/* CTA */}
         <div style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 40px)' }}>
+          {submitError && (
+            <p className="text-center text-[12px] pb-2" style={{ color: '#E05252' }}>
+              {submitError}
+            </p>
+          )}
           <p
             className="text-center text-[11px] pb-3"
             style={{ color: 'rgba(17,17,17,0.20)' }}
@@ -310,12 +394,12 @@ export default function CreatePhotoPage() {
             style={{
               background: '#6B5FE8',
               color: '#ffffff',
-              opacity: canSubmit ? 1 : 0.4,
+              opacity: canSubmit && !isSubmitting ? 1 : 0.4,
               transition: 'all 150ms ease',
-              pointerEvents: canSubmit ? 'auto' : 'none',
+              pointerEvents: canSubmit && !isSubmitting ? 'auto' : 'none',
             }}
           >
-            Salva questo momento
+            {isSubmitting ? 'Un momento…' : 'Salva questo momento'}
           </button>
         </div>
       </form>
