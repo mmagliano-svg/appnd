@@ -18,10 +18,13 @@ alter table public.memory_participants
 alter table public.memory_participants
   drop constraint if exists participant_has_user_or_email;
 
--- New constraint: at least one identifier must be present
+-- New constraint: at least one identifier must be present.
+-- NOT VALID skips validation of pre-existing rows (which may have all three
+-- columns null due to the default) while still enforcing the rule on all
+-- future inserts and updates.
 alter table public.memory_participants
   add constraint participant_has_identifier check (
-    user_id      is not null or
+    user_id       is not null or
     invited_email is not null or
     display_name  is not null
-  );
+  ) not valid;
