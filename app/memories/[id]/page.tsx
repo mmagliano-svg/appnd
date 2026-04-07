@@ -101,7 +101,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   const importanceLevel: number = dbImportance ?? ((isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2)
 
   // Unified people list: all participants + all contributors, deduped by userId
-  type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | null; avatarUrl: string | null }
+  type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | 'name-only' | null; avatarUrl: string | null }
   const peopleOnMemory: PersonOnMemory[] = []
   const seenUserIds = new Set<string>()
 
@@ -128,6 +128,17 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         ini: initials(p.invited_email),
         isMe: false,
         status: 'invited',
+        avatarUrl: null,
+      })
+    } else if ((p as unknown as { display_name?: string | null }).display_name) {
+      // Name-only participant — no email, no account
+      const displayName = (p as unknown as { display_name: string }).display_name
+      peopleOnMemory.push({
+        key: p.id,
+        name: displayName,
+        ini: initials(displayName),
+        isMe: false,
+        status: 'name-only',
         avatarUrl: null,
       })
     }
@@ -630,6 +641,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                     {p.status === 'invited' && (
                       <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
                         invitato
+                      </span>
+                    )}
+                    {p.status === 'name-only' && (
+                      <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
+                        era con te
                       </span>
                     )}
                   </div>

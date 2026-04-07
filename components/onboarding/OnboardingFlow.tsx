@@ -531,7 +531,7 @@ export function OnboardingFlow() {
               {screen.title}
             </h1>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {/* Option: photo */}
               <button
                 onClick={() => navigateTo('/create/photo')}
