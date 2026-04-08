@@ -67,6 +67,34 @@ export default async function DashboardPage() {
       }
     : null
 
+  // ── Hero memory state — drives dynamic copy and CTA ──────────────────────
+  // Lightweight count query: contributions on the hero memory by others in the
+  // last 24 h.  Only fires when a hero exists; falls back to false otherwise.
+  const heroHasContributions = (heroSource?.memory_contributions.length ?? 0) > 0
+  let heroHasNewContribs = false
+  if (heroSource) {
+    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    const { count } = await supabase
+      .from('memory_contributions')
+      .select('id', { count: 'exact', head: true })
+      .eq('memory_id', heroSource.id)
+      .neq('author_id', user.id)
+      .gte('created_at', cutoff)
+    heroHasNewContribs = (count ?? 0) > 0
+  }
+
+  const heroCaption = heroHasNewContribs
+    ? 'Questo momento non è più solo tuo'
+    : heroHasContributions
+    ? 'Hai iniziato qualcosa'
+    : 'È ancora tutto qui'
+
+  const heroCtaLabel = heroHasNewContribs
+    ? 'Scopri cosa è cambiato →'
+    : heroHasContributions
+    ? 'Continua questo momento →'
+    : 'Aggiungi qualcosa di oggi →'
+
   // ── First-time state: user has exactly one moment ─────────────────────────
   // Show a focused, directional layout instead of the full dashboard experience.
   // Disappears naturally once the user creates a second memory.
@@ -100,7 +128,12 @@ export default async function DashboardPage() {
             </div>
 
             {/* Dominant memory card — reuses HomeHero which handles its own padding */}
-            <HomeHero memory={heroMemory} displayName={displayName} />
+            <HomeHero
+              memory={heroMemory}
+              displayName={displayName}
+              ctaLabel={heroCtaLabel}
+              caption={heroCaption}
+            />
 
             {/* Next-step action cards */}
             <div className="px-4 space-y-3 pb-4">
@@ -247,7 +280,12 @@ export default async function DashboardPage() {
 
           {/* Hero + featured + signals — immediate emotional tone */}
           <div className="space-y-4">
-            <HomeHero memory={heroMemory} displayName={displayName} />
+            <HomeHero
+              memory={heroMemory}
+              displayName={displayName}
+              ctaLabel={heroCtaLabel}
+              caption={heroCaption}
+            />
             {featuredMemory && <FeaturedMemory memory={featuredMemory} />}
             <MemorySignals signals={signals} />
           </div>

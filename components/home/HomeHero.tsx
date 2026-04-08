@@ -14,9 +14,13 @@ export interface HeroMemory {
 interface HomeHeroProps {
   memory: HeroMemory | null
   displayName: string
+  /** Text shown in the card overlay CTA line. Default: "Rivivi questo momento →" */
+  ctaLabel?: string
+  /** Caption shown below the card. Default: "Alcuni momenti non sono ancora finiti" */
+  caption?: string
 }
 
-export function HomeHero({ memory, displayName }: HomeHeroProps) {
+export function HomeHero({ memory, displayName, ctaLabel, caption }: HomeHeroProps) {
   if (!memory) {
     return (
       <div className="px-4">
@@ -75,12 +79,12 @@ export function HomeHero({ memory, displayName }: HomeHeroProps) {
           <p
             className="text-white/45 text-[10px] mt-3 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
           >
-            Rivivi questo momento →
+            {ctaLabel ?? 'Rivivi questo momento →'}
           </p>
         </div>
       </TransitionLink>
       <p className="px-1 pt-2 text-[11px] text-muted-foreground/35 leading-snug">
-        Alcuni momenti non sono ancora finiti
+        {caption ?? 'Alcuni momenti non sono ancora finiti'}
       </p>
     </div>
   )
