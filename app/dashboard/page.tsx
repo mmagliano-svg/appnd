@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
@@ -65,6 +66,86 @@ export default async function DashboardPage() {
         previewUrl: previewUrl(heroSource),
       }
     : null
+
+  // ── First-time state: user has exactly one moment ─────────────────────────
+  // Show a focused, directional layout instead of the full dashboard experience.
+  // Disappears naturally once the user creates a second memory.
+  if (memoriesRaw.length === 1 && heroMemory) {
+    return (
+      <main className="min-h-screen bg-background pb-28">
+        <div className="max-w-[1100px] mx-auto">
+          <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
+          <div className="space-y-5 pt-1">
+
+            {/* Intro headline */}
+            <div className="px-5">
+              <p
+                className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
+                style={{ color: 'rgba(17,17,17,0.30)' }}
+              >
+                Il tuo primo momento
+              </p>
+              <h2
+                className="text-[26px] font-semibold tracking-[-0.02em] leading-tight"
+                style={{ color: '#111111' }}
+              >
+                Hai iniziato da qui
+              </h2>
+              <p
+                className="text-[14px] mt-1.5 leading-snug"
+                style={{ color: 'rgba(17,17,17,0.38)' }}
+              >
+                Ogni storia inizia con un momento.
+              </p>
+            </div>
+
+            {/* Dominant memory card — reuses HomeHero which handles its own padding */}
+            <HomeHero memory={heroMemory} displayName={displayName} />
+
+            {/* Next-step action cards */}
+            <div className="px-4 space-y-3 pb-4">
+              <p
+                className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+                style={{ color: 'rgba(17,17,17,0.28)' }}
+              >
+                Cosa vuoi fare adesso?
+              </p>
+              <Link
+                href={`/memories/${heroMemory.id}`}
+                className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4 active:scale-[0.985] transition-transform"
+                style={{ background: '#6B5FE8', color: 'white' }}
+              >
+                <div>
+                  <p className="text-[15px] font-medium leading-none">Aggiungi un dettaglio</p>
+                  <p className="text-[12px] mt-1 opacity-60">Qualcosa che non vuoi dimenticare</p>
+                </div>
+                <span className="text-xl opacity-40 shrink-0 select-none" aria-hidden>✦</span>
+              </Link>
+              <Link
+                href={`/memories/${heroMemory.id}`}
+                className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4 active:scale-[0.985] transition-transform"
+                style={{
+                  background: 'white',
+                  border:     '1px solid rgba(17,17,17,0.08)',
+                  color:      '#111111',
+                  boxShadow:  '0 1px 8px rgba(0,0,0,0.04)',
+                }}
+              >
+                <div>
+                  <p className="text-[15px] font-medium leading-none">Invita chi era con te</p>
+                  <p className="text-[12px] mt-1" style={{ color: '#ABABAB' }}>
+                    Per sentire anche il loro punto di vista
+                  </p>
+                </div>
+                <span className="text-lg opacity-25 shrink-0 select-none" aria-hidden>○</span>
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      </main>
+    )
+  }
 
   // ── Featured Memory — "Da rivivere ora" ───────────────────────────────────
   // Best candidate: most contributions (activity proxy), excluding hero

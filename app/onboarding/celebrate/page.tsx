@@ -19,14 +19,14 @@ export default async function CelebratePage({ searchParams }: Props) {
 
   const { data: memory } = await supabase
     .from('memories')
-    .select('id, title, happened_at')
+    .select('id, title, start_date, happened_at')
     .eq('id', id)
     .eq('created_by', user.id)
     .single()
 
   if (!memory) redirect('/dashboard')
 
-  // Count how many OTHER people have already been invited
+  // Count how many OTHER people have already been invited or are present
   const { count: inviteCount } = await supabase
     .from('memory_participants')
     .select('id', { count: 'exact', head: true })
@@ -35,8 +35,10 @@ export default async function CelebratePage({ searchParams }: Props) {
 
   const invited = inviteCount ?? 0
 
-  const happenedLabel = memory.happened_at
-    ? new Date(memory.happened_at).toLocaleDateString('it-IT', {
+  // Prefer start_date (current schema) → happened_at (legacy) → null
+  const dateSource = (memory as { start_date?: string | null }).start_date ?? memory.happened_at
+  const happenedLabel = dateSource
+    ? new Date(dateSource).toLocaleDateString('it-IT', {
         day: 'numeric',
         month: 'long',
         year: 'numeric',
@@ -88,6 +90,7 @@ export default async function CelebratePage({ searchParams }: Props) {
 
         {/* CTAs */}
         <div className="space-y-3">
+
           {/* Primary: open the memory */}
           <Link
             href={`/memories/${memory.id}`}
@@ -97,8 +100,9 @@ export default async function CelebratePage({ searchParams }: Props) {
             Continua questo momento →
           </Link>
 
-          {/* Secondary: invite someone if no one was added yet */}
-          {invited === 0 && (
+          {/* Secondary: invite — always visible, weight depends on context */}
+          {invited === 0 ? (
+            // No one invited yet — full card weight to encourage action
             <Link
               href={`/memories/${memory.id}`}
               className="block w-full rounded-2xl py-3.5 text-[15px] font-medium text-center active:scale-[0.985] transition-transform"
@@ -111,15 +115,25 @@ export default async function CelebratePage({ searchParams }: Props) {
             >
               Invita chi era con te
             </Link>
+          ) : (
+            // Already invited people — lighter text link
+            <Link
+              href={`/memories/${memory.id}`}
+              className="block w-full py-2.5 text-[14px] text-center active:opacity-50 transition-opacity"
+              style={{ color: 'rgba(17,17,17,0.38)' }}
+            >
+              Invita qualcun altro
+            </Link>
           )}
 
           <Link
             href="/dashboard"
             className="block w-full py-3 text-[14px] text-center"
-            style={{ color: 'rgba(17,17,17,0.30)' }}
+            style={{ color: 'rgba(17,17,17,0.25)' }}
           >
             Vai alla home
           </Link>
+
         </div>
       </div>
     </main>

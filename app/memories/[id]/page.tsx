@@ -78,6 +78,14 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
   const hasOwnContribution = contributions.some((c) => c.author_id === user?.id)
 
+  // A "sparse" moment: creator, at most 1 fragment (the onboarding photo), nobody else joined.
+  // Used to decide whether to show directional next-step guidance.
+  const otherJoinedParticipants = participants.filter((p) => p.user_id !== user?.id)
+  const isSparseMoment =
+    isCreator &&
+    contributions.length <= 1 &&
+    otherJoinedParticipants.length === 0
+
   // Tagged people from address book (memory_people → people)
   const { data: rawTaggedPeople } = await supabase
     .from('memory_people')
@@ -789,41 +797,60 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </div>
         )}
 
-        {/* ── Living memory activation block ── */}
-        <div className="mt-10 mb-6">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-4">
-            Questo momento può continuare
-          </p>
-          <div className="rounded-2xl border border-border/40 overflow-hidden divide-y divide-border/30">
-            <div className="flex items-center gap-4 px-4 py-3.5">
-              <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">
-                ✦
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium leading-none text-foreground/80">Aggiungi un dettaglio</p>
-                <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Qualcosa che ti è tornato in mente ora</p>
-              </div>
+        {/* ── Next-step guidance — shown when moment is new / sparse ── */}
+        {isSparseMoment ? (
+          <div className="mt-8 mb-2">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-4">
+              Il tuo momento è appena iniziato
+            </p>
+            <div className="space-y-2.5">
+              {/* Primary: add more content */}
+              <Link
+                href={`/memories/${params.id}/contribute`}
+                className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4 active:scale-[0.985] transition-transform"
+                style={{ background: '#6B5FE8', color: 'white' }}
+              >
+                <div>
+                  <p className="text-[15px] font-medium leading-none">Aggiungi cosa è successo dopo</p>
+                  <p className="text-[12px] mt-1 opacity-60">Una foto, un dettaglio, una sensazione</p>
+                </div>
+                <span className="text-xl opacity-40 shrink-0 select-none" aria-hidden>✦</span>
+              </Link>
+              {/* Secondary: invite */}
+              <InviteShareButton memoryId={params.id} title={memory.title} />
             </div>
-            <div className="flex items-center gap-4 px-4 py-3.5">
-              <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">
-                ○
+          </div>
+        ) : (
+          /* Non-sparse: keep the ambient "can continue" block (no buttons, just context) */
+          <div className="mt-10 mb-6">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-4">
+              Questo momento può continuare
+            </p>
+            <div className="rounded-2xl border border-border/40 overflow-hidden divide-y divide-border/30">
+              <div className="flex items-center gap-4 px-4 py-3.5">
+                <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">✦</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-none text-foreground/80">Aggiungi un dettaglio</p>
+                  <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Qualcosa che ti è tornato in mente ora</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium leading-none text-foreground/80">Invita chi era con te</p>
-                <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Per vedere anche il loro punto di vista</p>
+              <div className="flex items-center gap-4 px-4 py-3.5">
+                <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">○</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-none text-foreground/80">Invita chi era con te</p>
+                  <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Per vedere anche il loro punto di vista</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center gap-4 px-4 py-3.5">
-              <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">
-                ↺
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium leading-none text-foreground/80">Rivivilo nel tempo</p>
-                <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Quando questo momento ritorna, puoi aggiornarlo</p>
+              <div className="flex items-center gap-4 px-4 py-3.5">
+                <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">↺</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-none text-foreground/80">Rivivilo nel tempo</p>
+                  <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Quando questo momento ritorna, puoi aggiornarlo</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* ── Inline contribute — main interaction ── */}
         {!hasOwnContribution && (
