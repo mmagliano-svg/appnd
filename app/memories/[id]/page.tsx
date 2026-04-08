@@ -662,10 +662,14 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               <p className="text-[10px] text-muted-foreground/40 mt-2">
                 Anche loro potrebbero ricordarlo in modo diverso
               </p>
-              <InviteShareButton
-                memoryId={params.id}
-                title={memory.title}
-              />
+              {/* Only show invite here when the moment has content/people already.
+                  When sparse, the invite action lives in the next-step nudge block below. */}
+              {!isSparseMoment && (
+                <InviteShareButton
+                  memoryId={params.id}
+                  title={memory.title}
+                />
+              )}
             </div>
           )}
 
@@ -885,11 +889,14 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       </div>
 
       {/* ── FAB — expandable action sheet ── */}
-      <MemoryFAB
-        memoryId={params.id}
-        contributeHref={`/memories/${params.id}/contribute`}
-        memoryTitle={memory.title}
-      />
+      {/* Hidden when moment is sparse: the in-page CTA is the single primary action. */}
+      {!isSparseMoment && (
+        <MemoryFAB
+          memoryId={params.id}
+          contributeHref={`/memories/${params.id}/contribute`}
+          memoryTitle={memory.title}
+        />
+      )}
 
     </main>
   )

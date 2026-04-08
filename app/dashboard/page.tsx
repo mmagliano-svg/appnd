@@ -108,7 +108,7 @@ export default async function DashboardPage() {
                 className="text-[10px] font-semibold uppercase tracking-widest mb-1"
                 style={{ color: 'rgba(17,17,17,0.28)' }}
               >
-                Cosa vuoi fare adesso?
+                Da qui può crescere
               </p>
               <Link
                 href={`/memories/${heroMemory.id}`}

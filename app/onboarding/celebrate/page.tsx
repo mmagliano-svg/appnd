@@ -102,27 +102,27 @@ export default async function CelebratePage({ searchParams }: Props) {
 
           {/* Secondary: invite — always visible, weight depends on context */}
           {invited === 0 ? (
-            // No one invited yet — full card weight to encourage action
+            // No one yet — visible card, clearly secondary to the primary CTA
             <Link
               href={`/memories/${memory.id}`}
               className="block w-full rounded-2xl py-3.5 text-[15px] font-medium text-center active:scale-[0.985] transition-transform"
               style={{
                 background: 'white',
-                border:     '1px solid rgba(17,17,17,0.10)',
-                color:      '#111111',
-                boxShadow:  '0 1px 8px rgba(0,0,0,0.04)',
+                border:     '1px solid rgba(17,17,17,0.16)',
+                color:      '#222222',
+                boxShadow:  '0 1px 10px rgba(0,0,0,0.06)',
               }}
             >
-              Invita chi era con te
+              Coinvolgi chi era con te
             </Link>
           ) : (
-            // Already invited people — lighter text link
+            // Already invited — lighter but still legible
             <Link
               href={`/memories/${memory.id}`}
               className="block w-full py-2.5 text-[14px] text-center active:opacity-50 transition-opacity"
-              style={{ color: 'rgba(17,17,17,0.38)' }}
+              style={{ color: 'rgba(17,17,17,0.50)' }}
             >
-              Invita qualcun altro
+              Coinvolgi qualcun altro
             </Link>
           )}
 
