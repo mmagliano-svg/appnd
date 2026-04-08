@@ -14,6 +14,7 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -29,11 +30,12 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
 
   async function handleDelete() {
     setLoading(true)
+    setDeleteError(null)
     try {
       await deleteMemory(memoryId)
-    } catch {
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Impossibile eliminare. Riprova.')
       setLoading(false)
-      setConfirming(false)
     }
   }
 
@@ -73,30 +75,37 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
 
           {!confirming ? (
             <button
-              onClick={() => setConfirming(true)}
+              onClick={() => { setConfirming(true); setDeleteError(null) }}
               className="flex items-center gap-3 w-full px-4 py-3 text-sm text-destructive hover:bg-destructive/5 transition-colors"
             >
               <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              Elimina ricordo
+              Elimina momento
             </button>
           ) : (
             <div className="px-4 py-3 space-y-2.5">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Sicuro? Questa operazione è irreversibile.
+              <p className="text-sm font-medium leading-snug">
+                Sei sicuro di voler eliminare questo momento?
               </p>
-              <div className="flex gap-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Questa azione è irreversibile.
+              </p>
+              {deleteError && (
+                <p className="text-xs text-destructive leading-snug">{deleteError}</p>
+              )}
+              <div className="flex gap-2 pt-0.5">
                 <button
                   onClick={handleDelete}
                   disabled={loading}
                   className="flex-1 rounded-lg bg-destructive text-destructive-foreground text-xs py-1.5 font-medium hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
-                  {loading ? '…' : 'Elimina'}
+                  {loading ? 'Eliminazione…' : 'Elimina'}
                 </button>
                 <button
-                  onClick={() => setConfirming(false)}
-                  className="flex-1 rounded-lg bg-muted text-xs py-1.5 font-medium hover:bg-accent transition-colors"
+                  onClick={() => { setConfirming(false); setDeleteError(null) }}
+                  disabled={loading}
+                  className="flex-1 rounded-lg bg-muted text-xs py-1.5 font-medium hover:bg-accent transition-colors disabled:opacity-50"
                 >
                   Annulla
                 </button>
