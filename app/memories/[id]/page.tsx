@@ -467,7 +467,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       {/* ── No-photo: dedicated top bar ── */}
       {!heroPhoto && (
-        <div className="flex items-center justify-between px-4 h-14 bg-muted">
+        <div className="flex items-center justify-between px-4 pt-6 pb-3 bg-muted">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -484,15 +484,11 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               heroMode={false}
             />
             {isCreator && (
-              <>
-                {/* ISOLATION TEST — plain button replacing MoreMenu */}
-                <button type="button" onClick={() => alert('tap ok')} className="rounded-full p-2 text-muted-foreground">•••</button>
-                {/* <MoreMenu
-                  memoryId={params.id}
-                  editHref={`/memories/${params.id}/edit`}
-                  heroMode={false}
-                /> */}
-              </>
+              <MoreMenu
+                memoryId={params.id}
+                editHref={`/memories/${params.id}/edit`}
+                heroMode={false}
+              />
             )}
           </div>
         </div>
