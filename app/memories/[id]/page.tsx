@@ -466,7 +466,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       <MemoryScrollEffects />
 
       {/* ── Hero block ── */}
-      <div id="memory-hero" className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'h-14'} bg-muted overflow-hidden`}>
+      <div id="memory-hero" className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px] overflow-hidden' : ''} bg-muted`}>
         {heroPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -488,8 +488,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           />
         )}
 
-        {/* Top bar — overlaid on hero */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-6 z-10">
+        {/* Top bar — absolute over hero image, normal flow when no image */}
+        <div className={`${heroPhoto ? 'absolute top-0 left-0 right-0 z-10' : ''} flex items-center justify-between px-4 pt-6 pb-3`}>
           <Link
             href="/dashboard"
             className={`inline-flex items-center gap-1.5 text-sm transition-colors ${

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { deleteMemory } from '@/actions/memories'
 
@@ -15,18 +15,33 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-  const ref = useRef<HTMLDivElement>(null)
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  // Close on outside click — uses 'click' (not mousedown) to avoid
+  // race conditions on mobile Safari where synthesized mousedown can
+  // fire before the useEffect listener is registered.
+  const handleOutside = useCallback((e: MouseEvent) => {
+    if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+      console.log('[MoreMenu] outside-click → closing')
+      setOpen(false)
+      setConfirming(false)
+    }
+  }, [])
 
   useEffect(() => {
-    function handleOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-        setConfirming(false)
+    if (open) {
+      console.log('[MoreMenu] open=true → attaching outside-click listener')
+      // Defer listener by one frame so the current tap's click event
+      // doesn't immediately trigger it on iOS Safari.
+      const id = requestAnimationFrame(() => {
+        document.addEventListener('click', handleOutside, true)
+      })
+      return () => {
+        cancelAnimationFrame(id)
+        document.removeEventListener('click', handleOutside, true)
       }
     }
-    if (open) document.addEventListener('mousedown', handleOutside)
-    return () => document.removeEventListener('mousedown', handleOutside)
-  }, [open])
+  }, [open, handleOutside])
 
   async function handleDelete() {
     setLoading(true)
@@ -44,19 +59,29 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative" ref={wrapperRef}>
       <button
-        onClick={() => { setOpen((p) => !p); setConfirming(false) }}
+        onClick={() => {
+          console.log('[MoreMenu] trigger click — open was:', open)
+          setOpen((p) => !p)
+          setConfirming(false)
+        }}
         aria-label="Altre opzioni"
         className={`rounded-full p-2 transition-colors ${triggerClass}`}
       >
-        {/* Three dots vertical */}
-        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-          <circle cx="12" cy="5" r="1.5" />
-          <circle cx="12" cy="12" r="1.5" />
-          <circle cx="12" cy="19" r="1.5" />
+        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="5" r="2" />
+          <circle cx="12" cy="12" r="2" />
+          <circle cx="12" cy="19" r="2" />
         </svg>
       </button>
+
+      {/* Debug: visible indicator when menu state is open */}
+      {open && (
+        <div className="absolute -left-24 top-0 bg-red-500 text-white text-[10px] px-1 rounded z-50 pointer-events-none">
+          OPEN
+        </div>
+      )}
 
       {open && (
         <div className="absolute right-0 top-full mt-1 w-52 rounded-2xl bg-background border border-border shadow-xl overflow-hidden z-50">
