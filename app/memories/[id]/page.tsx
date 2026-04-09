@@ -468,7 +468,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       {/* ── Hero block ── */}
       <div
         id="memory-hero"
-        className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px]' : 'h-24'} overflow-hidden bg-muted`}
+        className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px] overflow-hidden' : 'h-24'} bg-muted`}
       >
         {heroPhoto && (
           <>
