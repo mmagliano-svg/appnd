@@ -467,7 +467,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       {/* ── No-photo: dedicated top bar ── */}
       {!heroPhoto && (
-        <div className="flex items-center justify-between px-4 pt-6 pb-3 bg-muted">
+        <div className="flex items-center justify-between px-4 pt-12 pb-4 bg-muted">
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
