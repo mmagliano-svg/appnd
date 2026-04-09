@@ -35,13 +35,13 @@ export async function middleware(request: NextRequest) {
   if (!user && !isPublicRoute) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
+    loginUrl.searchParams.set('next', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   if (user && pathname === '/auth/login') {
-    const dashboardUrl = request.nextUrl.clone()
-    dashboardUrl.pathname = '/dashboard'
-    return NextResponse.redirect(dashboardUrl)
+    const dest = request.nextUrl.searchParams.get('next') || '/dashboard'
+    return NextResponse.redirect(new URL(dest, request.nextUrl.origin))
   }
 
   return supabaseResponse
