@@ -887,15 +887,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           />
         </div>
 
-        {/* ── Temporary: bottom delete action (workaround for broken top menu on no-image) ── */}
-        {isCreator && (
-          <div className="pt-10 pb-10 mt-8 border-t border-border/30">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-3">
-              Zona pericolosa
-            </p>
-            <DeleteButton memoryId={params.id} />
-          </div>
-        )}
+        {/* ── Temporary: bottom delete action ── */}
+        <div className="pt-10 pb-10 mt-8 border-t-4 border-red-500 bg-red-50">
+          <p className="text-sm font-bold text-red-600 mb-3">
+            🗑 Zona pericolosa (debug — sempre visibile)
+          </p>
+          <DeleteButton memoryId={params.id} />
+        </div>
 
       </div>
 
