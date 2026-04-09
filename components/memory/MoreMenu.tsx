@@ -17,12 +17,8 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
-  // Close on outside click — uses 'click' (not mousedown) to avoid
-  // race conditions on mobile Safari where synthesized mousedown can
-  // fire before the useEffect listener is registered.
   const handleOutside = useCallback((e: MouseEvent) => {
     if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
-      console.log('[MoreMenu] outside-click → closing')
       setOpen(false)
       setConfirming(false)
     }
@@ -30,9 +26,6 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
 
   useEffect(() => {
     if (open) {
-      console.log('[MoreMenu] open=true → attaching outside-click listener')
-      // Defer listener by one frame so the current tap's click event
-      // doesn't immediately trigger it on iOS Safari.
       const id = requestAnimationFrame(() => {
         document.addEventListener('click', handleOutside, true)
       })
@@ -62,7 +55,6 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
     <div className="relative" ref={wrapperRef}>
       <button
         onClick={() => {
-          console.log('[MoreMenu] trigger click — open was:', open)
           setOpen((p) => !p)
           setConfirming(false)
         }}
@@ -75,13 +67,6 @@ export function MoreMenu({ memoryId, editHref, heroMode = false }: MoreMenuProps
           <circle cx="12" cy="19" r="2" />
         </svg>
       </button>
-
-      {/* Debug: visible indicator when menu state is open */}
-      {open && (
-        <div className="absolute -left-24 top-0 bg-red-500 text-white text-[10px] px-1 rounded z-50 pointer-events-none">
-          OPEN
-        </div>
-      )}
 
       {open && (
         <div className="absolute right-0 top-full mt-1 w-52 rounded-2xl bg-background border border-border shadow-xl overflow-hidden z-50">

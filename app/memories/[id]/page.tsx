@@ -16,7 +16,6 @@ import { ContentActions } from '@/components/memory/ContentActions'
 import { ImportanceStars } from '@/components/memory/ImportanceStars'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
 import { InviteShareButton } from '@/components/memory/InviteShareButton'
-import { DeleteButton } from '@/components/memory/DeleteButton'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -887,13 +886,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           />
         </div>
 
-        {/* ── Temporary: bottom delete action ── */}
-        <div className="pt-10 pb-10 mt-8 border-t-4 border-red-500 bg-red-50">
-          <p className="text-sm font-bold text-red-600 mb-3">
-            🗑 Zona pericolosa (debug — sempre visibile)
-          </p>
-          <DeleteButton memoryId={params.id} />
-        </div>
 
       </div>
 
