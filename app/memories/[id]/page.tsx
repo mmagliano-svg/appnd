@@ -16,6 +16,7 @@ import { ContentActions } from '@/components/memory/ContentActions'
 import { ImportanceStars } from '@/components/memory/ImportanceStars'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
 import { InviteShareButton } from '@/components/memory/InviteShareButton'
+import { DeleteButton } from '@/components/memory/DeleteButton'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -896,6 +897,16 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           contributeHref={`/memories/${params.id}/contribute`}
           memoryTitle={memory.title}
         />
+      )}
+
+      {/* ── Temporary: bottom delete action (workaround for broken top menu on no-image) ── */}
+      {isCreator && (
+        <div className="max-w-lg mx-auto px-4 pb-32 pt-6 border-t border-border/30 mt-8">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-3">
+            Zona pericolosa
+          </p>
+          <DeleteButton memoryId={params.id} />
+        </div>
       )}
 
     </main>
