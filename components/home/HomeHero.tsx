@@ -18,9 +18,11 @@ interface HomeHeroProps {
   ctaLabel?: string
   /** Caption shown below the card. Default: "Alcuni momenti non sono ancora finiti" */
   caption?: string
+  /** Subtle visual emphasis when someone else contributed recently */
+  highlighted?: boolean
 }
 
-export function HomeHero({ memory, displayName, ctaLabel, caption }: HomeHeroProps) {
+export function HomeHero({ memory, displayName, ctaLabel, caption, highlighted }: HomeHeroProps) {
   if (!memory) {
     return (
       <div className="px-4">
@@ -44,8 +46,13 @@ export function HomeHero({ memory, displayName, ctaLabel, caption }: HomeHeroPro
     <div className="px-4 animate-hero-fade-in">
       <TransitionLink
         href={`/memories/${memory.id}`}
-        className="relative block w-full aspect-[3/4] max-h-[56vh] rounded-3xl overflow-hidden bg-muted"
-        style={{ boxShadow: '0 20px 56px rgba(0,0,0,0.08)' }}
+        className={`relative block w-full aspect-[3/4] max-h-[56vh] rounded-3xl overflow-hidden bg-muted${highlighted ? ' scale-[1.005]' : ''}`}
+        style={{
+          boxShadow: highlighted
+            ? '0 20px 56px rgba(0,0,0,0.14), 0 0 0 1.5px rgba(107,95,232,0.3)'
+            : '0 20px 56px rgba(0,0,0,0.08)',
+          transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+        }}
       >
         {memory.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

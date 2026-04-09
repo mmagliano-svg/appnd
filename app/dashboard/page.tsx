@@ -13,6 +13,7 @@ import { SharedMoments } from '@/components/home/SharedMoments'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
 import { UpcomingMoments } from '@/components/home/UpcomingMoments'
+import { HeroContributionPreview } from '@/components/home/HeroContributionPreview'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -83,6 +84,35 @@ export default async function DashboardPage() {
     heroHasNewContribs = (count ?? 0) > 0
   }
 
+  // When there are new contributions from others, fetch the latest one for preview
+  let heroLatestContrib: {
+    authorName: string
+    contentType: string
+    textContent: string | null
+    mediaUrl: string | null
+  } | null = null
+
+  if (heroHasNewContribs && heroSource) {
+    const { data: latestContrib } = await supabase
+      .from('memory_contributions')
+      .select('content_type, text_content, media_url, created_at, users ( display_name, email )')
+      .eq('memory_id', heroSource.id)
+      .neq('author_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    if (latestContrib) {
+      const contribUser = latestContrib.users as { display_name?: string | null; email?: string | null } | null
+      heroLatestContrib = {
+        authorName: contribUser?.display_name ?? contribUser?.email?.split('@')[0] ?? 'Qualcuno',
+        contentType: latestContrib.content_type,
+        textContent: latestContrib.text_content,
+        mediaUrl: latestContrib.media_url,
+      }
+    }
+  }
+
   const heroCaption = heroHasNewContribs
     ? 'Questo momento non è più solo tuo'
     : heroHasContributions
@@ -133,7 +163,17 @@ export default async function DashboardPage() {
               displayName={displayName}
               ctaLabel={heroCtaLabel}
               caption={heroCaption}
+              highlighted={heroHasNewContribs}
             />
+            {heroHasNewContribs && heroLatestContrib && heroMemory && (
+              <HeroContributionPreview
+                memoryId={heroMemory.id}
+                authorName={heroLatestContrib.authorName}
+                contentType={heroLatestContrib.contentType}
+                textContent={heroLatestContrib.textContent}
+                mediaUrl={heroLatestContrib.mediaUrl}
+              />
+            )}
 
             {/* Next-step action cards */}
             <div className="px-4 space-y-3 pb-4">
@@ -285,7 +325,17 @@ export default async function DashboardPage() {
               displayName={displayName}
               ctaLabel={heroCtaLabel}
               caption={heroCaption}
+              highlighted={heroHasNewContribs}
             />
+            {heroHasNewContribs && heroLatestContrib && heroMemory && (
+              <HeroContributionPreview
+                memoryId={heroMemory.id}
+                authorName={heroLatestContrib.authorName}
+                contentType={heroLatestContrib.contentType}
+                textContent={heroLatestContrib.textContent}
+                mediaUrl={heroLatestContrib.mediaUrl}
+              />
+            )}
             {featuredMemory && <FeaturedMemory memory={featuredMemory} />}
             <MemorySignals signals={signals} />
           </div>
