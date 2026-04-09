@@ -484,11 +484,15 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               heroMode={false}
             />
             {isCreator && (
-              <MoreMenu
-                memoryId={params.id}
-                editHref={`/memories/${params.id}/edit`}
-                heroMode={false}
-              />
+              <>
+                {/* ISOLATION TEST — plain button replacing MoreMenu */}
+                <button type="button" onClick={() => alert('tap ok')} className="rounded-full p-2 text-muted-foreground">•••</button>
+                {/* <MoreMenu
+                  memoryId={params.id}
+                  editHref={`/memories/${params.id}/edit`}
+                  heroMode={false}
+                /> */}
+              </>
             )}
           </div>
         </div>
