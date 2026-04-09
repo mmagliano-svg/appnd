@@ -465,38 +465,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       <ScrollToTop />
       <MemoryScrollEffects />
 
-      {/* ── Hero block ── */}
-      <div id="memory-hero" className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px] overflow-hidden' : ''} bg-muted`}>
-        {heroPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={heroPhoto}
-            alt=""
-            id="memory-hero-img" className="absolute inset-0 w-full h-full object-cover"
-            loading="eager"
-          />
-        ) : null}
-
-        {/* Gradient overlay — top only, for control readability */}
-        {heroPhoto && (
-          <div
-            id="memory-hero-gradient"
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, transparent 42%)',
-            }}
-          />
-        )}
-
-        {/* Top bar — absolute over hero image, normal flow when no image */}
-        <div className={`${heroPhoto ? 'absolute top-0 left-0 right-0 z-10' : ''} flex items-center justify-between px-4 pt-6 pb-3`}>
+      {/* ── No-photo: dedicated top bar ── */}
+      {!heroPhoto && (
+        <div className="flex items-center justify-between px-4 h-14 bg-muted">
           <Link
             href="/dashboard"
-            className={`inline-flex items-center gap-1.5 text-sm transition-colors ${
-              heroPhoto
-                ? 'text-white/90 hover:text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
@@ -507,19 +481,65 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             <ShareButton
               title={memory.title}
               url={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/memories/${params.id}`}
-              heroMode={!!heroPhoto}
+              heroMode={false}
             />
             {isCreator && (
               <MoreMenu
                 memoryId={params.id}
                 editHref={`/memories/${params.id}/edit`}
-                heroMode={!!heroPhoto}
+                heroMode={false}
               />
             )}
           </div>
         </div>
+      )}
 
-      </div>
+      {/* ── With-photo: hero image + overlaid controls ── */}
+      {heroPhoto && (
+        <div id="memory-hero" className="relative w-full aspect-[4/3] max-h-[420px] overflow-hidden bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={heroPhoto}
+            alt=""
+            id="memory-hero-img" className="absolute inset-0 w-full h-full object-cover"
+            loading="eager"
+          />
+
+          <div
+            id="memory-hero-gradient"
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, transparent 42%)',
+            }}
+          />
+
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-6 z-10">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 text-sm text-white/90 hover:text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)] transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M15 19l-7-7 7-7" />
+              </svg>
+              I tuoi ricordi
+            </Link>
+            <div className="flex items-center gap-0.5">
+              <ShareButton
+                title={memory.title}
+                url={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/memories/${params.id}`}
+                heroMode={true}
+              />
+              {isCreator && (
+                <MoreMenu
+                  memoryId={params.id}
+                  editHref={`/memories/${params.id}/edit`}
+                  heroMode={true}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
 
       {/* ── Shared memory — primary block, immediately after hero ── */}
