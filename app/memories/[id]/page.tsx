@@ -507,7 +507,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <div className="flex items-center gap-0.5">
             <ShareButton
               title={memory.title}
-              url={`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/memories/${params.id}`}
+              memoryId={params.id}
               heroMode={!!heroPhoto}
             />
             {isCreator && (

@@ -1,21 +1,37 @@
 'use client'
 
+import { useState } from 'react'
+import { createInvite } from '@/actions/invites'
+
 interface ShareButtonProps {
   title: string
-  url: string
+  memoryId: string
   heroMode?: boolean
 }
 
-export function ShareButton({ title, url, heroMode }: ShareButtonProps) {
+export function ShareButton({ title, memoryId, heroMode }: ShareButtonProps) {
+  const [loading, setLoading] = useState(false)
+
   const handleShare = async () => {
+    if (loading) return
+    setLoading(true)
     try {
-      if (navigator.share) {
-        await navigator.share({ title, url })
-      } else {
-        await navigator.clipboard.writeText(url)
+      // Generate an invite token on the server so the shared link points to
+      // /invite/:token (public read-only) instead of /memories/:id (protected).
+      const { inviteUrl } = await createInvite(memoryId)
+      try {
+        if (navigator.share) {
+          await navigator.share({ title, url: inviteUrl })
+        } else {
+          await navigator.clipboard.writeText(inviteUrl)
+        }
+      } catch {
+        // user cancelled or not supported — silent
       }
     } catch {
-      // user cancelled or not supported — silent
+      // invite creation failed — silent
+    } finally {
+      setLoading(false)
     }
   }
 

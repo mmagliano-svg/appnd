@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { createInvite } from '@/actions/invites'
 
 interface MemoryFABProps {
   memoryId: string
@@ -14,18 +15,21 @@ export function MemoryFAB({ memoryId, contributeHref, memoryTitle }: MemoryFABPr
 
   async function handleInvite() {
     setOpen(false)
-    const url =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/memories/${memoryId}`
-        : `/memories/${memoryId}`
     try {
-      if (navigator.share) {
-        await navigator.share({ title: memoryTitle, url })
-      } else {
-        await navigator.clipboard.writeText(url)
+      // Generate an invite token server-side so the shared link points to
+      // /invite/:token (public read-only) instead of /memories/:id (protected).
+      const { inviteUrl } = await createInvite(memoryId)
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: memoryTitle, url: inviteUrl })
+        } else {
+          await navigator.clipboard.writeText(inviteUrl)
+        }
+      } catch {
+        // user cancelled or not supported — silent
       }
     } catch {
-      // user cancelled or not supported — silent
+      // invite creation failed — silent
     }
   }
 
