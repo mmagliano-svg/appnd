@@ -409,15 +409,22 @@ export function MemoryTimeline({
 
       </div>
 
-      {/* ── End breath — generous space before "E poi?" ── */}
-      <div className="mt-20 pt-12 border-t border-border/[0.07] text-center space-y-3">
-        <p className="text-base font-semibold text-foreground/78">E poi?</p>
-        <p className="text-sm text-muted-foreground/38 leading-relaxed">Non è finita qui</p>
+      {/* ── Closing chapter — "E poi?" ── */}
+      <div className="mt-28 pt-16 border-t border-border/[0.07] text-center">
+        <p className="text-lg font-semibold text-foreground/80 leading-tight">
+          E poi?
+        </p>
+        <p className="text-sm text-muted-foreground/50 leading-relaxed mt-2">
+          Questo momento può continuare a vivere
+        </p>
+        <p className="text-[11px] text-muted-foreground/30 leading-relaxed mt-6 max-w-[260px] mx-auto">
+          Ogni ricordo cresce quando qualcuno aggiunge qualcosa
+        </p>
         <Link
           href={`/memories/${memoryId}/contribute`}
-          className="inline-flex items-center mt-4 rounded-2xl bg-foreground text-background px-6 py-3.5 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
+          className="inline-flex items-center mt-7 rounded-2xl bg-foreground text-background px-6 py-3.5 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
         >
-          Aggiungi cosa è successo dopo
+          Continua questo momento
         </Link>
       </div>
 
