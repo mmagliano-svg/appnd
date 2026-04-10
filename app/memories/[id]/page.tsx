@@ -621,13 +621,13 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
           {/* Con chi eri — before description */}
           {peopleOnMemory.length > 0 && (
-            <div className="mt-5">
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50 mb-2">
-                Con chi eri
+            <div className="mt-6">
+              <p className="text-[10px] text-muted-foreground/35 mb-3 lowercase tracking-wide">
+                con chi eri
               </p>
               <div className="flex items-start gap-3 flex-wrap">
                 {peopleOnMemory.map((p) => (
-                  <div key={p.key} className="flex flex-col items-center gap-1 shrink-0">
+                  <div key={p.key} className="flex flex-col items-center gap-1.5 shrink-0">
                     {p.avatarUrl ? (
                       <img
                         src={p.avatarUrl}
@@ -643,25 +643,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                         {p.ini}
                       </div>
                     )}
-                    <span className="text-[10px] text-foreground/70 leading-none max-w-[48px] truncate text-center">
+                    <span className="text-[10px] text-muted-foreground/60 leading-none max-w-[48px] truncate text-center">
                       {p.isMe ? 'Tu' : p.name.split(' ')[0]}
                     </span>
-                    {p.status === 'invited' && (
-                      <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
-                        invitato
-                      </span>
-                    )}
-                    {p.status === 'name-only' && (
-                      <span className="text-[8px] text-muted-foreground/40 uppercase tracking-wide leading-none">
-                        era con te
-                      </span>
-                    )}
                   </div>
                 ))}
               </div>
-              <p className="text-[10px] text-muted-foreground/40 mt-2">
-                Anche loro potrebbero ricordarlo in modo diverso
-              </p>
               {/* Only show invite here when the moment has content/people already.
                   When sparse, the invite action lives in the next-step nudge block below. */}
               {!isSparseMoment && (
