@@ -804,25 +804,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         {/* ── Next-step guidance — shown when moment is new / sparse ── */}
         {isSparseMoment ? (
           <div className="mt-8 mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-4">
+            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-3">
               Il tuo momento è appena iniziato
             </p>
-            <div className="space-y-2.5">
-              {/* Primary: add more content */}
-              <Link
-                href={`/memories/${params.id}/contribute`}
-                className="flex items-center justify-between gap-4 rounded-2xl px-5 py-4 active:scale-[0.985] transition-transform"
-                style={{ background: '#6B5FE8', color: 'white' }}
-              >
-                <div>
-                  <p className="text-[15px] font-medium leading-none">Aggiungi cosa è successo dopo</p>
-                  <p className="text-[12px] mt-1 opacity-60">Una foto, un dettaglio, una sensazione</p>
-                </div>
-                <span className="text-xl opacity-40 shrink-0 select-none" aria-hidden>✦</span>
-              </Link>
-              {/* Secondary: invite */}
-              <InviteShareButton memoryId={params.id} title={memory.title} />
-            </div>
+            <p className="text-sm text-muted-foreground/60 leading-relaxed">
+              Non è finita qui. Continua questo momento quando vuoi.
+            </p>
           </div>
         ) : (
           /* Non-sparse: keep the ambient "can continue" block (no buttons, just context) */
@@ -889,15 +876,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
       </div>
 
-      {/* ── FAB — expandable action sheet ── */}
-      {/* Hidden when moment is sparse: the in-page CTA is the single primary action. */}
-      {!isSparseMoment && (
-        <MemoryFAB
-          memoryId={params.id}
-          contributeHref={`/memories/${params.id}/contribute`}
-          memoryTitle={memory.title}
-        />
-      )}
+      {/* ── FAB — expandable action sheet (single bottom primary action) ── */}
+      <MemoryFAB
+        memoryId={params.id}
+        contributeHref={`/memories/${params.id}/contribute`}
+        memoryTitle={memory.title}
+      />
 
     </main>
   )
