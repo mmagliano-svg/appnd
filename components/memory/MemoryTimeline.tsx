@@ -157,18 +157,13 @@ export function MemoryTimeline({
   // ── Empty state ──────────────────────────────────────────────────────────
   if (visible.length === 0) {
     return (
-      <div className="py-16 text-center space-y-3">
-        <p className="text-3xl text-muted-foreground/[0.10] select-none">◯</p>
-        <p className="text-sm text-muted-foreground/40">È ancora tutto qui</p>
-        <p className="text-xs text-muted-foreground/28 max-w-[200px] mx-auto leading-relaxed">
+      <div className="py-24 text-center">
+        <p className="text-[15px] text-muted-foreground/40 italic leading-relaxed">
+          È ancora tutto qui.
+        </p>
+        <p className="text-[12px] text-muted-foreground/25 leading-relaxed mt-3 max-w-[220px] mx-auto">
           Ma potrebbe non restare così
         </p>
-        <Link
-          href={`/memories/${memoryId}/contribute`}
-          className="inline-block mt-3 text-xs text-muted-foreground/40 hover:text-foreground border border-border/30 rounded-full px-4 py-2 transition-colors hover:border-foreground/20"
-        >
-          Aggiungi il primo dettaglio
-        </Link>
       </div>
     )
   }
@@ -242,157 +237,89 @@ export function MemoryTimeline({
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="mt-12">
+    <div>
 
       {/* Scroll + glow when returning from contribute */}
       <TimelineHighlight active={!!highlightLast} />
 
-      {/* Section header */}
-      <div className="mb-8">
-        <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
-          come è cresciuto nel tempo
-        </p>
-      </div>
-
-      {/* ── Perspective summary (multi-perspective only) ── */}
-      {isMultiPerspective && (
-        <div className="mb-10 rounded-2xl bg-foreground/[0.03] px-4 py-4">
-          <p className="text-[9px] font-semibold uppercase tracking-widest text-muted-foreground/32 mb-0.5">
-            Lo avete vissuto così
-          </p>
-          <p className="text-[10px] text-muted-foreground/50 leading-tight mb-3.5">
-            Ognuno a modo suo
-          </p>
-          <div className="flex items-center gap-4 flex-wrap">
-            {uniqueContributors.map(({ authorId, firstName: fn }) => (
-              <span key={authorId} className="text-[11px] text-foreground/45">{fn}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* ── Single contributor hint (social nudge) ── */}
-      {singleContributorWithOthers && (
-        <div className="mb-10 text-center space-y-1.5">
-          <p className="text-xs text-muted-foreground/35">
-            Solo tu hai aggiunto qualcosa
-          </p>
-          <p className="text-[11px] text-muted-foreground/22">
-            Chiedi anche agli altri
-          </p>
-        </div>
-      )}
-
-      {/* Timeline — pl-6 (24px) positions content; line+dots center at ~12px */}
+      {/* Timeline — left-padded for the continuity line */}
       <div className="relative pl-6">
 
-        {/* Continuous vertical line — fades out toward the bottom */}
+        {/* Continuous vertical line — very soft, fades out at top and bottom */}
         <div
-          className="absolute left-[11px] top-2 bottom-16 w-px pointer-events-none"
+          className="absolute left-[11px] top-0 bottom-24 w-px pointer-events-none"
           style={{
             background:
-              'linear-gradient(to bottom, rgba(0,0,0,0.07) 0%, rgba(0,0,0,0.07) 70%, transparent 100%)',
+              'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.05) 12%, rgba(0,0,0,0.05) 78%, transparent 100%)',
           }}
         />
 
         {groups.map((group, gi) => (
           <div key={group.label} className={`relative ${gi > 0 ? 'mt-24' : ''}`}>
 
-            {/* Group label */}
-            <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/32 mb-8 leading-none">
-              {group.label}
+            {/* Chapter label — emotional, lowercase italic */}
+            <p className="text-[13px] italic text-muted-foreground/45 mb-10 leading-none">
+              {group.label.toLowerCase()}
             </p>
 
-            {/* Fragments */}
-            <div className="space-y-14">
+            {/* Fragments — read like diary paragraphs */}
+            <div className="space-y-16">
               {group.items.map((c) => (
                 <div
                   key={c.id}
                   id={c.isLast ? 'fragment-latest' : undefined}
                   data-fade-in
-                  className={`relative${c.variant === 'spacious' ? ' mt-3' : ''}`}
+                  className="relative"
                 >
-                  {/* Content wrapper — all fragments share the same light treatment */}
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
 
-                    {/* Others: first name header only */}
+                    {/* Micro byline for others — who + when */}
                     {!c.isOwn && (
-                      <span className="text-[11px] font-medium text-foreground/40 leading-none">
-                        {c.authorFirstName}
-                      </span>
-                    )}
-
-                    {/* Origin mark — first fragment only */}
-                    {c.isFirst && (
-                      <p className="text-[9px] text-muted-foreground/22 uppercase tracking-[0.16em] leading-none">
-                        Da qui è iniziato
+                      <p className="text-[11px] text-muted-foreground/45 leading-none">
+                        {c.authorFirstName} · {formatFragmentDate(c.created_at)}
                       </p>
                     )}
 
-                    {/* Micro-label — first of each group (personalized) */}
-                    {c.microLabel && (
-                      <p className="text-[9px] text-muted-foreground/25 uppercase tracking-[0.14em] leading-none">
-                        {c.microLabel}
+                    {/* Own fragment: just the date */}
+                    {c.isOwn && (
+                      <p className="text-[11px] text-muted-foreground/35 leading-none">
+                        {formatFragmentDate(c.created_at)}
                       </p>
                     )}
 
-                    {/* Date line — no name (identity is in header/layer) */}
-                    <p className="text-[10px] text-muted-foreground/28 leading-none">
-                      {formatFragmentDate(c.created_at)}
-                    </p>
-
-                    {/* Photo */}
+                    {/* Photo — borderless, no card, just the image */}
                     {c.content_type === 'photo' && c.media_url && (
-                      <div className="rounded-2xl overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={c.media_url}
-                          alt={c.caption ?? ''}
-                          className="w-full object-cover"
-                          style={{ maxHeight: '280px' }}
-                          loading="lazy"
-                          draggable={false}
-                        />
-                      </div>
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={c.media_url}
+                        alt={c.caption ?? ''}
+                        className="w-full rounded-xl object-cover"
+                        style={{ maxHeight: '320px' }}
+                        loading="lazy"
+                        draggable={false}
+                      />
                     )}
 
-                    {/* Caption */}
+                    {/* Caption — as prose under the photo */}
                     {c.content_type === 'photo' && c.caption && (
-                      <p className="text-sm leading-relaxed text-foreground/58 whitespace-pre-wrap italic">
+                      <p className="text-[15px] leading-relaxed text-foreground/60 whitespace-pre-wrap">
                         {c.caption}
                       </p>
                     )}
 
-                    {/* Text contribution */}
+                    {/* Text contribution — reads as diary paragraph */}
                     {c.content_type === 'text' && c.text_content && (
-                      <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                      <p className="text-[16px] leading-[1.7] text-foreground/82 whitespace-pre-wrap">
                         {c.text_content}
                       </p>
                     )}
 
-                    {/* Note contribution */}
+                    {/* Note contribution — softer italic, no box */}
                     {c.content_type === 'note' && c.text_content && (
-                      <div className="rounded-xl bg-muted/20 px-4 py-3">
-                        <p className="text-sm leading-relaxed text-foreground/65 whitespace-pre-wrap italic">
-                          {c.text_content}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Identity layer — others only, ~70% of time */}
-                    {c.showIdentityLayer && (
-                      <p className="text-[9px] text-muted-foreground/20 leading-none mt-1">
-                        {getIdentityLine(c.authorFirstName, idHash(c.id))}
+                      <p className="text-[15px] leading-relaxed text-foreground/60 whitespace-pre-wrap italic">
+                        {c.text_content}
                       </p>
                     )}
-
-                    {/* Continue action */}
-                    <Link
-                      href={`/memories/${memoryId}/contribute`}
-                      className="inline-block text-[10px] text-muted-foreground/20 hover:text-muted-foreground/50 transition-colors mt-0.5"
-                    >
-                      Continua da qui
-                    </Link>
 
                   </div>
                 </div>
@@ -404,20 +331,27 @@ export function MemoryTimeline({
 
       </div>
 
-      {/* ── Closing chapter — "E poi?" ── */}
-      <div className="mt-28 pt-16 border-t border-border/[0.07] text-center">
-        <p className="text-lg font-semibold text-foreground/80 leading-tight">
+      {/* ── Closing chapter — "E poi?" — soft fade-in, no hard border ── */}
+      <div
+        data-fade-in
+        className="mt-32 pt-20 text-center relative"
+        style={{
+          background:
+            'linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.015) 100%)',
+        }}
+      >
+        <p className="text-[20px] font-semibold text-foreground/78 leading-tight">
           E poi?
         </p>
-        <p className="text-sm text-muted-foreground/50 leading-relaxed mt-2">
+        <p className="text-[15px] text-muted-foreground/55 leading-relaxed mt-3">
           Questo momento può continuare a vivere
         </p>
-        <p className="text-[11px] text-muted-foreground/30 leading-relaxed mt-6 max-w-[260px] mx-auto">
+        <p className="text-[12px] text-muted-foreground/35 leading-relaxed mt-7 max-w-[280px] mx-auto">
           Ogni ricordo cresce quando qualcuno aggiunge qualcosa
         </p>
         <Link
           href={`/memories/${memoryId}/contribute`}
-          className="inline-flex items-center mt-7 rounded-2xl bg-foreground text-background px-6 py-3.5 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
+          className="inline-flex items-center mt-9 rounded-full bg-foreground text-background px-7 py-3.5 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
         >
           Continua questo momento
         </Link>

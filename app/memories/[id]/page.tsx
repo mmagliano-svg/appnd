@@ -4,7 +4,6 @@ import { createServerClient } from '@/lib/supabase/server'
 import { getCategoryByValue } from '@/lib/constants/categories'
 import { formatMemoryDateFull, formatMemoryDate, formatPeriodDisplay } from '@/lib/utils/dates'
 import { getMessages } from '@/actions/messages'
-import { InlineContribute } from '@/components/memory/InlineContribute'
 import { ScrollToTop } from '@/components/memory/ScrollToTop'
 import { MemoryScrollEffects } from '@/components/memory/MemoryScrollEffects'
 import { getAnchorLabel } from '@/lib/utils/anchors'
@@ -12,10 +11,7 @@ import { getSharedMemoryDetail } from '@/actions/shared-memories'
 import { ShareButton } from '@/components/memory/ShareButton'
 import { MoreMenu } from '@/components/memory/MoreMenu'
 import { MemoryTimeline, type TimelineFragment, type TimelineParticipant } from '@/components/memory/MemoryTimeline'
-import { ContentActions } from '@/components/memory/ContentActions'
-import { ImportanceStars } from '@/components/memory/ImportanceStars'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
-import { InviteShareButton } from '@/components/memory/InviteShareButton'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -92,21 +88,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
     .select('person_id, people(id, name, linked_user_id)')
     .eq('memory_id', params.id)
 
-  // Memory text thread — loaded server-side, passed to ContentActions
+  // Memory text thread — used to derive message authors for peopleOnMemory
   const rawMessages = await getMessages(params.id)
-  const textThreadComments = rawMessages.map((m) => {
-    const name = m.author.display_name ?? m.author.email.split('@')[0] ?? 'Anonimo'
-    const isMe = m.author_id === user?.id
-    return {
-      id: m.id,
-      authorName: isMe ? 'Tu' : name,
-      authorInitials: initials(name),
-      text: m.content,
-    }
-  })
-
-  const dbImportance = (memory as { importance?: number | null }).importance
-  const importanceLevel: number = dbImportance ?? ((isFirstTime || isAnniversary) ? 4 : sharingStatus === 'shared' ? 3 : 2)
 
   // Unified people list: all participants + all contributors, deduped by userId
   type PersonOnMemory = { key: string; name: string; ini: string; isMe: boolean; status: 'accepted' | 'invited' | 'name-only' | null; avatarUrl: string | null }
@@ -468,7 +451,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       {/* ── Hero block ── */}
       <div
         id="memory-hero"
-        className={`relative w-full ${heroPhoto ? 'aspect-[4/5] max-h-[560px] overflow-hidden animate-hero-fade-in' : 'h-24'} bg-muted`}
+        className={`relative w-full ${heroPhoto ? 'aspect-[3/4] max-h-[680px] overflow-hidden animate-hero-fade-in' : 'h-24'} bg-muted`}
       >
         {heroPhoto && (
           <>
@@ -480,26 +463,26 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               className="absolute inset-0 w-full h-full object-cover animate-hero-zoom"
               loading="eager"
             />
-            {/* Top gradient — faint, only enough to lift the back button */}
+            {/* Double gradient — soft top for back button, stronger bottom for text lift */}
             <div
               id="memory-hero-gradient"
               className="absolute inset-0 pointer-events-none"
               style={{
                 background:
-                  'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, transparent 22%, transparent 58%, rgba(0,0,0,0.32) 85%, rgba(0,0,0,0.48) 100%)',
+                  'linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, transparent 18%, transparent 50%, rgba(0,0,0,0.35) 78%, rgba(0,0,0,0.62) 100%)',
               }}
             />
             {/* Bottom overlay — title + date on image */}
             <div
               id="memory-hero-text"
-              className="absolute left-0 right-0 bottom-0 px-5 pb-7 z-10 animate-hero-text"
+              className="absolute left-0 right-0 bottom-0 px-6 pb-10 z-10 animate-hero-text"
             >
-              <h1 className="text-white text-[26px] font-semibold tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] max-w-[86%]">
+              <h1 className="text-white text-[28px] font-semibold tracking-tight leading-[1.15] drop-shadow-[0_2px_12px_rgba(0,0,0,0.5)] max-w-[90%]">
                 {memory.title}
               </h1>
-              <p className="mt-1.5 text-[12px] text-white/70 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
+              <p className="mt-2 text-[12px] text-white/65 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.55)]">
                 {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
-                {memory.location_name && <span className="text-white/45"> · </span>}
+                {memory.location_name && <span className="text-white/40"> · </span>}
                 {memory.location_name && <span>{memory.location_name}</span>}
               </p>
             </div>
@@ -554,241 +537,82 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
         </div>
       )}
 
-      {/* ── Body ── */}
-      <div className="max-w-lg mx-auto px-4 pb-24">
+      {/* ── Body — narrative prose flow ── */}
+      <div className="max-w-lg mx-auto px-5 pb-24">
 
-        {/* Success feedback after contribution */}
-        {searchParams.contributed === '1' && (
-          <p className="pt-4 text-xs text-muted-foreground">
-            ✓ Il tuo ricordo è stato aggiunto.
-          </p>
-        )}
-
-        {/* ── Memory meta — title/date hidden when shown on hero photo ── */}
-        <div className="pt-6 pb-6 border-b border-border/30">
+        {/* ── Opening: no-photo fallback title + emotional line ── */}
+        <div className="pt-14">
           {!heroPhoto && (
             <>
-              {/* Title */}
               <h1 className="text-3xl font-semibold tracking-tight leading-tight">
                 {memory.title}
               </h1>
-
-              {/* Date · Place */}
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base text-muted-foreground mt-3">
-                <span>{formatMemoryDateFull(memoryStartDate, memoryEndDate)}</span>
-                {memory.location_name && (
-                  <>
-                    <span className="text-muted-foreground/30">·</span>
-                    <span>{memory.location_name}</span>
-                  </>
-                )}
-                {anchorLabel && (
-                  <>
-                    <span className="text-muted-foreground/30">·</span>
-                    <span className="text-sm">{anchorLabel}</span>
-                  </>
-                )}
-              </div>
+              <p className="text-sm text-muted-foreground mt-2">
+                {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
+                {memory.location_name && <span> · {memory.location_name}</span>}
+              </p>
             </>
           )}
 
-          {heroPhoto && anchorLabel && (
-            <p className="text-sm text-muted-foreground">{anchorLabel}</p>
-          )}
-
-          {/* ── Emotional continuity lines ── */}
-          <div className="mt-5 space-y-1">
-            <p className="text-base text-foreground/70">Questo momento è ancora qui</p>
-            <p className="text-sm text-foreground/40">Un giorno che può continuare a vivere</p>
-          </div>
-
-          {/* ── Categories ── */}
-          {memoryCats.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-4">
-              {memoryCats.map((cat) => {
-                const c = getCategoryByValue(cat)
-                if (!c) return null
-                return (
-                  <span
-                    key={cat}
-                    className="inline-flex items-center gap-1 rounded-full border border-border/50 px-2.5 py-1 text-[11px] text-muted-foreground/60"
-                  >
-                    {c.emoji} {c.label}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Importance + badges row */}
-          <div className="flex flex-wrap items-center gap-2 mt-6">
-            <ImportanceStars
-              memoryId={params.id}
-              initialValue={importanceLevel}
-              isCreator={isCreator}
-            />
-            {isFirstTime && (
-              <span className="text-[9px] font-semibold rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400">
-                ✦ Prima volta
-              </span>
-            )}
-            {isAnniversary && (
-              <span className="text-[9px] font-semibold rounded-full bg-violet-50 border border-violet-200 px-2 py-0.5 text-violet-700 dark:bg-violet-950/40 dark:border-violet-800 dark:text-violet-400">
-                ↺ Ricorrenza
-              </span>
-            )}
-            {sharingStatus === 'shared' && (
-              <span className="text-[9px] font-semibold rounded-full bg-muted border border-border px-2 py-0.5 text-muted-foreground">
-                ♡ Parte della vostra storia
-              </span>
-            )}
-          </div>
-
-          {/* Con chi eri — before description */}
-          {peopleOnMemory.length > 0 && (
-            <div className="mt-6">
-              <p className="text-[10px] text-muted-foreground/35 mb-3 lowercase tracking-wide">
-                con chi eri
-              </p>
-              <div className="flex items-start gap-3 flex-wrap">
-                {peopleOnMemory.map((p) => (
-                  <div key={p.key} className="flex flex-col items-center gap-1.5 shrink-0">
-                    {p.avatarUrl ? (
-                      <img
-                        src={p.avatarUrl}
-                        alt=""
-                        className="w-9 h-9 rounded-full object-cover border border-white/20"
-                      />
-                    ) : (
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-bold ${
-                        p.status === 'accepted' || p.status === null
-                          ? 'bg-foreground text-background'
-                          : 'bg-muted border border-dashed border-border text-muted-foreground'
-                      }`}>
-                        {p.ini}
-                      </div>
-                    )}
-                    <span className="text-[10px] text-muted-foreground/60 leading-none max-w-[48px] truncate text-center">
-                      {p.isMe ? 'Tu' : p.name.split(' ')[0]}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {/* Only show invite here when the moment has content/people already.
-                  When sparse, the invite action lives in the next-step nudge block below. */}
-              {!isSparseMoment && (
-                <InviteShareButton
-                  memoryId={params.id}
-                  title={memory.title}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Description */}
-          {memory.description && (
-            <p data-fade-in className="text-lg leading-relaxed text-foreground/85 whitespace-pre-wrap mt-8">
-              {memory.description}
-            </p>
-          )}
-
-          {/* Text block interactions — persisted to memory_messages */}
-          <ContentActions
-            memoryId={params.id}
-            initialComments={textThreadComments}
-          />
+          {/* Emotional centerpiece */}
+          <p className="text-[17px] text-foreground/55 leading-relaxed italic">
+            Questo momento è ancora qui.
+          </p>
         </div>
 
-        {/* ── Tags ── */}
-        {tags.length > 0 && (
-          <div className="pb-3">
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/tags/${encodeURIComponent(tag)}`}
-                  className="inline-flex items-center rounded-full border border-border/50 bg-transparent hover:bg-accent hover:border-foreground/20 px-3 py-1 text-xs text-muted-foreground/60 hover:text-foreground transition-all"
-                >
-                  #{tag}
-                </Link>
-              ))}
-            </div>
-          </div>
+        {/* ── People — one emotional sentence ── */}
+        {peopleOnMemory.length > 0 && (
+          <p className="mt-12 text-[15px] text-foreground/60 leading-relaxed">
+            {(() => {
+              const others = peopleOnMemory.filter((p) => !p.isMe)
+              if (others.length === 0) return 'Un momento solo tuo, per ora.'
+              const firstNames = others.map((p) => p.name.split(' ')[0])
+              if (firstNames.length === 1) return `Vissuto con ${firstNames[0]}.`
+              if (firstNames.length === 2) return `Vissuto con ${firstNames[0]} e ${firstNames[1]}.`
+              if (firstNames.length === 3) return `Vissuto con ${firstNames[0]}, ${firstNames[1]} e ${firstNames[2]}.`
+              const shown = firstNames.slice(0, 2).join(', ')
+              const rest = firstNames.length - 2
+              return `Vissuto con ${shown} e altri ${rest}.`
+            })()}
+          </p>
         )}
 
-        {/* ── Shared perspectives ── */}
-        {sharedMemory && sharedMemory.contributions.length > 0 && (
-          <div className="mt-6">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide mb-3">
-              Cose aggiunte da chi c'era
-            </div>
-            <div className="space-y-4">
-              {sharedMemory.contributions.slice(0, 3).map((c) => (
-                <div key={c.id}>
-                  <div className="text-xs text-muted-foreground/60 mb-1">{c.author_name}</div>
-                  <div className="text-sm leading-relaxed text-foreground/80">{c.body}</div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-6 flex items-center justify-between">
-              <Link
-                href={`/shared/${sharedMemory.id}?from=${params.id}`}
-                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Vedi tutto →
-              </Link>
-              <Link
-                href={`/shared/${sharedMemory.id}/add?from=${params.id}`}
-                className="bg-black text-white text-sm px-4 py-2 rounded-full hover:opacity-90 transition-opacity active:scale-[0.99]"
-              >
-                Aggiungi qualcosa
-              </Link>
-            </div>
-          </div>
+        {/* ── Description — the body of the memory ── */}
+        {memory.description && (
+          <p data-fade-in className="mt-10 text-[18px] leading-[1.7] text-foreground/85 whitespace-pre-wrap">
+            {memory.description}
+          </p>
         )}
-
-
 
         {/* ── Child events (periods only) ── */}
         {isPeriod && (
-          <div className="py-5 border-b border-border/50">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Momenti · {childEvents.length}
-              </p>
-              <Link
-                href={`/memories/new?period=${memory.id}`}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                + Aggiungi
-              </Link>
-            </div>
+          <div className="mt-16">
+            <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide mb-5">
+              momenti di questo capitolo
+            </p>
             {childEvents.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">
+              <p className="text-sm text-muted-foreground/50">
                 Nessun momento collegato a questo periodo.
               </p>
             ) : (
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {childEvents.map((ev) => {
                   const evCat = getCategoryByValue(ev.category)
                   return (
                     <li key={ev.id}>
                       <Link
                         href={`/memories/${ev.id}`}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-border hover:border-foreground/20 bg-card hover:bg-accent/30 px-4 py-3 transition-all group"
+                        className="flex items-center justify-between gap-3 py-3 border-b border-border/20 transition-colors group"
                       >
                         <div className="min-w-0">
                           {evCat && (
-                            <p className="text-xs text-muted-foreground mb-0.5">
+                            <p className="text-[10px] text-muted-foreground/40 mb-0.5">
                               {evCat.emoji} {evCat.label}
                             </p>
                           )}
-                          <p className="text-sm font-medium truncate">{ev.title}</p>
-                          {ev.location_name && (
-                            <p className="text-xs text-muted-foreground mt-0.5 truncate">📍 {ev.location_name}</p>
-                          )}
+                          <p className="text-sm font-medium truncate group-hover:text-foreground transition-colors">{ev.title}</p>
                         </div>
-                        <span className="text-xs text-muted-foreground shrink-0">
+                        <span className="text-[11px] text-muted-foreground/40 shrink-0">
                           {formatMemoryDate(ev.start_date, null)}
                         </span>
                       </Link>
@@ -800,16 +624,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </div>
         )}
 
-        {/* ── Inline contribute — main interaction ── */}
-        {!hasOwnContribution && (
-          <InlineContribute memoryId={params.id} />
-        )}
-
-        {/* ── Fragments / gallery section ── */}
-        <div id="contributi">
-          <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide mb-5">
-            frammenti di quel giorno
-          </p>
+        {/* ── Fragments / timeline ── */}
+        <div id="contributi" className="mt-20">
           <MemoryTimeline
             contributions={contributions as TimelineFragment[]}
             happenedAt={memoryStartDate}
