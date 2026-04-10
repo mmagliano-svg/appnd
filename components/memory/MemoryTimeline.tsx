@@ -301,7 +301,7 @@ export function MemoryTimeline({
         />
 
         {groups.map((group, gi) => (
-          <div key={group.label} className={`relative ${gi > 0 ? 'mt-20' : ''}`}>
+          <div key={group.label} className={`relative ${gi > 0 ? 'mt-24' : ''}`}>
 
             {/* Group label */}
             <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-muted-foreground/32 mb-8 leading-none">
@@ -309,7 +309,7 @@ export function MemoryTimeline({
             </p>
 
             {/* Fragments */}
-            <div className="space-y-11">
+            <div className="space-y-14">
               {group.items.map((c) => (
                 <div
                   key={c.id}
@@ -317,12 +317,8 @@ export function MemoryTimeline({
                   data-fade-in
                   className={`relative${c.variant === 'spacious' ? ' mt-3' : ''}`}
                 >
-                  {/* Content wrapper — self gets subtle warm bg */}
-                  <div className={`space-y-2.5 rounded-xl ${
-                    c.isOwn
-                      ? 'bg-foreground/[0.025] px-3 py-2.5 -mx-3'
-                      : ''
-                  }`}>
+                  {/* Content wrapper — all fragments share the same light treatment */}
+                  <div className="space-y-2.5">
 
                     {/* Others: first name header only */}
                     {!c.isOwn && (
@@ -381,7 +377,7 @@ export function MemoryTimeline({
 
                     {/* Note contribution */}
                     {c.content_type === 'note' && c.text_content && (
-                      <div className="rounded-xl bg-muted/30 px-4 py-3">
+                      <div className="rounded-xl bg-muted/20 px-4 py-3">
                         <p className="text-sm leading-relaxed text-foreground/65 whitespace-pre-wrap italic">
                           {c.text_content}
                         </p>
