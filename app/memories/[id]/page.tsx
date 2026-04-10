@@ -468,7 +468,7 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
       {/* ── Hero block ── */}
       <div
         id="memory-hero"
-        className={`relative w-full ${heroPhoto ? 'aspect-[4/3] max-h-[420px] overflow-hidden' : 'h-24'} bg-muted`}
+        className={`relative w-full ${heroPhoto ? 'aspect-[4/5] max-h-[560px] overflow-hidden animate-hero-fade-in' : 'h-24'} bg-muted`}
       >
         {heroPhoto && (
           <>
@@ -476,21 +476,38 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             <img
               src={heroPhoto}
               alt=""
-              id="memory-hero-img" className="absolute inset-0 w-full h-full object-cover"
+              id="memory-hero-img"
+              className="absolute inset-0 w-full h-full object-cover animate-hero-zoom"
               loading="eager"
             />
+            {/* Top gradient — faint, only enough to lift the back button */}
             <div
               id="memory-hero-gradient"
-              className="absolute inset-0"
+              className="absolute inset-0 pointer-events-none"
               style={{
-                background: 'linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, transparent 42%)',
+                background:
+                  'linear-gradient(to bottom, rgba(0,0,0,0.28) 0%, transparent 22%, transparent 58%, rgba(0,0,0,0.32) 85%, rgba(0,0,0,0.48) 100%)',
               }}
             />
+            {/* Bottom overlay — title + date on image */}
+            <div
+              id="memory-hero-text"
+              className="absolute left-0 right-0 bottom-0 px-5 pb-7 z-10 animate-hero-text"
+            >
+              <h1 className="text-white text-[26px] font-semibold tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] max-w-[86%]">
+                {memory.title}
+              </h1>
+              <p className="mt-1.5 text-[12px] text-white/70 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
+                {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
+                {memory.location_name && <span className="text-white/45"> · </span>}
+                {memory.location_name && <span>{memory.location_name}</span>}
+              </p>
+            </div>
           </>
         )}
 
         {/* Top controls — absolute positioned in both branches */}
-        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-6 z-10">
+        <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pt-6 z-20">
           <Link
             href="/dashboard"
             className={`inline-flex items-center gap-1.5 text-sm transition-colors ${
@@ -547,29 +564,37 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </p>
         )}
 
-        {/* ── Memory meta — always shown below hero ── */}
+        {/* ── Memory meta — title/date hidden when shown on hero photo ── */}
         <div className="pt-6 pb-6 border-b border-border/30">
-            {/* Title */}
-          <h1 className="text-3xl font-semibold tracking-tight leading-tight">
-            {memory.title}
-          </h1>
+          {!heroPhoto && (
+            <>
+              {/* Title */}
+              <h1 className="text-3xl font-semibold tracking-tight leading-tight">
+                {memory.title}
+              </h1>
 
-          {/* Date · Place */}
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base text-muted-foreground mt-3">
-            <span>{formatMemoryDateFull(memoryStartDate, memoryEndDate)}</span>
-            {memory.location_name && (
-              <>
-                <span className="text-muted-foreground/30">·</span>
-                <span>{memory.location_name}</span>
-              </>
-            )}
-            {anchorLabel && (
-              <>
-                <span className="text-muted-foreground/30">·</span>
-                <span className="text-sm">{anchorLabel}</span>
-              </>
-            )}
-          </div>
+              {/* Date · Place */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-base text-muted-foreground mt-3">
+                <span>{formatMemoryDateFull(memoryStartDate, memoryEndDate)}</span>
+                {memory.location_name && (
+                  <>
+                    <span className="text-muted-foreground/30">·</span>
+                    <span>{memory.location_name}</span>
+                  </>
+                )}
+                {anchorLabel && (
+                  <>
+                    <span className="text-muted-foreground/30">·</span>
+                    <span className="text-sm">{anchorLabel}</span>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {heroPhoto && anchorLabel && (
+            <p className="text-sm text-muted-foreground">{anchorLabel}</p>
+          )}
 
           {/* ── Emotional continuity lines ── */}
           <div className="mt-5 space-y-1">
