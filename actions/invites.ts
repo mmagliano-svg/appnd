@@ -41,7 +41,10 @@ export async function createInvite(memoryId: string, email?: string) {
   const token = generateInviteToken()
   const normalizedEmail = email?.toLowerCase().trim() || null
 
-  // Use admin client to bypass RLS for invite insert
+  // Use admin client to bypass RLS for invite insert.
+  // The check constraint requires user_id, invited_email, OR display_name
+  // to be non-null. When no email is provided (link-only share), populate
+  // display_name with a placeholder so the row is valid.
   const admin = createAdminClient()
   const { error: inviteError } = await admin
     .from('memory_participants')
@@ -49,6 +52,7 @@ export async function createInvite(memoryId: string, email?: string) {
       memory_id: memoryId,
       invited_email: normalizedEmail,
       invite_token: token,
+      display_name: normalizedEmail ? null : 'Invitato tramite link',
     })
 
   if (inviteError) {

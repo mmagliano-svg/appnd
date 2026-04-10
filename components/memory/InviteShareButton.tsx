@@ -27,8 +27,9 @@ export function InviteShareButton({ memoryId, title }: InviteShareButtonProps) {
       } catch {
         // user cancelled or not supported — silent
       }
-    } catch {
-      // invite creation failed — silent
+    } catch (err) {
+      console.error('[InviteShareButton] createInvite failed:', err)
+      alert('Impossibile creare il link di invito. Riprova.')
     } finally {
       setLoading(false)
     }

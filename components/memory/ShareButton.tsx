@@ -28,8 +28,9 @@ export function ShareButton({ title, memoryId, heroMode }: ShareButtonProps) {
       } catch {
         // user cancelled or not supported — silent
       }
-    } catch {
-      // invite creation failed — silent
+    } catch (err) {
+      console.error('[ShareButton] createInvite failed:', err)
+      alert('Impossibile creare il link di invito. Riprova.')
     } finally {
       setLoading(false)
     }

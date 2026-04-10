@@ -28,8 +28,9 @@ export function MemoryFAB({ memoryId, contributeHref, memoryTitle }: MemoryFABPr
       } catch {
         // user cancelled or not supported — silent
       }
-    } catch {
-      // invite creation failed — silent
+    } catch (err) {
+      console.error('[MemoryFAB] createInvite failed:', err)
+      alert('Impossibile creare il link di invito. Riprova.')
     }
   }
 
