@@ -7,7 +7,6 @@ import { getUpcomingMoments, getMemorySignals } from '@/actions/home'
 import { getHomeSharedMoments } from '@/actions/shared-memories'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
-import { FeaturedMemory, type FeaturedMemoryData } from '@/components/home/FeaturedMemory'
 import { MemorySignals } from '@/components/home/MemorySignals'
 import { SharedMoments } from '@/components/home/SharedMoments'
 import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
@@ -220,33 +219,6 @@ export default async function DashboardPage() {
     )
   }
 
-  // ── Featured Memory — "Da rivivere ora" ───────────────────────────────────
-  // Best candidate: most contributions (activity proxy), excluding hero
-  const featuredSource = (() => {
-    const candidates = events.filter((m) => m.id !== heroSource?.id)
-    if (candidates.length === 0) return heroSource
-    return [...candidates].sort(
-      (a, b) => b.memory_contributions.length - a.memory_contributions.length,
-    )[0]
-  })()
-
-  const featuredSubtext = (() => {
-    if (!featuredSource) return "Non lo apri da un po'"
-    const cnt = featuredSource.memory_contributions.length
-    if (cnt >= 4) return 'Ti è rimasto molto'
-    if (cnt >= 2) return 'Qualcuno ha aggiunto qualcosa'
-    return "Non lo apri da un po'"
-  })()
-
-  const featuredMemory: FeaturedMemoryData | null = featuredSource
-    ? {
-        id: featuredSource.id,
-        title: featuredSource.title,
-        previewUrl: previewUrl(featuredSource),
-        subtext: featuredSubtext,
-      }
-    : null
-
   // ── Continue Story ─────────────────────────────────────────────────────────
   // Exclude the hero memory so it doesn't appear twice
   const continueMemories: StoryMemory[] = events
@@ -318,7 +290,7 @@ export default async function DashboardPage() {
 
         <div className="space-y-10 pt-1">
 
-          {/* Hero + featured + signals — immediate emotional tone */}
+          {/* Hero + contribution preview + signals — immediate emotional tone */}
           <div className="space-y-4">
             <HomeHero
               memory={heroMemory}
@@ -336,9 +308,11 @@ export default async function DashboardPage() {
                 mediaUrl={heroLatestContrib.mediaUrl}
               />
             )}
-            {featuredMemory && <FeaturedMemory memory={featuredMemory} />}
             <MemorySignals signals={signals} />
           </div>
+
+          {/* Time depth — recurring moments (personal, placed before carousels) */}
+          <UpcomingMoments moments={upcomingMoments} />
 
           {/* Social layer — shared moments */}
           <SharedMoments moments={sharedMoments} />
@@ -347,9 +321,6 @@ export default async function DashboardPage() {
           {continueMemories.length > 0 && (
             <ContinueStory memories={continueMemories} />
           )}
-
-          {/* Time depth — recurring moments */}
-          <UpcomingMoments moments={upcomingMoments} />
 
           {/* Life context — clusters */}
           <LifeClusters

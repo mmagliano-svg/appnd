@@ -687,15 +687,9 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
           {/* Description */}
           {memory.description && (
-            <>
-              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mt-8 mb-2">Ti ricordi quando...</p>
-              <p data-fade-in className="text-lg leading-relaxed text-foreground/85 whitespace-pre-wrap">
-                {memory.description}
-              </p>
-              <p className="text-sm text-foreground/40 mt-6 leading-relaxed italic">
-                C&apos;è qualcosa che ti è tornato in mente dopo?
-              </p>
-            </>
+            <p data-fade-in className="text-lg leading-relaxed text-foreground/85 whitespace-pre-wrap mt-8">
+              {memory.description}
+            </p>
           )}
 
           {/* Text block interactions — persisted to memory_messages */}
@@ -704,13 +698,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             initialComments={textThreadComments}
           />
         </div>
-
-        {/* Contextual invite line — shown to non-creators in shared memories */}
-        {!isCreator && creatorName && (
-          <p className="text-xs text-muted-foreground pt-3 pb-0">
-            {creatorName} ha salvato questo momento con te.
-          </p>
-        )}
 
         {/* ── Tags ── */}
         {tags.length > 0 && (
@@ -813,48 +800,6 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </div>
         )}
 
-        {/* ── Next-step guidance — shown when moment is new / sparse ── */}
-        {isSparseMoment ? (
-          <div className="mt-8 mb-2">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-3">
-              Il tuo momento è appena iniziato
-            </p>
-            <p className="text-sm text-muted-foreground/60 leading-relaxed">
-              Non è finita qui. Continua questo momento quando vuoi.
-            </p>
-          </div>
-        ) : (
-          /* Non-sparse: keep the ambient "can continue" block (no buttons, just context) */
-          <div className="mt-10 mb-6">
-            <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/30 mb-4">
-              Questo momento può continuare
-            </p>
-            <div className="rounded-2xl border border-border/40 overflow-hidden divide-y divide-border/30">
-              <div className="flex items-center gap-4 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">✦</div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-none text-foreground/80">Aggiungi un dettaglio</p>
-                  <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Qualcosa che ti è tornato in mente ora</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">○</div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-none text-foreground/80">Invita chi era con te</p>
-                  <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Per vedere anche il loro punto di vista</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4 px-4 py-3.5">
-                <div className="w-8 h-8 rounded-full bg-muted/70 flex items-center justify-center shrink-0 text-foreground/30 text-[13px]">↺</div>
-                <div className="min-w-0">
-                  <p className="text-sm font-medium leading-none text-foreground/80">Rivivilo nel tempo</p>
-                  <p className="text-xs text-muted-foreground/50 mt-1 leading-snug">Quando questo momento ritorna, puoi aggiornarlo</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── Inline contribute — main interaction ── */}
         {!hasOwnContribution && (
           <InlineContribute memoryId={params.id} />
@@ -862,8 +807,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
 
         {/* ── Fragments / gallery section ── */}
         <div id="contributi">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/35 mb-5">
-            Frammenti di quel giorno
+          <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide mb-5">
+            frammenti di quel giorno
           </p>
           <MemoryTimeline
             contributions={contributions as TimelineFragment[]}

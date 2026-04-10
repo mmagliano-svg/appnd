@@ -249,13 +249,8 @@ export function MemoryTimeline({
 
       {/* Section header */}
       <div className="mb-8">
-        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/32">
-          Questo momento nel tempo
-        </p>
-        <p className="text-[11px] text-muted-foreground/20 mt-1.5">
-          {isMultiPerspective
-            ? 'Ognuno lo ricorda a modo suo'
-            : 'Ogni dettaglio aggiunge qualcosa'}
+        <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
+          come è cresciuto nel tempo
         </p>
       </div>
 
