@@ -75,17 +75,64 @@ function formatPeriodRange(start: string, end: string | null): string {
 // ── Importance scoring ─────────────────────────────────────────────────────
 
 /**
- * Rule-based score from 0 to 8 based on already-available memory signals.
+ * Whole-word-ish check against a keyword list. Handles Italian accents
+ * correctly via \p{L} and avoids false positives like "primavera" for
+ * "prima". Pure function, no regex engine surprises.
+ */
+const IMPORTANCE_KEYWORDS = [
+  'nascita',
+  'matrimonio',
+  'primo',
+  'prima',
+  'figlio',
+  'figlia',
+  'papà',
+  'papa',
+  'mamma',
+]
+
+function hasImportanceKeyword(title: string): boolean {
+  const normalized = title.toLowerCase()
+  // Boundary = start/end of string, or any non-letter char. We cover
+  // Italian accented lowercase letters explicitly so "primavera" never
+  // matches "prima" and "papà" matches correctly.
+  const LETTER_RE = /[a-zàáèéìíòóùú]/
+  const isBoundary = (c: string) => c === '' || !LETTER_RE.test(c)
+
+  for (const kw of IMPORTANCE_KEYWORDS) {
+    let from = 0
+    while (from <= normalized.length) {
+      const idx = normalized.indexOf(kw, from)
+      if (idx < 0) break
+      const before = idx === 0 ? '' : normalized[idx - 1]
+      const after = idx + kw.length >= normalized.length ? '' : normalized[idx + kw.length]
+      if (isBoundary(before) && isBoundary(after)) return true
+      from = idx + 1
+    }
+  }
+  return false
+}
+
+/**
+ * Rule-based score from 0 to 11 based on already-available memory signals.
  * No new backend, no AI. Higher score → visually larger rendering.
+ *
+ * Signals are structural (photos, description, flags) AND semantic
+ * (title keywords that denote life-defining events) so a birth or a
+ * wedding surfaces as LARGE even on its own.
  */
 function importanceScore(m: FeedMemory): number {
   let score = 0
+  // ── Structural signals ───────────────────────────────────────────
   if (m.previewUrl) score += 2            // has hero image
   if (m.photoCount >= 2) score += 1       // has multiple photos
   if (m.hasDescription) score += 1        // the user took time to write
   if (m.isFirstTime) score += 2           // "first time" is always important
   if (m.isAnniversary) score += 1         // anniversaries recur with weight
   if (m.isPartOfPeriod) score += 1        // linked to a life chapter
+  // ── Semantic signals (title-based) ───────────────────────────────
+  if (hasImportanceKeyword(m.title)) score += 2   // life-defining events
+  if (m.title.includes('!')) score += 1            // user's own emphasis
   return score
 }
 
@@ -99,17 +146,21 @@ function memorySize(m: FeedMemory): MemorySize {
 /**
  * Score used when the rhythm pass needs to PROMOTE a memory to LARGE
  * because we've gone too many steps without a visually heavy anchor.
- * Overweights photos and strong titles vs the base importance score.
+ * Overweights photos and strong titles vs the base importance score,
+ * and also honours the semantic keyword boost so a birth or wedding
+ * wins over an unrelated photo memory during the dry-spell fix.
  */
 function promotionScore(m: FeedMemory): number {
   return (
-    (m.previewUrl ? 3 : 0) +            // photos are the biggest visual anchor
-    (m.title.length >= 20 ? 1 : 0) +    // long title ≈ user took care naming it
+    (m.previewUrl ? 3 : 0) +                  // photos are the biggest visual anchor
+    (m.title.length >= 20 ? 1 : 0) +          // long title ≈ user took care naming it
     (m.hasDescription ? 1 : 0) +
     (m.photoCount >= 2 ? 1 : 0) +
     (m.isFirstTime ? 2 : 0) +
     (m.isAnniversary ? 1 : 0) +
-    (m.isPartOfPeriod ? 1 : 0)
+    (m.isPartOfPeriod ? 1 : 0) +
+    (hasImportanceKeyword(m.title) ? 2 : 0) + // life-defining events
+    (m.title.includes('!') ? 1 : 0)
   )
 }
 
