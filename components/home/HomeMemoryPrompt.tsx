@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { MEMORY_PROMPT_TEXTS } from '@/lib/constants/memory-prompts'
 
 /**
  * HomeMemoryPrompt
@@ -12,35 +13,48 @@ import Link from 'next/link'
  * the prompt pre-filled as the title.
  *
  * Selection logic:
- *  - Random pick on mount
- *  - Avoids repeating the last shown prompt (via localStorage)
+ *  - Random pick on mount from the MEMORY_PROMPT_TEXTS library
+ *  - Avoids repeating the last few shown prompts (via localStorage)
  *
  * This is intentionally minimal — no AI, no backend, no carousel.
+ * The prompt library lives in lib/constants/memory-prompts.ts and is
+ * organised by life-area category.
  */
 
-const PROMPTS = [
-  'Ti ricordi il tuo primo viaggio da solo?',
-  'Ti ricordi tutte le case in cui hai vissuto?',
-  'Con chi passavi più tempo in quel periodo?',
-  'Questo momento esiste… ma manca qualcosa',
-  'C’è qualcuno che potrebbe ricordarlo meglio di te?',
-]
+const LAST_PROMPTS_KEY = 'appnd_recent_prompts'
+const RECENT_WINDOW = 8  // how many recent prompts to avoid repeating
 
-const LAST_PROMPT_KEY = 'appnd_last_prompt'
+function readRecent(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(LAST_PROMPTS_KEY)
+    if (!raw) return []
+    const arr = JSON.parse(raw)
+    return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+function writeRecent(list: string[]) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify(list))
+  } catch {
+    // quota / parse issues — silent, best-effort
+  }
+}
 
 function pickPrompt(): string {
-  // Read "last shown" — safe on SSR (will be null, then recomputed client-side)
-  const last =
-    typeof window !== 'undefined'
-      ? window.localStorage.getItem(LAST_PROMPT_KEY)
-      : null
+  const recent = readRecent()
+  const pool = MEMORY_PROMPT_TEXTS.filter((p) => !recent.includes(p))
+  // If the user has cycled through most of the library, fall back to the full list.
+  const source = pool.length > 0 ? pool : MEMORY_PROMPT_TEXTS
+  const chosen = source[Math.floor(Math.random() * source.length)] ?? MEMORY_PROMPT_TEXTS[0]
 
-  const pool = PROMPTS.filter((p) => p !== last)
-  const chosen = pool[Math.floor(Math.random() * pool.length)] ?? PROMPTS[0]
-
-  if (typeof window !== 'undefined') {
-    window.localStorage.setItem(LAST_PROMPT_KEY, chosen)
-  }
+  // Keep a rolling window of the last N shown prompts so rotation doesn't repeat too soon.
+  const nextRecent = [chosen, ...recent.filter((p) => p !== chosen)].slice(0, RECENT_WINDOW)
+  writeRecent(nextRecent)
 
   return chosen
 }
