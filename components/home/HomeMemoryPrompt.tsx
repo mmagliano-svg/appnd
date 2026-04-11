@@ -2,32 +2,26 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { MEMORY_PROMPT_TEXTS } from '@/lib/constants/memory-prompts'
+import { PROMPTS, pickPromptFromPool, getPromptHref, type Prompt } from '@/lib/constants/memory-prompts'
 
 /**
  * HomeMemoryPrompt
  *
- * A lightweight "memory activation" block rendered on the home screen.
- * Shows ONE soft, emotional prompt at a time to help the user remember
- * something meaningful. Clicking a CTA navigates to /memories/new with
- * the prompt pre-filled as the title.
+ * Shows ONE structured prompt at a time. The prompt has a type
+ * (moment / period / cluster) and routes to the matching creation
+ * flow. Rotation avoids recently-shown prompts via a localStorage
+ * rolling window.
  *
- * Selection logic:
- *  - Random pick on mount from the MEMORY_PROMPT_TEXTS library
- *  - Avoids repeating the last few shown prompts (via localStorage)
- *
- * This is intentionally minimal — no AI, no backend, no carousel.
- * The prompt library lives in lib/constants/memory-prompts.ts and is
- * organised by life-area category.
+ * Pure V1 — no AI, no backend, no carousel.
  */
 
-const LAST_PROMPTS_KEY = 'appnd_recent_prompts'
-const RECENT_WINDOW = 8  // how many recent prompts to avoid repeating
+const RECENT_KEY = 'appnd_recent_prompt_ids'
+const RECENT_WINDOW = 8
 
-function readRecent(): string[] {
+function readRecentIds(): string[] {
   if (typeof window === 'undefined') return []
   try {
-    const raw = window.localStorage.getItem(LAST_PROMPTS_KEY)
+    const raw = window.localStorage.getItem(RECENT_KEY)
     if (!raw) return []
     const arr = JSON.parse(raw)
     return Array.isArray(arr) ? arr.filter((v): v is string => typeof v === 'string') : []
@@ -36,73 +30,80 @@ function readRecent(): string[] {
   }
 }
 
-function writeRecent(list: string[]) {
+function writeRecentIds(list: string[]) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(LAST_PROMPTS_KEY, JSON.stringify(list))
+    window.localStorage.setItem(RECENT_KEY, JSON.stringify(list))
   } catch {
-    // quota / parse issues — silent, best-effort
+    // silent
   }
 }
 
-function pickPrompt(): string {
-  const recent = readRecent()
-  const pool = MEMORY_PROMPT_TEXTS.filter((p) => !recent.includes(p))
-  // If the user has cycled through most of the library, fall back to the full list.
-  const source = pool.length > 0 ? pool : MEMORY_PROMPT_TEXTS
-  const chosen = source[Math.floor(Math.random() * source.length)] ?? MEMORY_PROMPT_TEXTS[0]
-
-  // Keep a rolling window of the last N shown prompts so rotation doesn't repeat too soon.
-  const nextRecent = [chosen, ...recent.filter((p) => p !== chosen)].slice(0, RECENT_WINDOW)
-  writeRecent(nextRecent)
-
+function pickPrompt(): Prompt {
+  const recent = readRecentIds()
+  const chosen = pickPromptFromPool(recent)
+  const nextRecent = [chosen.id, ...recent.filter((id) => id !== chosen.id)].slice(0, RECENT_WINDOW)
+  writeRecentIds(nextRecent)
   return chosen
 }
 
+// Subtle label varies by prompt type — each type invites a different kind
+// of recall, so the eyebrow copy follows.
+function labelForType(type: Prompt['type']): string {
+  switch (type) {
+    case 'moment':  return 'ti è tornato in mente questo?'
+    case 'period':  return 'un periodo della tua vita'
+    case 'cluster': return 'qualcosa che si è ripetuto'
+  }
+}
+
+// Primary CTA label also varies by type to stay honest about what the
+// next screen will do.
+function primaryCtaForType(type: Prompt['type']): string {
+  switch (type) {
+    case 'moment':  return 'Salvalo'
+    case 'period':  return 'Racconta quel periodo'
+    case 'cluster': return 'Raggruppa questi momenti'
+  }
+}
+
 export function HomeMemoryPrompt() {
-  // Start null on SSR to avoid hydration mismatch, then fill on mount
-  const [prompt, setPrompt] = useState<string | null>(null)
+  const [prompt, setPrompt] = useState<Prompt | null>(null)
 
   useEffect(() => {
     setPrompt(pickPrompt())
   }, [])
 
   if (!prompt) {
-    // Render an invisible placeholder with the same vertical space so the
-    // layout doesn't jump when the prompt appears on mount.
+    // Invisible placeholder preserves vertical space to avoid layout jump
     return <div className="px-4 h-[170px]" aria-hidden />
   }
 
-  const newMemoryHref = `/memories/new?title=${encodeURIComponent(prompt)}&source=prompt_home`
+  const href = getPromptHref(prompt)
 
   return (
     <div className="px-4">
       <div
         className="rounded-2xl px-5 py-6"
-        style={{
-          background: 'rgba(107,95,232,0.05)',
-        }}
+        style={{ background: 'rgba(107,95,232,0.05)' }}
       >
-        {/* Soft label */}
         <p className="text-[11px] text-muted-foreground/45 lowercase tracking-wide">
-          ti è tornato in mente questo?
+          {labelForType(prompt.type)}
         </p>
 
-        {/* Main prompt — the emotional focus */}
         <p className="text-[18px] font-medium text-foreground/85 leading-snug mt-3">
-          {prompt}
+          {prompt.text}
         </p>
 
-        {/* CTAs */}
         <div className="flex flex-wrap items-center gap-2 mt-6">
           <Link
-            href={newMemoryHref}
+            href={href}
             className="inline-flex items-center rounded-full bg-foreground text-background px-5 py-2.5 text-[13px] font-medium active:scale-[0.98] transition-transform"
           >
-            Salvalo
+            {primaryCtaForType(prompt.type)}
           </Link>
           <Link
-            href={newMemoryHref}
+            href={href}
             className="inline-flex items-center rounded-full px-5 py-2.5 text-[13px] text-muted-foreground/70 hover:text-foreground transition-colors"
           >
             Coinvolgi chi c&rsquo;era

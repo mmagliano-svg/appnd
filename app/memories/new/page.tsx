@@ -65,20 +65,25 @@ function NewMemoryForm() {
   const groupFromUrl    = searchParams.get('group')
   const fromOnboarding  = searchParams.get('from') === 'onboarding'
   const prefillTitle    = searchParams.get('title') ?? ''
+  const prefillLocation = searchParams.get('location') ?? ''
+  const promptText      = searchParams.get('prompt') ?? ''
   const promptSource    = searchParams.get('source')
-  const fromPromptHome  = promptSource === 'prompt_home'
+  // Guided mode is active whenever the user arrives from a prompt —
+  // either legacy (source=prompt_home) or new taxonomy (source=prompt + prompt=...)
+  const fromPrompt      = promptSource === 'prompt' || promptSource === 'prompt_home'
+  const fromPromptHome  = fromPrompt  // backward-compat alias used below
 
-  // Guided mode: cursor starts in the description textarea, not in the title.
-  // Title is already prefilled, so the user naturally continues the story.
+  // Guided mode: cursor lands on the title input (empty) so the user
+  // starts by naming their own memory — NOT on the description, since
+  // the title needs to be written first.
   useEffect(() => {
-    if (fromPromptHome) {
-      // Delay slightly so the page-mount autoFocus on title doesn't race us.
+    if (fromPrompt) {
       const id = window.setTimeout(() => {
-        descriptionRef.current?.focus()
+        titleRef.current?.focus()
       }, 350)
       return () => window.clearTimeout(id)
     }
-  }, [fromPromptHome])
+  }, [fromPrompt])
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
@@ -305,6 +310,18 @@ function NewMemoryForm() {
               className="hidden"
             />
 
+            {/* Prompt context — visible when arriving from a home prompt */}
+            {promptText && (
+              <div className="space-y-1.5 guided-hints-fade">
+                <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
+                  parti da qui
+                </p>
+                <p className="text-[15px] italic text-foreground/60 leading-snug">
+                  {promptText}
+                </p>
+              </div>
+            )}
+
             {/* Title */}
             <div>
               <input
@@ -312,15 +329,15 @@ function NewMemoryForm() {
                 id="title"
                 name="title"
                 type="text"
-                placeholder="Vuoi fermare questo momento?"
+                placeholder={promptText ? 'Dagli un nome tuo…' : 'Vuoi fermare questo momento?'}
                 required
                 autoFocus
                 defaultValue={prefillTitle}
                 className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/35 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
               />
               <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
-                {fromPromptHome
-                  ? 'Parti da qui. Prova a ricordare cosa è successo davvero.'
+                {fromPrompt
+                  ? 'Il prompt non è il titolo. Scrivi come lo ricordi tu.'
                   : 'Anche un piccolo momento può diventare importante nel tempo.'}
               </p>
             </div>
@@ -527,6 +544,7 @@ function NewMemoryForm() {
                 id="location_name"
                 name="location_name"
                 type="text"
+                defaultValue={prefillLocation}
                 placeholder="Es. Roma, Trastevere"
                 className="w-full bg-transparent text-base placeholder:text-muted-foreground/40 focus:outline-none border-b border-border pb-2.5"
               />
