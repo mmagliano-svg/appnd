@@ -367,7 +367,7 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
   }
 
   return (
-    <div className="mt-14 space-y-14">
+    <div className="mt-8 space-y-14">
       {blocks.map((block, idx) => {
         switch (block.kind) {
           case 'memory': {

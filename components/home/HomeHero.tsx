@@ -46,11 +46,11 @@ export function HomeHero({ memory, displayName, ctaLabel, caption, highlighted }
     <div className="px-4 animate-hero-fade-in">
       <TransitionLink
         href={`/memories/${memory.id}`}
-        className={`relative block w-full aspect-[3/4] max-h-[56vh] rounded-3xl overflow-hidden bg-muted${highlighted ? ' scale-[1.005]' : ''}`}
+        className={`relative block w-full aspect-[4/5] max-h-[44vh] rounded-3xl overflow-hidden bg-muted${highlighted ? ' scale-[1.005]' : ''}`}
         style={{
           boxShadow: highlighted
-            ? '0 20px 56px rgba(0,0,0,0.14), 0 0 0 1.5px rgba(107,95,232,0.3)'
-            : '0 20px 56px rgba(0,0,0,0.08)',
+            ? '0 14px 40px rgba(0,0,0,0.12), 0 0 0 1.5px rgba(107,95,232,0.28)'
+            : '0 14px 40px rgba(0,0,0,0.06)',
           transition: 'box-shadow 0.3s ease, transform 0.3s ease',
         }}
       >
@@ -67,26 +67,26 @@ export function HomeHero({ memory, displayName, ctaLabel, caption, highlighted }
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900" />
         )}
 
-        {/* Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+        {/* Gradient — softer, less dramatic */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/10 to-transparent" />
 
         {/* Memory text — constrained to left, max 80% width */}
-        <div className="absolute bottom-0 left-0 px-5 pb-9 max-w-[80%] animate-hero-text z-10">
+        <div className="absolute bottom-0 left-0 px-5 pb-7 max-w-[80%] animate-hero-text z-10">
           <p
-            className="text-white font-medium text-[17px] leading-snug tracking-tight line-clamp-2 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+            className="text-white/90 font-medium text-[16px] leading-snug tracking-tight line-clamp-2 drop-shadow-[0_2px_6px_rgba(0,0,0,0.5)]"
           >
             {memory.title}
           </p>
           <p
-            className="text-white/60 text-[10px] mt-2 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
+            className="text-white/55 text-[10px] mt-1.5 tracking-wide drop-shadow-[0_1px_5px_rgba(0,0,0,0.45)]"
           >
             {formatMemoryDate(memory.start_date, memory.end_date)}
             {memory.location_name && <span> · {memory.location_name}</span>}
           </p>
           <p
-            className="text-white/45 text-[10px] mt-3 tracking-wide drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
+            className="text-white/45 text-[10px] mt-2.5 tracking-wide drop-shadow-[0_1px_5px_rgba(0,0,0,0.45)]"
           >
-            {ctaLabel ?? 'Rivivi questo momento →'}
+            {ctaLabel ?? 'Continua →'}
           </p>
         </div>
       </TransitionLink>
