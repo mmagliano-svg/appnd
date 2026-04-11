@@ -63,6 +63,9 @@ function NewMemoryForm() {
   const periodFromUrl   = searchParams.get('period')
   const groupFromUrl    = searchParams.get('group')
   const fromOnboarding  = searchParams.get('from') === 'onboarding'
+  const prefillTitle    = searchParams.get('title') ?? ''
+  const promptSource    = searchParams.get('source')
+  const fromPromptHome  = promptSource === 'prompt_home'
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
@@ -299,10 +302,13 @@ function NewMemoryForm() {
                 placeholder="Vuoi fermare questo momento?"
                 required
                 autoFocus
+                defaultValue={prefillTitle}
                 className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/35 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
               />
               <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
-                Anche un piccolo momento può diventare importante nel tempo.
+                {fromPromptHome
+                  ? 'Parti da qui. Puoi cambiarlo come vuoi.'
+                  : 'Anche un piccolo momento può diventare importante nel tempo.'}
               </p>
             </div>
 

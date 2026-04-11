@@ -13,6 +13,7 @@ import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory
 import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
 import { UpcomingMoments } from '@/components/home/UpcomingMoments'
 import { HeroContributionPreview } from '@/components/home/HeroContributionPreview'
+import { HomeMemoryPrompt } from '@/components/home/HomeMemoryPrompt'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -310,6 +311,9 @@ export default async function DashboardPage() {
             )}
             <MemorySignals signals={signals} />
           </div>
+
+          {/* Memory activation — one soft prompt to trigger a memory */}
+          <HomeMemoryPrompt />
 
           {/* Time depth — recurring moments (personal, placed before carousels) */}
           <UpcomingMoments moments={upcomingMoments} />
