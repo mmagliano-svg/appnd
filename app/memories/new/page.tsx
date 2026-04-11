@@ -34,6 +34,7 @@ function NewMemoryForm() {
   const searchParams = useSearchParams()
   const titleRef = useRef<HTMLInputElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
 
   const [loading, setLoading] = useState(false)
   const [uploadStep, setUploadStep] = useState('')
@@ -66,6 +67,18 @@ function NewMemoryForm() {
   const prefillTitle    = searchParams.get('title') ?? ''
   const promptSource    = searchParams.get('source')
   const fromPromptHome  = promptSource === 'prompt_home'
+
+  // Guided mode: cursor starts in the description textarea, not in the title.
+  // Title is already prefilled, so the user naturally continues the story.
+  useEffect(() => {
+    if (fromPromptHome) {
+      // Delay slightly so the page-mount autoFocus on title doesn't race us.
+      const id = window.setTimeout(() => {
+        descriptionRef.current?.focus()
+      }, 350)
+      return () => window.clearTimeout(id)
+    }
+  }, [fromPromptHome])
 
   useEffect(() => {
     getAllUserTags().then(setAllTags).catch(() => {})
@@ -307,10 +320,32 @@ function NewMemoryForm() {
               />
               <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
                 {fromPromptHome
-                  ? 'Parti da qui. Puoi cambiarlo come vuoi.'
+                  ? 'Parti da qui. Prova a ricordare cosa è successo davvero.'
                   : 'Anche un piccolo momento può diventare importante nel tempo.'}
               </p>
             </div>
+
+            {/* ── Guided memory reconstruction (prompt_home only) ── */}
+            {fromPromptHome && (
+              <div className="space-y-4 guided-hints-fade">
+                <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
+                  <span className="text-foreground/55">Quando è successo?</span>{' '}
+                  <span className="text-muted-foreground/35">può essere una data o anche solo un periodo</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
+                  <span className="text-foreground/55">Dove eri?</span>{' '}
+                  <span className="text-muted-foreground/35">città, luogo, contesto</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
+                  <span className="text-foreground/55">Chi era con te?</span>{' '}
+                  <span className="text-muted-foreground/35">puoi aggiungerli dopo</span>
+                </p>
+                <p className="text-[11px] text-muted-foreground/40 leading-relaxed">
+                  <span className="text-foreground/55">Cosa è successo davvero?</span>{' '}
+                  <span className="text-muted-foreground/35">anche solo un dettaglio</span>
+                </p>
+              </div>
+            )}
 
             {/* Date */}
             <div className="space-y-3">
@@ -542,10 +577,11 @@ function NewMemoryForm() {
                 <span className="text-[10px] text-muted-foreground/40 italic">facoltativo</span>
               </div>
               <textarea
+                ref={descriptionRef}
                 id="description"
                 name="description"
-                placeholder={getPromptForCategory(null)}
-                rows={4}
+                placeholder={fromPromptHome ? 'Cosa è successo davvero?' : getPromptForCategory(null)}
+                rows={fromPromptHome ? 6 : 4}
                 className="w-full rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-base placeholder:text-muted-foreground/40 focus:outline-none focus:border-border focus:bg-background transition-colors resize-none leading-relaxed"
               />
             </div>
