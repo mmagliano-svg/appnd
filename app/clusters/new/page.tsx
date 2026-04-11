@@ -80,19 +80,20 @@ function NewClusterForm() {
           Potrai aggiungerne altri dopo.
         </p>
 
-        {/* Optional loose anchor */}
-        <div className="mt-10">
+        {/* Optional loose anchor — secondary, non-blocking */}
+        <div className="mt-12">
+          <p className="text-[12px] text-muted-foreground/55 leading-snug">
+            Vuoi dare un riferimento comune?{' '}
+            <span className="text-muted-foreground/35">(facoltativo)</span>
+          </p>
           <input
             ref={inputRef}
             type="text"
             value={anchor}
             onChange={(e) => setAnchor(e.target.value)}
             placeholder="es. Hong Kong, con papà, vacanze al mare"
-            className="w-full bg-transparent text-[17px] placeholder:text-foreground/25 focus:outline-none border-b border-border pb-3 leading-snug"
+            className="w-full mt-3 bg-transparent text-[16px] placeholder:text-foreground/25 focus:outline-none border-b border-border pb-2.5 leading-snug"
           />
-          <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
-            Facoltativo — puoi saltare e aggiungerlo dopo.
-          </p>
         </div>
 
         {/* CTA */}

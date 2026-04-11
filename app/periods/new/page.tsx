@@ -114,7 +114,7 @@ function NewPeriodForm() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Che fase della tua vita era?"
+              placeholder="Ti ricordi che fase della tua vita era?"
               className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/30 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
             />
             <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
@@ -125,7 +125,7 @@ function NewPeriodForm() {
           {/* When */}
           <div className="space-y-3">
             <p className="text-[13px] text-foreground/70">
-              Quando è iniziato?
+              Ti ricordi quando è iniziato?
             </p>
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -149,7 +149,7 @@ function NewPeriodForm() {
           {/* Where */}
           <div className="space-y-3">
             <p className="text-[13px] text-foreground/70">
-              Dove vivevi o passavi il tempo?
+              Dove vivevi o passavi le giornate?
             </p>
             <input
               type="text"
@@ -163,12 +163,12 @@ function NewPeriodForm() {
           {/* Description */}
           <div className="space-y-3">
             <p className="text-[13px] text-foreground/70">
-              Com&rsquo;era la tua vita in quel periodo?
+              Com&rsquo;era la tua vita in quei giorni?
             </p>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Chi c'era? Cosa facevi ogni giorno? Cosa ti è rimasto?"
+              placeholder="Dove eri ogni giorno? Chi c'era? Cosa facevi?"
               rows={6}
               className="w-full rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-base placeholder:text-muted-foreground/40 focus:outline-none focus:border-border focus:bg-background transition-colors resize-none leading-relaxed"
             />

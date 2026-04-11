@@ -12,6 +12,7 @@ import type { SimplePerson } from '@/actions/persons'
 import { createClient } from '@/lib/supabase/client'
 import { TagInput } from '@/components/memory/TagInput'
 import { getPromptForCategory } from '@/lib/constants/prompts'
+import { getPromptById } from '@/lib/constants/memory-prompts'
 
 // ── Anchor system v1 — fixed list ────────────────────────────────────────────
 const ANCHORS = [
@@ -67,6 +68,8 @@ function NewMemoryForm() {
   const prefillTitle    = searchParams.get('title') ?? ''
   const prefillLocation = searchParams.get('location') ?? ''
   const promptText      = searchParams.get('prompt') ?? ''
+  const promptId        = searchParams.get('promptId')
+  const promptExample   = getPromptById(promptId)?.example ?? null
   const promptSource    = searchParams.get('source')
   // Guided mode is active whenever the user arrives from a prompt —
   // either legacy (source=prompt_home) or new taxonomy (source=prompt + prompt=...)
@@ -319,6 +322,11 @@ function NewMemoryForm() {
                 <p className="text-[15px] italic text-foreground/60 leading-snug">
                   {promptText}
                 </p>
+                {promptExample && (
+                  <p className="text-[12px] text-muted-foreground/40 leading-snug pt-1">
+                    es. <span className="text-muted-foreground/55">{promptExample}</span>
+                  </p>
+                )}
               </div>
             )}
 
