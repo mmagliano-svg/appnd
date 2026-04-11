@@ -183,7 +183,52 @@ function LargeMemoryBlock({ memory }: { memory: FeedMemory }) {
   )
 }
 
-function MediumMemoryBlock({ memory }: { memory: FeedMemory }) {
+// Medium blocks have three layout variants so the feed doesn't read as a
+// uniform list of identical rows. Variant is derived deterministically from
+// the block's sequential index (1 in 3 is text-only) and a stable hash of the
+// memory id (drives weight + extra spacing).
+type MediumVariant = {
+  layout: 'thumb' | 'text'
+  weight: 'medium' | 'semibold'
+  extraTopSpacing: boolean
+}
+
+function idHash(id: string): number {
+  let h = 0
+  for (let i = 0; i < id.length; i++) {
+    h = (h * 31 + id.charCodeAt(i)) & 0xffff
+  }
+  return h
+}
+
+function computeMediumVariant(index: number, id: string): MediumVariant {
+  // Every 3rd medium item becomes text-only (stronger title, no thumbnail).
+  const layout: MediumVariant['layout'] = index % 3 === 2 ? 'text' : 'thumb'
+  // Alternate weight between adjacent thumb items so they don't stack identically.
+  const weight: MediumVariant['weight'] = index % 2 === 0 ? 'semibold' : 'medium'
+  // ~20 % of items get a slightly larger top margin — irregular cadence.
+  const extraTopSpacing = idHash(id) % 5 === 0
+  return { layout, weight, extraTopSpacing }
+}
+
+function MediumMemoryBlock({ memory, variant }: { memory: FeedMemory; variant: MediumVariant }) {
+  if (variant.layout === 'text') {
+    // Text-only variant — no thumbnail, stronger title, a touch more air.
+    return (
+      <Link href={`/memories/${memory.id}`} className="block group py-1">
+        <p className="text-[18px] font-semibold text-foreground/88 leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
+          {memory.title}
+        </p>
+        <p className="text-[12px] text-muted-foreground/55 mt-1.5">
+          {formatDate(memory.start_date)}
+          {memory.location_name && <span> · {memory.location_name}</span>}
+        </p>
+      </Link>
+    )
+  }
+
+  // Thumb variant — standard 96px thumbnail, variable title weight.
+  const titleWeight = variant.weight === 'semibold' ? 'font-semibold' : 'font-medium'
   return (
     <Link href={`/memories/${memory.id}`} className="block group">
       <div className="flex gap-4">
@@ -200,7 +245,7 @@ function MediumMemoryBlock({ memory }: { memory: FeedMemory }) {
           <div className="w-24 h-24 rounded-xl bg-muted shrink-0" />
         )}
         <div className="min-w-0 flex-1 flex flex-col justify-center">
-          <p className="text-[16px] font-medium text-foreground/85 leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
+          <p className={`text-[16px] ${titleWeight} text-foreground/85 leading-snug line-clamp-2 group-hover:text-foreground transition-colors`}>
             {memory.title}
           </p>
           <p className="text-[11px] text-muted-foreground/50 mt-1.5">
@@ -304,18 +349,37 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
   const blocks = composeBlocks(memories, pattern)
   if (blocks.length === 0) return null
 
+  // Pre-compute the variant for each medium block so the layout feels
+  // alive and irregular. Counter is per-medium, not per-block, so the
+  // 1-in-3 text-only cadence is stable regardless of periods/patterns
+  // interleaved in the flow.
+  const mediumVariants = new Map<string, MediumVariant>()
+  let mediumIndex = 0
+  for (const b of blocks) {
+    if (b.kind === 'memory' && b.size === 'medium') {
+      mediumVariants.set(b.memory.id, computeMediumVariant(mediumIndex, b.memory.id))
+      mediumIndex++
+    }
+  }
+
   return (
     <div className="mt-14 space-y-14">
       {blocks.map((block, idx) => {
         switch (block.kind) {
-          case 'memory':
+          case 'memory': {
+            const variant =
+              block.size === 'medium' ? mediumVariants.get(block.memory.id) : undefined
+            const wrapperClass = variant?.extraTopSpacing ? 'px-5 pt-4' : 'px-5'
             return (
-              <div key={`mem-${block.memory.id}-${idx}`} className="px-5">
+              <div key={`mem-${block.memory.id}-${idx}`} className={wrapperClass}>
                 {block.size === 'large' && <LargeMemoryBlock memory={block.memory} />}
-                {block.size === 'medium' && <MediumMemoryBlock memory={block.memory} />}
+                {block.size === 'medium' && variant && (
+                  <MediumMemoryBlock memory={block.memory} variant={variant} />
+                )}
                 {block.size === 'small' && <SmallMemoryBlock memory={block.memory} />}
               </div>
             )
+          }
           case 'period':
             return (
               <div key={`per-${block.period.id}-${idx}`} className="px-5">
