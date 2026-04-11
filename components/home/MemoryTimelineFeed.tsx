@@ -6,19 +6,20 @@ import type { RepeatedPattern } from '@/actions/home'
  * MemoryTimelineFeed
  *
  * A single continuous vertical flow that replaces the old dashboard
- * sections. Mixes five block types into one chronological narrative
- * so the home feels like "scrolling a life", not using an app.
+ * sections. Every memory carries an importance score that drives its
+ * rendering size (LARGE / MEDIUM / SMALL), so the eye weights some
+ * moments more than others instead of reading the feed as a uniform
+ * list of rows.
  *
  * Block types:
- *   1. memory    — a single moment (title, date, location)
+ *   1. memory    — a single moment, rendered in one of three sizes
  *   2. period    — a life chapter with duration (2018–2020)
- *   3. pattern   — a repeated place/people/category ("3 volte a Londra")
+ *   3. pattern   — a repeated place/people/category
  *   4. continue  — a soft "questo momento può continuare" nudge
  *   5. prompt    — one rare memory activation prompt
  *
- * The composition is deterministic (not a feed that changes on every
- * refresh). Patterns and prompts are interleaved at fixed rhythm
- * positions so the user builds a mental map of the flow.
+ * Importance scoring is pure client-side, rule-based, no AI, no extra
+ * queries. It reads only data already returned by getUserMemories.
  */
 
 export interface FeedMemory {
@@ -28,10 +29,18 @@ export interface FeedMemory {
   end_date: string | null
   location_name: string | null
   previewUrl: string | null
+  // ── Importance signals (from existing memory data) ──────────────────────
+  photoCount: number
+  hasDescription: boolean
+  isFirstTime: boolean
+  isAnniversary: boolean
+  isPartOfPeriod: boolean
 }
 
+type MemorySize = 'large' | 'medium' | 'small'
+
 type TimelineBlock =
-  | { kind: 'memory'; memory: FeedMemory }
+  | { kind: 'memory'; memory: FeedMemory; size: MemorySize }
   | { kind: 'period'; period: FeedMemory }
   | { kind: 'pattern'; pattern: RepeatedPattern }
   | { kind: 'continue'; memory: FeedMemory }
@@ -63,26 +72,49 @@ function formatPeriodRange(start: string, end: string | null): string {
   return startY === endY ? startY : `${startY}–${endY}`
 }
 
+// ── Importance scoring ─────────────────────────────────────────────────────
+
+/**
+ * Rule-based score from 0 to 8 based on already-available memory signals.
+ * No new backend, no AI. Higher score → visually larger rendering.
+ */
+function importanceScore(m: FeedMemory): number {
+  let score = 0
+  if (m.previewUrl) score += 2            // has hero image
+  if (m.photoCount >= 2) score += 1       // has multiple photos
+  if (m.hasDescription) score += 1        // the user took time to write
+  if (m.isFirstTime) score += 2           // "first time" is always important
+  if (m.isAnniversary) score += 1         // anniversaries recur with weight
+  if (m.isPartOfPeriod) score += 1        // linked to a life chapter
+  return score
+}
+
+function memorySize(m: FeedMemory): MemorySize {
+  const score = importanceScore(m)
+  if (score >= 5) return 'large'
+  if (score >= 2) return 'medium'
+  return 'small'
+}
+
 // ── Block composition ──────────────────────────────────────────────────────
 
 /**
- * Takes the raw memory list + optional pattern and interleaves them
- * into a single TimelineBlock[] following a fixed rhythm.
+ * Interleaves memories, patterns, prompts and continue nudges into one flow.
  *
- * Rhythm:
- *   - memories flow in chronological order (desc)
+ * Order stays chronological for most items (users expect time to flow). The
+ * importance layer operates on SIZE, not position — so a key moment is still
+ * at its real date but the eye sees it first because it occupies more space.
+ *
+ * Fixed rhythm slots:
  *   - after the 3rd memory: insert pattern block (if present)
  *   - after the 8th memory: insert prompt block
- *   - after the 14th memory: insert continue block
- *   - after the 20th memory: insert a second pattern block (if present)
- *
- * Memories with end_date render as period blocks in place.
+ *   - after the 14th memory: insert continue block (anchored to that memory)
  */
 function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null): TimelineBlock[] {
   const blocks: TimelineBlock[] = []
   const limit = Math.min(memories.length, 30)
 
-  let patternInsertedCount = 0
+  let patternInserted = false
   let promptInserted = false
   let continueInserted = false
 
@@ -91,14 +123,14 @@ function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null):
     if (m.end_date) {
       blocks.push({ kind: 'period', period: m })
     } else {
-      blocks.push({ kind: 'memory', memory: m })
+      blocks.push({ kind: 'memory', memory: m, size: memorySize(m) })
     }
 
     const position = i + 1 // 1-indexed
 
-    if (position === 3 && pattern && patternInsertedCount === 0) {
+    if (position === 3 && pattern && !patternInserted) {
       blocks.push({ kind: 'pattern', pattern })
-      patternInsertedCount++
+      patternInserted = true
     }
 
     if (position === 8 && !promptInserted) {
@@ -112,7 +144,7 @@ function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null):
     }
   }
 
-  // If the list was very short (< 8) we still want one prompt in view
+  // If the list is short, make sure one prompt is still present.
   if (!promptInserted && limit >= 3) {
     blocks.push({ kind: 'prompt' })
   }
@@ -120,29 +152,55 @@ function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null):
   return blocks
 }
 
-// ── Individual block components ─────────────────────────────────────────────
+// ── Memory blocks — three visual sizes ──────────────────────────────────────
 
-function MemoryBlock({ memory }: { memory: FeedMemory }) {
+function LargeMemoryBlock({ memory }: { memory: FeedMemory }) {
   return (
-    <Link
-      href={`/memories/${memory.id}`}
-      className="block group py-1"
-    >
+    <Link href={`/memories/${memory.id}`} className="block group">
+      {memory.previewUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={memory.previewUrl}
+          alt=""
+          className="w-full rounded-2xl object-cover"
+          style={{ aspectRatio: '4/3', maxHeight: 420 }}
+          loading="lazy"
+          draggable={false}
+        />
+      ) : (
+        <div className="w-full rounded-2xl bg-muted" style={{ aspectRatio: '4/3', maxHeight: 420 }} />
+      )}
+      <div className="mt-4">
+        <p className="text-[21px] font-semibold text-foreground/90 leading-tight group-hover:text-foreground transition-colors">
+          {memory.title}
+        </p>
+        <p className="text-[12px] text-muted-foreground/55 mt-1.5">
+          {formatDate(memory.start_date)}
+          {memory.location_name && <span> · {memory.location_name}</span>}
+        </p>
+      </div>
+    </Link>
+  )
+}
+
+function MediumMemoryBlock({ memory }: { memory: FeedMemory }) {
+  return (
+    <Link href={`/memories/${memory.id}`} className="block group">
       <div className="flex gap-4">
         {memory.previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={memory.previewUrl}
             alt=""
-            className="w-20 h-20 rounded-xl object-cover shrink-0"
+            className="w-24 h-24 rounded-xl object-cover shrink-0"
             loading="lazy"
             draggable={false}
           />
         ) : (
-          <div className="w-20 h-20 rounded-xl bg-muted shrink-0" />
+          <div className="w-24 h-24 rounded-xl bg-muted shrink-0" />
         )}
         <div className="min-w-0 flex-1 flex flex-col justify-center">
-          <p className="text-[15px] font-semibold text-foreground/85 leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
+          <p className="text-[16px] font-medium text-foreground/85 leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
             {memory.title}
           </p>
           <p className="text-[11px] text-muted-foreground/50 mt-1.5">
@@ -155,53 +213,63 @@ function MemoryBlock({ memory }: { memory: FeedMemory }) {
   )
 }
 
-function PeriodBlock({ period }: { period: FeedMemory }) {
+function SmallMemoryBlock({ memory }: { memory: FeedMemory }) {
   return (
-    <Link
-      href={`/memories/${period.id}`}
-      className="block group py-1"
-    >
-      <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
-        capitolo
+    <Link href={`/memories/${memory.id}`} className="block group">
+      <p className="text-[14px] text-foreground/70 leading-snug group-hover:text-foreground transition-colors">
+        {memory.title}
       </p>
-      <p className="text-[19px] font-semibold text-foreground/90 leading-tight mt-1.5 group-hover:text-foreground transition-colors">
-        {period.title}
-      </p>
-      <p className="text-[12px] text-muted-foreground/50 mt-1">
-        {formatPeriodRange(period.start_date, period.end_date)}
-        {period.location_name && <span> · {period.location_name}</span>}
-      </p>
-      <p className="text-[12px] text-muted-foreground/55 mt-3 group-hover:text-foreground transition-colors">
-        Vedi questo periodo →
+      <p className="text-[11px] text-muted-foreground/40 mt-0.5">
+        {formatDate(memory.start_date)}
+        {memory.location_name && <span> · {memory.location_name}</span>}
       </p>
     </Link>
   )
 }
 
+// ── Period block ───────────────────────────────────────────────────────────
+
+function PeriodBlock({ period }: { period: FeedMemory }) {
+  return (
+    <Link href={`/memories/${period.id}`} className="block group">
+      <p className="text-[20px] font-semibold text-foreground/85 leading-tight group-hover:text-foreground transition-colors">
+        {period.title}
+      </p>
+      <p className="text-[12px] text-muted-foreground/50 mt-1.5">
+        {formatPeriodRange(period.start_date, period.end_date)}
+        {period.location_name && <span> · {period.location_name}</span>}
+      </p>
+      <p className="text-[12px] text-muted-foreground/55 mt-3 group-hover:text-foreground transition-colors">
+        Vedi →
+      </p>
+    </Link>
+  )
+}
+
+// ── Pattern block ──────────────────────────────────────────────────────────
+
 function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
+  // Narrative copy — no "questo torna" eyebrow, no raw count sentence.
   const sentence =
     pattern.kind === 'location'
-      ? `Sei stato ${pattern.count} volte a ${pattern.label}.`
-      : `Hai salvato ${pattern.count} momenti in ${pattern.label}.`
+      ? `${pattern.label} torna spesso nella tua vita.`
+      : `${pattern.label} continua a tornare.`
 
   return (
-    <div className="py-2">
-      <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
-        questo torna
-      </p>
-      <p className="text-[17px] font-medium text-foreground/85 leading-snug mt-1.5">
+    <div>
+      <p className="text-[18px] italic text-foreground/75 leading-snug">
         {sentence}
       </p>
-      <div className="flex items-center gap-5 mt-3">
+      <div className="flex items-center gap-5 mt-4">
         <Link
           href={pattern.href}
-          className="text-[12px] text-foreground/70 hover:text-foreground transition-colors"
+          className="text-[13px] text-foreground/70 hover:text-foreground transition-colors"
         >
           Rivedili →
         </Link>
         <Link
           href="/memories/new"
-          className="text-[12px] text-muted-foreground/55 hover:text-foreground transition-colors"
+          className="text-[13px] text-muted-foreground/55 hover:text-foreground transition-colors"
         >
           Aggiungine un altro
         </Link>
@@ -210,15 +278,17 @@ function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
   )
 }
 
+// ── Continue block ─────────────────────────────────────────────────────────
+
 function ContinueBlock({ memory }: { memory: FeedMemory }) {
   return (
-    <div className="py-2">
+    <div>
       <p className="text-[15px] italic text-foreground/55 leading-snug">
         Questo momento può continuare.
       </p>
       <Link
         href={`/memories/${memory.id}`}
-        className="inline-block mt-3 text-[12px] text-foreground/70 hover:text-foreground transition-colors"
+        className="inline-block mt-3 text-[13px] text-foreground/70 hover:text-foreground transition-colors"
       >
         Continua →
       </Link>
@@ -230,17 +300,18 @@ function ContinueBlock({ memory }: { memory: FeedMemory }) {
 
 export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProps) {
   const blocks = composeBlocks(memories, pattern)
-
   if (blocks.length === 0) return null
 
   return (
-    <div className="mt-10 space-y-10">
+    <div className="mt-14 space-y-14">
       {blocks.map((block, idx) => {
         switch (block.kind) {
           case 'memory':
             return (
               <div key={`mem-${block.memory.id}-${idx}`} className="px-5">
-                <MemoryBlock memory={block.memory} />
+                {block.size === 'large' && <LargeMemoryBlock memory={block.memory} />}
+                {block.size === 'medium' && <MediumMemoryBlock memory={block.memory} />}
+                {block.size === 'small' && <SmallMemoryBlock memory={block.memory} />}
               </div>
             )
           case 'period':
@@ -262,7 +333,7 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
               </div>
             )
           case 'prompt':
-            // HomeMemoryPrompt renders its own px-4 wrapper — let it handle its own padding
+            // HomeMemoryPrompt renders its own px-4 wrapper.
             return <HomeMemoryPrompt key={`pro-${idx}`} />
         }
       })}

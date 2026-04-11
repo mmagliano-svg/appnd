@@ -164,21 +164,32 @@ export default async function DashboardPage() {
   // ── Build feed data ────────────────────────────────────────────────────────
   // Chronological descending list of memories, excluding the hero (which is
   // rendered separately on top). Capped at 30 to keep the page fast.
-  const feedMemories: FeedMemory[] = events
-    .concat(memoriesRaw.filter((m) => m.end_date))
+  // Each memory carries the importance signals MemoryTimelineFeed uses to
+  // decide rendering size (large / medium / small).
+  const feedMemories: FeedMemory[] = memoriesRaw
     .filter((m) => m.id !== heroSource?.id)
     .sort(
       (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime(),
     )
     .slice(0, 30)
-    .map((m) => ({
-      id: m.id,
-      title: m.title,
-      start_date: m.start_date,
-      end_date: m.end_date ?? null,
-      location_name: m.location_name ?? null,
-      previewUrl: previewUrl(m),
-    }))
+    .map((m) => {
+      const photoCount = m.memory_contributions.filter(
+        (c) => c.content_type === 'photo' && c.media_url,
+      ).length
+      return {
+        id: m.id,
+        title: m.title,
+        start_date: m.start_date,
+        end_date: m.end_date ?? null,
+        location_name: m.location_name ?? null,
+        previewUrl: previewUrl(m),
+        photoCount,
+        hasDescription: Boolean((m.description ?? '').trim()),
+        isFirstTime: Boolean(m.is_first_time),
+        isAnniversary: Boolean(m.is_anniversary),
+        isPartOfPeriod: Boolean(m.parent_period_id),
+      }
+    })
 
   return (
     <main className="min-h-screen bg-background pb-28">
