@@ -7,40 +7,42 @@ import Link from 'next/link'
 /**
  * /clusters/new
  *
- * Minimal 2-step flow for "cluster" prompts — things that happened
- * multiple times and share one anchor (a city visited many times,
- * all the weddings you've been to, every Sunday lunch).
+ * Entry flow for "cluster" prompts — things that happened multiple
+ * times (a city revisited, every wedding, all the Sunday lunches).
  *
- * Step 1 — ask the anchor ("Qual è la città?" / "Quanti?")
- * Step 2 — confirm and jump into memory creation with the anchor
- *          prefilled as location. The user can come back and add
- *          another moment to the same cluster.
+ * Design principle: clusters emerge FROM moments, not BEFORE moments.
+ * So this page does NOT ask the user to define an abstract theme up
+ * front. It shows the prompt, invites the user to start from the
+ * first moment they remember, and optionally lets them type a
+ * loose anchor (a city, a person, an activity) that will be
+ * prefilled on /memories/new.
  *
- * V1 has no dedicated "cluster" entity in the DB. Clusters are
- * expressed as memories sharing a location. This keeps it simple
- * and uses existing data without a schema change.
+ * No new DB entity — clusters are expressed as memories sharing a
+ * loose anchor string (location / tag). V1 keeps the data model
+ * untouched.
  */
 
 function NewClusterForm() {
   const searchParams = useSearchParams()
   const promptText = searchParams.get('prompt') ?? ''
-  const anchorInputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const [step, setStep] = useState<1 | 2>(1)
   const [anchor, setAnchor] = useState('')
 
   useEffect(() => {
-    const id = window.setTimeout(() => anchorInputRef.current?.focus(), 200)
+    const id = window.setTimeout(() => inputRef.current?.focus(), 250)
     return () => window.clearTimeout(id)
-  }, [step])
+  }, [])
 
-  function handleAdvance(e: React.FormEvent) {
-    e.preventDefault()
-    if (!anchor.trim()) return
-    setStep(2)
-  }
-
-  const newMemoryHref = `/memories/new?prompt=${encodeURIComponent(promptText)}&source=prompt&location=${encodeURIComponent(anchor.trim())}`
+  // If the user typed something, we pass it to /memories/new as a
+  // location prefill. Empty → no prefill, user fills everything.
+  const newMemoryHref = (() => {
+    const params = new URLSearchParams()
+    params.set('prompt', promptText)
+    params.set('source', 'prompt')
+    if (anchor.trim()) params.set('location', anchor.trim())
+    return `/memories/new?${params.toString()}`
+  })()
 
   return (
     <main className="min-h-screen bg-background">
@@ -57,90 +59,49 @@ function NewClusterForm() {
           Torna indietro
         </Link>
 
-        {/* Header */}
+        {/* Title = prompt */}
         <div className="mt-10">
           <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
             qualcosa che si è ripetuto
           </p>
 
           {promptText && (
-            <p className="mt-4 text-[17px] italic text-foreground/60 leading-relaxed">
+            <h1 className="mt-4 text-[22px] font-semibold text-foreground/85 leading-snug">
               {promptText}
-            </p>
+            </h1>
           )}
         </div>
 
-        {/* ── Step 1 ─────────────────────────────────────────────── */}
-        {step === 1 && (
-          <form onSubmit={handleAdvance} className="mt-12 space-y-6">
-            <p className="text-[13px] text-muted-foreground/60 leading-relaxed">
-              Prima di tutto, dimmi cosa accomuna questi momenti.
-              Può essere una città, un luogo, una persona, un tema.
-            </p>
+        {/* Subtitle */}
+        <p className="mt-8 text-[16px] text-foreground/65 leading-relaxed">
+          Inizia dal primo che ricordi.
+        </p>
+        <p className="mt-2 text-[13px] text-muted-foreground/45 leading-relaxed">
+          Potrai aggiungerne altri dopo.
+        </p>
 
-            <div>
-              <input
-                ref={anchorInputRef}
-                type="text"
-                value={anchor}
-                onChange={(e) => setAnchor(e.target.value)}
-                placeholder="es. Hong Kong"
-                className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/25 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
-              />
-              <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
-                Scrivi una parola sola — la userai per ritrovarli tutti insieme.
-              </p>
-            </div>
+        {/* Optional loose anchor */}
+        <div className="mt-10">
+          <input
+            ref={inputRef}
+            type="text"
+            value={anchor}
+            onChange={(e) => setAnchor(e.target.value)}
+            placeholder="es. Hong Kong, con papà, vacanze al mare"
+            className="w-full bg-transparent text-[17px] placeholder:text-foreground/25 focus:outline-none border-b border-border pb-3 leading-snug"
+          />
+          <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
+            Facoltativo — puoi saltare e aggiungerlo dopo.
+          </p>
+        </div>
 
-            <button
-              type="submit"
-              disabled={!anchor.trim()}
-              className="w-full rounded-2xl bg-foreground text-background py-4 text-sm font-semibold hover:opacity-90 active:scale-[0.99] disabled:opacity-40 transition-all"
-            >
-              Continua →
-            </button>
-          </form>
-        )}
-
-        {/* ── Step 2 ─────────────────────────────────────────────── */}
-        {step === 2 && (
-          <div className="mt-12 space-y-8">
-            <div>
-              <p className="text-[10px] text-muted-foreground/35 lowercase tracking-wide">
-                tema
-              </p>
-              <p className="mt-2 text-[26px] font-semibold tracking-tight leading-tight">
-                {anchor}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-foreground/[0.04] px-5 py-5">
-              <p className="text-[13px] text-foreground/70 leading-relaxed">
-                Ora aggiungi i momenti che ti ricordi di <span className="font-semibold">{anchor}</span>.
-              </p>
-              <p className="text-[12px] text-muted-foreground/50 leading-relaxed mt-2">
-                Ognuno sarà un ricordo separato, collegato tra loro.
-                Puoi tornare qui ogni volta che te ne viene in mente uno nuovo.
-              </p>
-            </div>
-
-            <div className="space-y-2.5">
-              <Link
-                href={newMemoryHref}
-                className="flex items-center justify-center w-full rounded-2xl bg-foreground text-background py-4 text-sm font-semibold hover:opacity-90 active:scale-[0.99] transition-all"
-              >
-                Crea il primo momento →
-              </Link>
-              <button
-                type="button"
-                onClick={() => setStep(1)}
-                className="flex items-center justify-center w-full rounded-2xl py-3 text-sm text-muted-foreground/60 hover:text-foreground transition-colors"
-              >
-                ← Cambia tema
-              </button>
-            </div>
-          </div>
-        )}
+        {/* CTA */}
+        <Link
+          href={newMemoryHref}
+          className="flex items-center justify-center w-full rounded-full bg-foreground text-background py-4 text-sm font-semibold hover:opacity-90 active:scale-[0.99] transition-all mt-10"
+        >
+          Crea il primo momento →
+        </Link>
 
       </div>
     </main>

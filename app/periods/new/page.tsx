@@ -99,7 +99,7 @@ function NewPeriodForm() {
           )}
 
           <p className="mt-4 text-sm text-muted-foreground/55 leading-relaxed">
-            Un periodo è una fase: una relazione, un lavoro, una casa.
+            Una fase della tua vita — una relazione, un lavoro, una casa.
             Non un singolo giorno.
           </p>
         </div>
@@ -114,18 +114,18 @@ function NewPeriodForm() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Come lo chiameresti?"
+              placeholder="Che fase della tua vita era?"
               className="w-full bg-transparent text-2xl font-bold placeholder:text-foreground/30 focus:outline-none border-b border-border pb-3 leading-snug tracking-tight"
             />
             <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
-              Un nome che ti aiuti a ricordarlo — non serve sia perfetto.
+              Dagli un nome che abbia senso per te — anche imperfetto.
             </p>
           </div>
 
           {/* When */}
           <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-              Quando è iniziato e finito?
+            <p className="text-[13px] text-foreground/70">
+              Quando è iniziato?
             </p>
             <div className="grid grid-cols-2 gap-3">
               <input
@@ -139,37 +139,36 @@ function NewPeriodForm() {
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="w-full bg-transparent border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-foreground/30 transition-colors"
-                placeholder="Ancora in corso"
               />
             </div>
-            <p className="text-[10px] text-muted-foreground/35">
-              La data di fine è facoltativa se è ancora in corso.
+            <p className="text-[11px] text-muted-foreground/45 italic">
+              E quando è finito, se è finito.
             </p>
           </div>
 
           {/* Where */}
           <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-              Dove
+            <p className="text-[13px] text-foreground/70">
+              Dove vivevi o passavi il tempo?
             </p>
             <input
               type="text"
               value={place}
               onChange={(e) => setPlace(e.target.value)}
-              placeholder="Città, luogo, contesto"
+              placeholder="Una città, un quartiere, un luogo"
               className="w-full bg-transparent border border-border rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-foreground/30 transition-colors"
             />
           </div>
 
           {/* Description */}
           <div className="space-y-3">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
-              Racconta questo periodo
+            <p className="text-[13px] text-foreground/70">
+              Com&rsquo;era la tua vita in quel periodo?
             </p>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Com'era la tua vita allora? Chi c'era? Cosa ti è rimasto?"
+              placeholder="Chi c'era? Cosa facevi ogni giorno? Cosa ti è rimasto?"
               rows={6}
               className="w-full rounded-2xl border border-border/50 bg-muted/20 px-4 py-3 text-base placeholder:text-muted-foreground/40 focus:outline-none focus:border-border focus:bg-background transition-colors resize-none leading-relaxed"
             />
@@ -185,7 +184,7 @@ function NewPeriodForm() {
             disabled={loading}
             className="w-full rounded-2xl bg-foreground text-background py-4 text-sm font-semibold hover:opacity-90 active:scale-[0.99] disabled:opacity-50 transition-all"
           >
-            {loading ? 'Creazione…' : 'Crea questo periodo'}
+            {loading ? 'Salvataggio…' : 'Salva questo periodo'}
           </button>
         </form>
 
