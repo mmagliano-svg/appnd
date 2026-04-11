@@ -3,7 +3,7 @@
 import { Suspense, useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { createMemoryReturnId } from '@/actions/memories'
+import { createPeriodPrototype } from '@/actions/periods'
 
 /**
  * /periods/new
@@ -54,14 +54,17 @@ function NewPeriodForm() {
 
     setLoading(true)
     try {
-      const id = await createMemoryReturnId({
+      // Period persistence is isolated behind createPeriodPrototype().
+      // This page does not know (and must not assume) how a period is stored.
+      // See actions/periods.ts for the prototype seam.
+      const { href } = await createPeriodPrototype({
         title: title.trim(),
         start_date: startDate,
         end_date: endDate || undefined,
         location_name: place.trim() || undefined,
         description: description.trim() || undefined,
       })
-      router.push(`/memories/${id}`)
+      router.push(href)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
       setLoading(false)
