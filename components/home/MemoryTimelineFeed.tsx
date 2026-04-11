@@ -277,16 +277,20 @@ function SmallMemoryBlock({ memory }: { memory: FeedMemory }) {
 // ── Period block ───────────────────────────────────────────────────────────
 
 function PeriodBlock({ period }: { period: FeedMemory }) {
+  // Period = structural chapter in the user's life, not a memory item.
+  // Clean text block: larger title, more visible date range, lighter
+  // CTA. The chapter rhythm (extra top margin) lives on the outer
+  // wrapper in the feed render loop.
   return (
     <Link href={`/memories/${period.id}`} className="block group">
-      <p className="text-[20px] font-semibold text-foreground/85 leading-tight group-hover:text-foreground transition-colors">
+      <p className="text-[23px] font-semibold text-foreground/90 leading-[1.15] tracking-tight group-hover:text-foreground transition-colors">
         {period.title}
       </p>
-      <p className="text-[12px] text-muted-foreground/50 mt-1.5">
+      <p className="text-[13px] text-muted-foreground/65 mt-2">
         {formatPeriodRange(period.start_date, period.end_date)}
         {period.location_name && <span> · {period.location_name}</span>}
       </p>
-      <p className="text-[12px] text-muted-foreground/55 mt-3 group-hover:text-foreground transition-colors">
+      <p className="text-[11px] italic text-muted-foreground/40 mt-4 group-hover:text-muted-foreground/70 transition-colors">
         Vedi →
       </p>
     </Link>
@@ -381,8 +385,10 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
             )
           }
           case 'period':
+            // Chapter break — extra vertical air above and below so the
+            // period visually separates from the memories around it.
             return (
-              <div key={`per-${block.period.id}-${idx}`} className="px-5">
+              <div key={`per-${block.period.id}-${idx}`} className="px-5 pt-10 pb-4">
                 <PeriodBlock period={block.period} />
               </div>
             )
