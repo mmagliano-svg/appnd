@@ -2,19 +2,10 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
-import { getTopPeople } from '@/actions/persons'
-import { getUpcomingMoments, getMemorySignals, getRepeatedPattern } from '@/actions/home'
-import { getHomeSharedMoments } from '@/actions/shared-memories'
+import { getRepeatedPattern } from '@/actions/home'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
-import { MemorySignals } from '@/components/home/MemorySignals'
-import { SharedMoments } from '@/components/home/SharedMoments'
-import { ContinueStory, type StoryMemory } from '@/components/home/ContinueStory'
-import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
-import { UpcomingMoments } from '@/components/home/UpcomingMoments'
-import { HeroContributionPreview } from '@/components/home/HeroContributionPreview'
-import { HomeMemoryPrompt } from '@/components/home/HomeMemoryPrompt'
-import { HomeQuestoTorna } from '@/components/home/HomeQuestoTorna'
+import { MemoryTimelineFeed, type FeedMemory } from '@/components/home/MemoryTimelineFeed'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -27,12 +18,8 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const [memoriesRaw, peopleRaw, upcomingMoments, signals, sharedMoments, repeatedPattern] = await Promise.all([
+  const [memoriesRaw, repeatedPattern] = await Promise.all([
     getUserMemories(),
-    getTopPeople(9),
-    getUpcomingMoments(30),
-    getMemorySignals(),
-    getHomeSharedMoments(),
     getRepeatedPattern(),
   ])
 
@@ -53,10 +40,8 @@ export default async function DashboardPage() {
   }
 
   const events = memoriesRaw.filter((m) => !m.end_date)
-  const periods = memoriesRaw.filter((m) => Boolean(m.end_date))
 
   // ── Hero — single dominant card ────────────────────────────────────────────
-  // Best: most recent event with a photo; fallback to most recent event
   const heroSource =
     events.find((m) => previewUrl(m) !== null) ?? events[0] ?? null
   const heroMemory: HeroMemory | null = heroSource
@@ -70,9 +55,6 @@ export default async function DashboardPage() {
       }
     : null
 
-  // ── Hero memory state — drives dynamic copy and CTA ──────────────────────
-  // Lightweight count query: contributions on the hero memory by others in the
-  // last 24 h.  Only fires when a hero exists; falls back to false otherwise.
   const heroHasContributions = (heroSource?.memory_contributions.length ?? 0) > 0
   let heroHasNewContribs = false
   if (heroSource) {
@@ -84,35 +66,6 @@ export default async function DashboardPage() {
       .neq('author_id', user.id)
       .gte('created_at', cutoff)
     heroHasNewContribs = (count ?? 0) > 0
-  }
-
-  // When there are new contributions from others, fetch the latest one for preview
-  let heroLatestContrib: {
-    authorName: string
-    contentType: string
-    textContent: string | null
-    mediaUrl: string | null
-  } | null = null
-
-  if (heroHasNewContribs && heroSource) {
-    const { data: latestContrib } = await supabase
-      .from('memory_contributions')
-      .select('content_type, text_content, media_url, created_at, users ( display_name, email )')
-      .eq('memory_id', heroSource.id)
-      .neq('author_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (latestContrib) {
-      const contribUser = latestContrib.users as { display_name?: string | null; email?: string | null } | null
-      heroLatestContrib = {
-        authorName: contribUser?.display_name ?? contribUser?.email?.split('@')[0] ?? 'Qualcuno',
-        contentType: latestContrib.content_type,
-        textContent: latestContrib.text_content,
-        mediaUrl: latestContrib.media_url,
-      }
-    }
   }
 
   const heroCaption = heroHasNewContribs
@@ -128,8 +81,6 @@ export default async function DashboardPage() {
     : 'Aggiungi qualcosa di oggi →'
 
   // ── First-time state: user has exactly one moment ─────────────────────────
-  // Show a focused, directional layout instead of the full dashboard experience.
-  // Disappears naturally once the user creates a second memory.
   if (memoriesRaw.length === 1 && heroMemory) {
     return (
       <main className="min-h-screen bg-background pb-28">
@@ -137,7 +88,6 @@ export default async function DashboardPage() {
           <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
           <div className="space-y-5 pt-1">
 
-            {/* Intro headline */}
             <div className="px-5">
               <p
                 className="text-[10px] font-semibold uppercase tracking-widest mb-1.5"
@@ -159,7 +109,6 @@ export default async function DashboardPage() {
               </p>
             </div>
 
-            {/* Dominant memory card — reuses HomeHero which handles its own padding */}
             <HomeHero
               memory={heroMemory}
               displayName={displayName}
@@ -167,17 +116,7 @@ export default async function DashboardPage() {
               caption={heroCaption}
               highlighted={heroHasNewContribs}
             />
-            {heroHasNewContribs && heroLatestContrib && heroMemory && (
-              <HeroContributionPreview
-                memoryId={heroMemory.id}
-                authorName={heroLatestContrib.authorName}
-                contentType={heroLatestContrib.contentType}
-                textContent={heroLatestContrib.textContent}
-                mediaUrl={heroLatestContrib.mediaUrl}
-              />
-            )}
 
-            {/* Next-step action cards */}
             <div className="px-4 space-y-3 pb-4">
               <p
                 className="text-[10px] font-semibold uppercase tracking-widest mb-1"
@@ -222,68 +161,24 @@ export default async function DashboardPage() {
     )
   }
 
-  // ── Continue Story ─────────────────────────────────────────────────────────
-  // Exclude the hero memory so it doesn't appear twice
-  const continueMemories: StoryMemory[] = events
+  // ── Build feed data ────────────────────────────────────────────────────────
+  // Chronological descending list of memories, excluding the hero (which is
+  // rendered separately on top). Capped at 30 to keep the page fast.
+  const feedMemories: FeedMemory[] = events
+    .concat(memoriesRaw.filter((m) => m.end_date))
     .filter((m) => m.id !== heroSource?.id)
-    .slice(0, 6)
+    .sort(
+      (a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime(),
+    )
+    .slice(0, 30)
     .map((m) => ({
       id: m.id,
       title: m.title,
       start_date: m.start_date,
       end_date: m.end_date ?? null,
+      location_name: m.location_name ?? null,
       previewUrl: previewUrl(m),
     }))
-
-  // ── Life Clusters ──────────────────────────────────────────────────────────
-  // People — deduplicate preview images so no two people share the same photo.
-  // Priority per person: avatarUrl (profile photo) → unique previewPhotoUrl → null (initials)
-  const usedPreviewUrls = new Set<string>()
-  const peopleClusters: ClusterItem[] = peopleRaw.slice(0, 3).map((p) => {
-    // Profile avatar is person-specific — always use it if present
-    if (p.avatarUrl) {
-      usedPreviewUrls.add(p.avatarUrl)
-      return { id: p.id, label: p.name, count: p.memoryCount ?? 0, href: `/people/${p.id}`, previewUrl: p.avatarUrl }
-    }
-    // Use memory preview only if not already claimed by an earlier person
-    if (p.previewPhotoUrl && !usedPreviewUrls.has(p.previewPhotoUrl)) {
-      usedPreviewUrls.add(p.previewPhotoUrl)
-      return { id: p.id, label: p.name, count: p.memoryCount ?? 0, href: `/people/${p.id}`, previewUrl: p.previewPhotoUrl }
-    }
-    // Fallback: no image — ClusterCard will render initials
-    return { id: p.id, label: p.name, count: p.memoryCount ?? 0, href: `/people/${p.id}`, previewUrl: null }
-  })
-
-  // Places — most frequent locations with preview
-  const placeMap = new Map<string, { count: number; previewUrl: string | null }>()
-  for (const m of events) {
-    if (!m.location_name) continue
-    const entry = placeMap.get(m.location_name)
-    if (entry) {
-      entry.count++
-    } else {
-      placeMap.set(m.location_name, { count: 1, previewUrl: previewUrl(m) })
-    }
-  }
-  const placesClusters: ClusterItem[] = Array.from(placeMap.entries())
-    .sort(([, a], [, b]) => b.count - a.count)
-    .slice(0, 3)
-    .map(([name, entry]) => ({
-      id: name,
-      label: name,
-      count: entry.count,
-      href: `/places/${encodeURIComponent(name)}`,
-      previewUrl: entry.previewUrl,
-    }))
-
-  // Chapters (periods)
-  const chapterClusters: ClusterItem[] = periods.slice(0, 3).map((p) => ({
-    id: p.id,
-    label: p.title,
-    count: events.filter((e) => e.parent_period_id === p.id).length,
-    href: `/memories/${p.id}`,
-    previewUrl: previewUrl(p),
-  }))
 
   return (
     <main className="min-h-screen bg-background pb-28">
@@ -291,53 +186,21 @@ export default async function DashboardPage() {
 
         <HomeTopBar displayName={displayName} avatarUrl={avatarUrl} />
 
-        <div className="space-y-10 pt-1">
-
-          {/* Hero + contribution preview + signals — immediate emotional tone */}
-          <div className="space-y-4">
-            <HomeHero
-              memory={heroMemory}
-              displayName={displayName}
-              ctaLabel={heroCtaLabel}
-              caption={heroCaption}
-              highlighted={heroHasNewContribs}
-            />
-            {heroHasNewContribs && heroLatestContrib && heroMemory && (
-              <HeroContributionPreview
-                memoryId={heroMemory.id}
-                authorName={heroLatestContrib.authorName}
-                contentType={heroLatestContrib.contentType}
-                textContent={heroLatestContrib.textContent}
-                mediaUrl={heroLatestContrib.mediaUrl}
-              />
-            )}
-            <MemorySignals signals={signals} />
-          </div>
-
-          {/* Loop 2: "Questo torna" — observed repeated pattern */}
-          {repeatedPattern && <HomeQuestoTorna pattern={repeatedPattern} />}
-
-          {/* Memory activation — one soft prompt to trigger a memory */}
-          <HomeMemoryPrompt />
-
-          {/* Time depth — recurring moments (personal, placed before carousels) */}
-          <UpcomingMoments moments={upcomingMoments} />
-
-          {/* Social layer — shared moments */}
-          <SharedMoments moments={sharedMoments} />
-
-          {/* Continuation — open memories */}
-          {continueMemories.length > 0 && (
-            <ContinueStory memories={continueMemories} />
-          )}
-
-          {/* Life context — clusters */}
-          <LifeClusters
-            people={peopleClusters}
-            places={placesClusters}
-            chapters={chapterClusters}
+        <div className="pt-1">
+          {/* Hero — the entry point into the user's life */}
+          <HomeHero
+            memory={heroMemory}
+            displayName={displayName}
+            ctaLabel={heroCtaLabel}
+            caption={heroCaption}
+            highlighted={heroHasNewContribs}
           />
 
+          {/* Living timeline — one continuous narrative flow */}
+          <MemoryTimelineFeed
+            memories={feedMemories}
+            pattern={repeatedPattern}
+          />
         </div>
       </div>
     </main>
