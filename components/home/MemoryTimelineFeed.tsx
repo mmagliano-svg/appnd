@@ -96,6 +96,92 @@ function memorySize(m: FeedMemory): MemorySize {
   return 'small'
 }
 
+/**
+ * Score used when the rhythm pass needs to PROMOTE a memory to LARGE
+ * because we've gone too many steps without a visually heavy anchor.
+ * Overweights photos and strong titles vs the base importance score.
+ */
+function promotionScore(m: FeedMemory): number {
+  return (
+    (m.previewUrl ? 3 : 0) +            // photos are the biggest visual anchor
+    (m.title.length >= 20 ? 1 : 0) +    // long title ≈ user took care naming it
+    (m.hasDescription ? 1 : 0) +
+    (m.photoCount >= 2 ? 1 : 0) +
+    (m.isFirstTime ? 2 : 0) +
+    (m.isAnniversary ? 1 : 0) +
+    (m.isPartOfPeriod ? 1 : 0)
+  )
+}
+
+// ── Rhythm enforcement ─────────────────────────────────────────────────────
+
+/**
+ * After composition, walks the block list and guarantees that no more than
+ * 4 consecutive non-heavy blocks (small or medium memories) appear in a row.
+ * A "heavy" block is a pattern, a period, or a large memory — anything that
+ * naturally anchors the eye.
+ *
+ * When the streak of non-heavy blocks hits 5, we promote the highest-
+ * -promotionScore medium/small memory within that window to LARGE. This
+ * preserves chronological order (nothing moves) and simply rewrites the
+ * display size of one block.
+ *
+ * Result: the feed reads as paragraphs with rhythmic anchors, not a flat
+ * list of identical rows.
+ */
+function isHeavyBlock(b: TimelineBlock): boolean {
+  if (b.kind === 'period' || b.kind === 'pattern') return true
+  if (b.kind === 'memory' && b.size === 'large') return true
+  return false
+}
+
+function enforceRhythm(blocks: TimelineBlock[]): TimelineBlock[] {
+  const result = blocks.slice() // mutate a copy
+  const MAX_STREAK = 4 // promote when a 5th non-heavy block would appear
+
+  let streakStart = 0 // index where the current non-heavy streak began
+
+  for (let i = 0; i < result.length; i++) {
+    const b = result[i]
+
+    if (isHeavyBlock(b)) {
+      streakStart = i + 1
+      continue
+    }
+
+    // Non-heavy blocks (memory medium/small, continue, prompt) extend the streak.
+    const streakLen = i - streakStart + 1
+    if (streakLen <= MAX_STREAK) continue
+
+    // We have 5 consecutive non-heavy blocks — promote the best memory
+    // within this window to LARGE. Prefer the LATEST tied block so the
+    // visual anchor lands at the end of the dry spell.
+    let bestIdx = -1
+    let bestScore = -1
+    for (let j = streakStart; j <= i; j++) {
+      const candidate = result[j]
+      if (candidate.kind !== 'memory') continue
+      if (candidate.size === 'large') continue // shouldn't happen post-reset
+      const s = promotionScore(candidate.memory)
+      if (s >= bestScore) {
+        bestScore = s
+        bestIdx = j
+      }
+    }
+
+    if (bestIdx >= 0) {
+      const chosen = result[bestIdx]
+      if (chosen.kind === 'memory') {
+        result[bestIdx] = { ...chosen, size: 'large' }
+        // The promoted block is now heavy → restart the streak right after it.
+        streakStart = bestIdx + 1
+      }
+    }
+  }
+
+  return result
+}
+
 // ── Block composition ──────────────────────────────────────────────────────
 
 /**
@@ -149,7 +235,9 @@ function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null):
     blocks.push({ kind: 'prompt' })
   }
 
-  return blocks
+  // Rhythm pass — guarantees no more than 4 non-heavy blocks in a row
+  // without touching chronological order.
+  return enforceRhythm(blocks)
 }
 
 // ── Memory blocks — three visual sizes ──────────────────────────────────────
