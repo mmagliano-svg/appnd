@@ -12,6 +12,7 @@ import { ShareButton } from '@/components/memory/ShareButton'
 import { MoreMenu } from '@/components/memory/MoreMenu'
 import { MemoryTimeline, type TimelineFragment, type TimelineParticipant } from '@/components/memory/MemoryTimeline'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
+import { LoopNeHaiAltri } from '@/components/memory/LoopNeHaiAltri'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -252,6 +253,69 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
     ? await getSharedMemoryDetail(memorySharedId)
     : null
 
+  // ── Loop 1: "Ne hai altri?" match detection ──────────────────────────────
+  // Look for other memories the user has created that share this one's
+  // primary category or location. Drives the soft inline "ne hai altri?"
+  // block below the description on the default layout.
+  let loopNeHaiAltri: {
+    count: number
+    type: 'category' | 'location' | 'generic'
+    anchor: string | null
+    href: string
+  } | null = null
+
+  if (!isPeriod && user) {
+    const primaryCategoryValue = memoryCats[0] ?? null
+    const locName = memory.location_name ?? null
+
+    // Try category match first (most semantic)
+    if (primaryCategoryValue) {
+      const { count } = await supabase
+        .from('memories')
+        .select('id', { count: 'exact', head: true })
+        .eq('created_by', user.id)
+        .neq('id', memory.id)
+        .or(`category.eq.${primaryCategoryValue},categories.cs.{${primaryCategoryValue}}`)
+      if ((count ?? 0) > 0) {
+        const catInfo = getCategoryByValue(primaryCategoryValue)
+        loopNeHaiAltri = {
+          count: count ?? 0,
+          type: 'category',
+          anchor: catInfo?.label.toLowerCase() ?? null,
+          href: `/memories/new`,
+        }
+      }
+    }
+
+    // Fallback: location match
+    if (!loopNeHaiAltri && locName) {
+      const { count } = await supabase
+        .from('memories')
+        .select('id', { count: 'exact', head: true })
+        .eq('created_by', user.id)
+        .neq('id', memory.id)
+        .eq('location_name', locName)
+      if ((count ?? 0) > 0) {
+        loopNeHaiAltri = {
+          count: count ?? 0,
+          type: 'location',
+          anchor: locName,
+          href: `/memories/new?location=${encodeURIComponent(locName)}`,
+        }
+      }
+    }
+
+    // Final fallback: generic nudge, no count (still invites the user to add more)
+    if (!loopNeHaiAltri) {
+      loopNeHaiAltri = {
+        count: 0,
+        type: 'generic',
+        anchor: null,
+        href: `/memories/new`,
+      }
+    }
+  }
+
   // ── Period (chapter) layout ─────────────────────────────────────────────
   if (isPeriod) {
     return (
@@ -438,6 +502,25 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               </div>
             </div>
           )}
+
+          {/* Loop 3: "E poi?" closing chapter — period variant */}
+          <div className="mt-28 pt-16 text-center">
+            <p className="text-[20px] font-semibold text-foreground/80 leading-tight">
+              E poi?
+            </p>
+            <p className="text-[15px] text-muted-foreground/55 leading-relaxed mt-3">
+              Questo capitolo può continuare a vivere
+            </p>
+            <p className="text-[12px] text-muted-foreground/35 leading-relaxed mt-7 max-w-[280px] mx-auto">
+              Ogni periodo cresce quando aggiungi un momento
+            </p>
+            <Link
+              href={`/memories/new?period=${memory.id}`}
+              className="inline-flex items-center mt-9 rounded-full bg-foreground text-background px-7 py-3.5 text-sm font-medium hover:bg-foreground/90 active:scale-[0.99] transition-all"
+            >
+              Continua questo momento
+            </Link>
+          </div>
         </div>
       </main>
     )
@@ -582,6 +665,16 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           <p data-fade-in className="mt-10 text-[18px] leading-[1.7] text-foreground/85 whitespace-pre-wrap">
             {memory.description}
           </p>
+        )}
+
+        {/* ── Loop 1: "Ne hai altri?" — soft inline invitation to continue ── */}
+        {loopNeHaiAltri && (
+          <LoopNeHaiAltri
+            matchCount={loopNeHaiAltri.count}
+            matchType={loopNeHaiAltri.type}
+            anchorLabel={loopNeHaiAltri.anchor}
+            createHref={loopNeHaiAltri.href}
+          />
         )}
 
         {/* ── Child events (periods only) ── */}

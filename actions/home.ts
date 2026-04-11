@@ -346,3 +346,71 @@ export async function getMemorySignals(): Promise<MemorySignalsResult> {
     memoryRecall,
   }
 }
+
+// ── Loop 2: "Questo torna" — repeated pattern detection ─────────────────────
+// Surfaces the single strongest repeated pattern in the user's memories
+// (a place revisited, a category filled multiple times). Feeds the
+// HomeQuestoTorna card on the dashboard.
+
+export type RepeatedPatternKind = 'location' | 'category'
+
+export interface RepeatedPattern {
+  kind: RepeatedPatternKind
+  /** Human-readable label used in the copy ("Londra", "Concerti") */
+  label: string
+  /** How many memories share this pattern */
+  count: number
+  /** Where the "Rivedili" CTA should navigate */
+  href: string
+}
+
+/**
+ * Returns the strongest recurring pattern in the user's memories, or null
+ * if nothing meaningful repeats. V1 looks at location_name only — the
+ * simplest and most reliable anchor. Categories and people can be added
+ * later if the product needs richer patterns.
+ *
+ * Minimum threshold: 2 memories share the pattern (single occurrences
+ * are not a "return loop").
+ */
+export async function getRepeatedPattern(): Promise<RepeatedPattern | null> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
+  // Fetch all user memories with a non-null location_name.
+  // We aggregate client-side — the dataset is small per user and this
+  // avoids building a fragile SQL GROUP BY across Supabase's query builder.
+  const { data: rows } = await supabase
+    .from('memories')
+    .select('location_name')
+    .eq('created_by', user.id)
+    .not('location_name', 'is', null)
+
+  if (!rows || rows.length === 0) return null
+
+  const counts = new Map<string, number>()
+  for (const r of rows) {
+    const loc = (r.location_name ?? '').trim()
+    if (!loc) continue
+    counts.set(loc, (counts.get(loc) ?? 0) + 1)
+  }
+
+  let topLabel: string | null = null
+  let topCount = 0
+  counts.forEach((cnt, loc) => {
+    if (cnt > topCount) {
+      topLabel = loc
+      topCount = cnt
+    }
+  })
+
+  if (!topLabel || topCount < 2) return null
+
+  return {
+    kind: 'location',
+    label: topLabel,
+    count: topCount,
+    href: `/places/${encodeURIComponent(topLabel)}`,
+  }
+}

@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getUserMemories } from '@/actions/memories'
 import { getTopPeople } from '@/actions/persons'
-import { getUpcomingMoments, getMemorySignals } from '@/actions/home'
+import { getUpcomingMoments, getMemorySignals, getRepeatedPattern } from '@/actions/home'
 import { getHomeSharedMoments } from '@/actions/shared-memories'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
@@ -14,6 +14,7 @@ import { LifeClusters, type ClusterItem } from '@/components/home/LifeClusters'
 import { UpcomingMoments } from '@/components/home/UpcomingMoments'
 import { HeroContributionPreview } from '@/components/home/HeroContributionPreview'
 import { HomeMemoryPrompt } from '@/components/home/HomeMemoryPrompt'
+import { HomeQuestoTorna } from '@/components/home/HomeQuestoTorna'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -26,12 +27,13 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const [memoriesRaw, peopleRaw, upcomingMoments, signals, sharedMoments] = await Promise.all([
+  const [memoriesRaw, peopleRaw, upcomingMoments, signals, sharedMoments, repeatedPattern] = await Promise.all([
     getUserMemories(),
     getTopPeople(9),
     getUpcomingMoments(30),
     getMemorySignals(),
     getHomeSharedMoments(),
+    getRepeatedPattern(),
   ])
 
   if (memoriesRaw.length === 0) redirect('/onboarding')
@@ -311,6 +313,9 @@ export default async function DashboardPage() {
             )}
             <MemorySignals signals={signals} />
           </div>
+
+          {/* Loop 2: "Questo torna" — observed repeated pattern */}
+          {repeatedPattern && <HomeQuestoTorna pattern={repeatedPattern} />}
 
           {/* Memory activation — one soft prompt to trigger a memory */}
           <HomeMemoryPrompt />
