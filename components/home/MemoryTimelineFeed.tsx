@@ -214,12 +214,14 @@ function MediumMemoryBlock({ memory }: { memory: FeedMemory }) {
 }
 
 function SmallMemoryBlock({ memory }: { memory: FeedMemory }) {
+  // SMALL = quiet memory, not irrelevant data.
+  // Readable body text, honest metadata, room to breathe.
   return (
-    <Link href={`/memories/${memory.id}`} className="block group">
-      <p className="text-[14px] text-foreground/70 leading-snug group-hover:text-foreground transition-colors">
+    <Link href={`/memories/${memory.id}`} className="block group py-2">
+      <p className="text-[16px] font-medium text-foreground/80 leading-snug line-clamp-1 group-hover:text-foreground transition-colors">
         {memory.title}
       </p>
-      <p className="text-[11px] text-muted-foreground/40 mt-0.5">
+      <p className="text-[13px] text-muted-foreground/65 mt-1">
         {formatDate(memory.start_date)}
         {memory.location_name && <span> · {memory.location_name}</span>}
       </p>
