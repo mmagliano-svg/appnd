@@ -13,6 +13,8 @@ import { MoreMenu } from '@/components/memory/MoreMenu'
 import { MemoryTimeline, type TimelineFragment, type TimelineParticipant } from '@/components/memory/MemoryTimeline'
 import { MemoryFAB } from '@/components/memory/MemoryFAB'
 import { LoopNeHaiAltri } from '@/components/memory/LoopNeHaiAltri'
+import { PostCreateFollowUps } from '@/components/memory/PostCreateFollowUps'
+import { getFollowUpsForMemory, getFollowUpsForPeriod, topFollowUps } from '@/lib/prompts/prompt-followup'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -20,7 +22,7 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export default async function MemoryPage({ params, searchParams }: { params: { id: string }; searchParams: { contributed?: string } }) {
+export default async function MemoryPage({ params, searchParams }: { params: { id: string }; searchParams: { contributed?: string; created?: string } }) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -642,6 +644,33 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             Questo momento è ancora qui.
           </p>
         </div>
+
+        {/* ── Post-create follow-ups (only shown right after creation) ── */}
+        {searchParams.created === '1' && isCreator && (() => {
+          const followUps = isPeriod
+            ? topFollowUps(getFollowUpsForPeriod({
+                title: memory.title,
+                location_name: memory.location_name ?? null,
+                description: memory.description ?? null,
+                childEventCount: childEvents.length,
+                hasPeople: peopleOnMemory.length > 0,
+              }), 2)
+            : topFollowUps(getFollowUpsForMemory({
+                title: memory.title,
+                location_name: memory.location_name ?? null,
+                description: memory.description ?? null,
+                hasPeople: peopleOnMemory.length > 0,
+                isShared: sharingStatus === 'shared',
+                parentPeriodId: memoryParentPeriodId,
+              }), 2)
+
+          return (
+            <PostCreateFollowUps
+              suggestions={followUps}
+              memoryId={params.id}
+            />
+          )
+        })()}
 
         {/* ── People — one emotional sentence ── */}
         {peopleOnMemory.length > 0 && (

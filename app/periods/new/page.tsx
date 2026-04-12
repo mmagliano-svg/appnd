@@ -64,7 +64,7 @@ function NewPeriodForm() {
         location_name: place.trim() || undefined,
         description: description.trim() || undefined,
       })
-      router.push(href)
+      router.push(href.includes('?') ? `${href}&created=1` : `${href}?created=1`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')
       setLoading(false)
