@@ -456,21 +456,32 @@ function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null):
 // ── Memory blocks — three visual sizes ──────────────────────────────────────
 
 function LargeMemoryBlock({ memory }: { memory: FeedMemory }) {
+  // No image → text-first layout. Never render an empty placeholder box.
+  if (!memory.previewUrl) {
+    return (
+      <Link href={`/memories/${memory.id}`} className="block group py-2">
+        <p className="text-[24px] font-bold text-foreground/92 leading-[1.12] tracking-tight group-hover:text-foreground transition-colors">
+          {memory.title}
+        </p>
+        <p className="text-[13px] text-muted-foreground/60 mt-2">
+          {formatDate(memory.start_date)}
+          {memory.location_name && <span> · {memory.location_name}</span>}
+        </p>
+      </Link>
+    )
+  }
+
   return (
     <Link href={`/memories/${memory.id}`} className="block group">
-      {memory.previewUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={memory.previewUrl}
-          alt=""
-          className="w-full rounded-2xl object-cover"
-          style={{ aspectRatio: '4/3', maxHeight: 420 }}
-          loading="lazy"
-          draggable={false}
-        />
-      ) : (
-        <div className="w-full rounded-2xl bg-muted" style={{ aspectRatio: '4/3', maxHeight: 420 }} />
-      )}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={memory.previewUrl}
+        alt=""
+        className="w-full rounded-2xl object-cover"
+        style={{ aspectRatio: '4/3', maxHeight: 420 }}
+        loading="lazy"
+        draggable={false}
+      />
       <div className="mt-4">
         <p className="text-[21px] font-semibold text-foreground/90 leading-tight group-hover:text-foreground transition-colors">
           {memory.title}
@@ -529,22 +540,34 @@ function MediumMemoryBlock({ memory, variant }: { memory: FeedMemory; variant: M
   }
 
   // Thumb variant — standard 96px thumbnail, variable title weight.
+  // If no image, fall through to text-only layout (no placeholder box).
   const titleWeight = variant.weight === 'semibold' ? 'font-semibold' : 'font-medium'
+
+  if (!memory.previewUrl) {
+    return (
+      <Link href={`/memories/${memory.id}`} className="block group py-1">
+        <p className={`text-[16px] ${titleWeight} text-foreground/85 leading-snug line-clamp-2 group-hover:text-foreground transition-colors`}>
+          {memory.title}
+        </p>
+        <p className="text-[11px] text-muted-foreground/50 mt-1.5">
+          {formatDate(memory.start_date)}
+          {memory.location_name && <span> · {memory.location_name}</span>}
+        </p>
+      </Link>
+    )
+  }
+
   return (
     <Link href={`/memories/${memory.id}`} className="block group">
       <div className="flex gap-4">
-        {memory.previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={memory.previewUrl}
-            alt=""
-            className="w-24 h-24 rounded-xl object-cover shrink-0"
-            loading="lazy"
-            draggable={false}
-          />
-        ) : (
-          <div className="w-24 h-24 rounded-xl bg-muted shrink-0" />
-        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={memory.previewUrl}
+          alt=""
+          className="w-24 h-24 rounded-xl object-cover shrink-0"
+          loading="lazy"
+          draggable={false}
+        />
         <div className="min-w-0 flex-1 flex flex-col justify-center">
           <p className={`text-[16px] ${titleWeight} text-foreground/85 leading-snug line-clamp-2 group-hover:text-foreground transition-colors`}>
             {memory.title}
