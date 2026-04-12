@@ -46,7 +46,6 @@ type TimelineBlock =
   | { kind: 'memory'; memory: FeedMemory; size: MemorySize }
   | { kind: 'period'; period: FeedMemory }
   | { kind: 'pattern'; pattern: RepeatedPattern }
-  | { kind: 'continue'; memory: FeedMemory }
   | { kind: 'prompt' }
   | { kind: 'cluster'; lead: FeedMemory; continuations: FeedMemory[] }
 
@@ -212,47 +211,72 @@ function isHeavyBlock(b: TimelineBlock): boolean {
   return false
 }
 
+/**
+ * Two-pass rhythm enforcement:
+ *
+ * Pass 1 (anti-flatness): if more than 4 consecutive non-heavy blocks
+ *   appear, promote the best candidate to LARGE so the eye has an anchor.
+ *
+ * Pass 2 (anti-dominance): if more than 2 consecutive heavy blocks appear
+ *   (LARGE memories, clusters, periods), DEMOTE the excess LARGE memories
+ *   to MEDIUM so the feed doesn't feel like a wall of hero images.
+ *
+ * Both passes preserve chronological order — they only rewrite the `size`
+ * field. The result is an editorial rhythm: 2–4 lighter blocks between
+ * each anchor, with anchors spaced naturally instead of mechanically.
+ */
 function enforceRhythm(blocks: TimelineBlock[]): TimelineBlock[] {
-  const result = blocks.slice() // mutate a copy
-  const MAX_STREAK = 4 // promote when a 5th non-heavy block would appear
+  const result = blocks.slice()
 
-  let streakStart = 0 // index where the current non-heavy streak began
+  // ── Pass 1: promote when too many non-heavy in a row ──────────────────
+  const MAX_LIGHT_STREAK = 4
+  let lightStart = 0
 
   for (let i = 0; i < result.length; i++) {
-    const b = result[i]
-
-    if (isHeavyBlock(b)) {
-      streakStart = i + 1
+    if (isHeavyBlock(result[i])) {
+      lightStart = i + 1
       continue
     }
 
-    // Non-heavy blocks (memory medium/small, continue, prompt) extend the streak.
-    const streakLen = i - streakStart + 1
-    if (streakLen <= MAX_STREAK) continue
+    const streakLen = i - lightStart + 1
+    if (streakLen <= MAX_LIGHT_STREAK) continue
 
-    // We have 5 consecutive non-heavy blocks — promote the best memory
-    // within this window to LARGE. Prefer the LATEST tied block so the
-    // visual anchor lands at the end of the dry spell.
     let bestIdx = -1
     let bestScore = -1
-    for (let j = streakStart; j <= i; j++) {
-      const candidate = result[j]
-      if (candidate.kind !== 'memory') continue
-      if (candidate.size === 'large') continue // shouldn't happen post-reset
-      const s = promotionScore(candidate.memory)
-      if (s >= bestScore) {
-        bestScore = s
-        bestIdx = j
-      }
+    for (let j = lightStart; j <= i; j++) {
+      const c = result[j]
+      if (c.kind !== 'memory') continue
+      const s = promotionScore(c.memory)
+      if (s >= bestScore) { bestScore = s; bestIdx = j }
     }
 
     if (bestIdx >= 0) {
       const chosen = result[bestIdx]
       if (chosen.kind === 'memory') {
         result[bestIdx] = { ...chosen, size: 'large' }
-        // The promoted block is now heavy → restart the streak right after it.
-        streakStart = bestIdx + 1
+        lightStart = bestIdx + 1
       }
+    }
+  }
+
+  // ── Pass 2: demote when too many heavy in a row ───────────────────────
+  const MAX_HEAVY_STREAK = 2
+  let heavyRun = 0
+
+  for (let i = 0; i < result.length; i++) {
+    if (isHeavyBlock(result[i])) {
+      heavyRun++
+      // If we exceed the cap and this is a demotable memory, shrink it.
+      if (heavyRun > MAX_HEAVY_STREAK) {
+        const b = result[i]
+        if (b.kind === 'memory' && b.size === 'large') {
+          result[i] = { ...b, size: 'medium' }
+          // After demotion this block is no longer heavy → reset run.
+          heavyRun = 0
+        }
+      }
+    } else {
+      heavyRun = 0
     }
   }
 
@@ -369,25 +393,44 @@ function detectClusters(memories: FeedMemory[]): ClusterOrStandalone[] {
  * visual group (lead = LARGE, continuations = compact inline list with a
  * connector line).
  */
+/**
+ * Composition rules:
+ *   - Periods: max 2 in the entire feed, never consecutive. Periods
+ *     should feel like rare chapter markers, not a second timeline.
+ *   - ContinueBlock: removed. Cluster inline continuations already
+ *     provide the "this story continues" signal without stacking
+ *     redundant connector copy.
+ *   - Pattern + Prompt: inserted at fixed rhythm slots (unchanged).
+ */
 function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null): TimelineBlock[] {
   const blocks: TimelineBlock[] = []
   const items = detectClusters(memories.slice(0, 30))
 
   let patternInserted = false
   let promptInserted = false
-  let continueInserted = false
   let memoryCount = 0
+  let periodCount = 0
+  let lastWasPeriod = false
 
   for (const item of items) {
     if (item.type === 'cluster') {
       blocks.push({ kind: 'cluster', lead: item.lead, continuations: item.continuations })
       memoryCount += 1 + item.continuations.length
+      lastWasPeriod = false
     } else {
       const m = item.memory
       if (m.end_date) {
-        blocks.push({ kind: 'period', period: m })
+        // Period gating: max 2, never consecutive
+        if (periodCount < 2 && !lastWasPeriod) {
+          blocks.push({ kind: 'period', period: m })
+          periodCount++
+          lastWasPeriod = true
+        }
+        // Skipped periods are simply not rendered — the data stays
+        // available on /timeline and /memories/[id] for exploration.
       } else {
         blocks.push({ kind: 'memory', memory: m, size: memorySize(m) })
+        lastWasPeriod = false
       }
       memoryCount++
     }
@@ -400,12 +443,6 @@ function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null):
     if (memoryCount >= 8 && !promptInserted) {
       blocks.push({ kind: 'prompt' })
       promptInserted = true
-    }
-
-    if (memoryCount >= 14 && !continueInserted) {
-      const lastMem = item.type === 'cluster' ? item.lead : item.memory
-      blocks.push({ kind: 'continue', memory: lastMem })
-      continueInserted = true
     }
   }
 
@@ -635,12 +672,12 @@ function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
 // ── Cluster block — life-event arc ──────────────────────────────────────────
 
 function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations: FeedMemory[] }) {
+  // One story arc: lead at LARGE, continuations as compact inline list
+  // with a subtle left-border connector. No duplicate connector text —
+  // the border itself IS the continuity signal.
   return (
     <div className="space-y-6">
-      {/* Lead memory — always rendered at LARGE scale */}
       <LargeMemoryBlock memory={lead} />
-
-      {/* Continuations — compact inline list, visually subordinate */}
       <div className="pl-4 border-l-2 border-border/20 space-y-4">
         {continuations.map((c) => (
           <Link key={c.id} href={`/memories/${c.id}`} className="block group">
@@ -654,27 +691,6 @@ function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations
           </Link>
         ))}
       </div>
-
-      {/* Connector */}
-      <p className="text-[13px] italic text-muted-foreground/45">
-        Questo momento può continuare.
-      </p>
-    </div>
-  )
-}
-
-function ContinueBlock({ memory }: { memory: FeedMemory }) {
-  return (
-    <div>
-      <p className="text-[15px] italic text-foreground/55 leading-snug">
-        Questo momento può continuare.
-      </p>
-      <Link
-        href={`/memories/${memory.id}`}
-        className="inline-block mt-3 text-[13px] text-foreground/70 hover:text-foreground transition-colors"
-      >
-        Continua →
-      </Link>
     </div>
   )
 }
@@ -734,12 +750,6 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
             return (
               <div key={`clu-${block.lead.id}-${idx}`} className="px-5">
                 <ClusterBlock lead={block.lead} continuations={block.continuations} />
-              </div>
-            )
-          case 'continue':
-            return (
-              <div key={`con-${block.memory.id}-${idx}`} className="px-5">
-                <ContinueBlock memory={block.memory} />
               </div>
             )
           case 'prompt':
