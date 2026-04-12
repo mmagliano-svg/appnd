@@ -79,8 +79,7 @@ function formatPeriodRange(start: string, end: string | null): string {
 
 /**
  * Whole-word-ish check against a keyword list. Handles Italian accents
- * correctly via \p{L} and avoids false positives like "primavera" for
- * "prima". Pure function, no regex engine surprises.
+ * correctly and avoids false positives like "primavera" for "prima".
  */
 const IMPORTANCE_KEYWORDS = [
   'nascita',
@@ -94,11 +93,22 @@ const IMPORTANCE_KEYWORDS = [
   'mamma',
 ]
 
+/**
+ * Hard-override keywords — ANY title containing one of these phrases is
+ * forced to LARGE unconditionally, regardless of score. These represent
+ * life-defining moments that must NEVER be rendered at small or medium.
+ */
+const HARD_LARGE_PHRASES = [
+  'nascita',
+  'prima foto',
+  'matrimonio',
+  'primo',
+  'prima',
+  'gravidanza',
+]
+
 function hasImportanceKeyword(title: string): boolean {
   const normalized = title.toLowerCase()
-  // Boundary = start/end of string, or any non-letter char. We cover
-  // Italian accented lowercase letters explicitly so "primavera" never
-  // matches "prima" and "papà" matches correctly.
   const LETTER_RE = /[a-zàáèéìíòóùú]/
   const isBoundary = (c: string) => c === '' || !LETTER_RE.test(c)
 
@@ -116,32 +126,44 @@ function hasImportanceKeyword(title: string): boolean {
   return false
 }
 
+function isHardLarge(title: string): boolean {
+  const normalized = title.toLowerCase()
+  return HARD_LARGE_PHRASES.some((phrase) => normalized.includes(phrase))
+}
+
 /**
- * Rule-based score from 0 to 11 based on already-available memory signals.
- * No new backend, no AI. Higher score → visually larger rendering.
+ * Rule-based score. Semantic meaning weighs more than structural
+ * signals so life-defining events always surface above photogenic
+ * but minor ones.
  *
- * Signals are structural (photos, description, flags) AND semantic
- * (title keywords that denote life-defining events) so a birth or a
- * wedding surfaces as LARGE even on its own.
+ * Weight philosophy:
+ *   - semantic keywords:  +3  (was +2)  — life events are the story
+ *   - isFirstTime flag:   +3  (was +2)  — "firsts" define chapters
+ *   - photo:              +1  (was +2)  — nice but not the point
+ *   - description:        +1  (unchanged)
+ *   - multi-photo:        removed — doesn't indicate importance
+ *   - user emphasis (!):  +1  (unchanged)
  */
 function importanceScore(m: FeedMemory): number {
   let score = 0
-  // ── Structural signals ───────────────────────────────────────────
-  if (m.previewUrl) score += 2            // has hero image
-  if (m.photoCount >= 2) score += 1       // has multiple photos
+  // ── Structural signals (lighter) ─────────────────────────────────
+  if (m.previewUrl) score += 1            // has a photo
   if (m.hasDescription) score += 1        // the user took time to write
-  if (m.isFirstTime) score += 2           // "first time" is always important
   if (m.isAnniversary) score += 1         // anniversaries recur with weight
   if (m.isPartOfPeriod) score += 1        // linked to a life chapter
-  // ── Semantic signals (title-based) ───────────────────────────────
-  if (hasImportanceKeyword(m.title)) score += 2   // life-defining events
+  // ── Meaning-first signals (heavier) ──────────────────────────────
+  if (m.isFirstTime) score += 3           // "first time" defines life chapters
+  if (hasImportanceKeyword(m.title)) score += 3   // life-defining events
   if (m.title.includes('!')) score += 1            // user's own emphasis
   return score
 }
 
 function memorySize(m: FeedMemory): MemorySize {
+  // ── Hard priority override — life-defining titles are always LARGE ──
+  if (isHardLarge(m.title)) return 'large'
+
   const score = importanceScore(m)
-  if (score >= 5) return 'large'
+  if (score >= 4) return 'large'
   if (score >= 2) return 'medium'
   return 'small'
 }
@@ -155,14 +177,14 @@ function memorySize(m: FeedMemory): MemorySize {
  */
 function promotionScore(m: FeedMemory): number {
   return (
-    (m.previewUrl ? 3 : 0) +                  // photos are the biggest visual anchor
-    (m.title.length >= 20 ? 1 : 0) +          // long title ≈ user took care naming it
+    (isHardLarge(m.title) ? 10 : 0) +          // hard-large titles always win promotion
+    (hasImportanceKeyword(m.title) ? 3 : 0) +  // life-defining events
+    (m.isFirstTime ? 3 : 0) +                  // "firsts" define chapters
+    (m.previewUrl ? 2 : 0) +                   // photos help LARGE render well
+    (m.title.length >= 20 ? 1 : 0) +           // long title ≈ user took care naming it
     (m.hasDescription ? 1 : 0) +
-    (m.photoCount >= 2 ? 1 : 0) +
-    (m.isFirstTime ? 2 : 0) +
     (m.isAnniversary ? 1 : 0) +
     (m.isPartOfPeriod ? 1 : 0) +
-    (hasImportanceKeyword(m.title) ? 2 : 0) + // life-defining events
     (m.title.includes('!') ? 1 : 0)
   )
 }
@@ -501,13 +523,13 @@ function MediumMemoryBlock({ memory, variant }: { memory: FeedMemory; variant: M
 
 function SmallMemoryBlock({ memory }: { memory: FeedMemory }) {
   // SMALL = quiet memory, not irrelevant data.
-  // Readable body text, honest metadata, room to breathe.
+  // Still present in the story — visible title, honest metadata, room to breathe.
   return (
-    <Link href={`/memories/${memory.id}`} className="block group py-2">
-      <p className="text-[16px] font-medium text-foreground/80 leading-snug line-clamp-1 group-hover:text-foreground transition-colors">
+    <Link href={`/memories/${memory.id}`} className="block group py-3">
+      <p className="text-[16px] font-semibold text-foreground/82 leading-snug line-clamp-2 group-hover:text-foreground transition-colors">
         {memory.title}
       </p>
-      <p className="text-[13px] text-muted-foreground/65 mt-1">
+      <p className="text-[13px] text-muted-foreground/60 mt-1.5">
         {formatDate(memory.start_date)}
         {memory.location_name && <span> · {memory.location_name}</span>}
       </p>
