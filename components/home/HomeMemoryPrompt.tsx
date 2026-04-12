@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { getNextPrompt, getPromptHref } from '@/lib/prompts/prompt-engine'
+import { contextualizePrompt } from '@/lib/prompts/prompt-contextualization'
 import type { PromptEntity, PromptEngineInput } from '@/lib/prompts/prompt-types'
 
 /**
@@ -77,6 +78,7 @@ export function HomeMemoryPrompt({
   profileSignals,
 }: HomeMemoryPromptProps) {
   const [prompt, setPrompt] = useState<PromptEntity | null>(null)
+  const [displayText, setDisplayText] = useState<string>('')
 
   useEffect(() => {
     const recentPromptIds = readRecentIds()
@@ -89,12 +91,16 @@ export function HomeMemoryPrompt({
     }
     const chosen = getNextPrompt(engineInput)
 
+    // Contextualize with profile signals
+    const { text } = contextualizePrompt(chosen, profileSignals)
+
     // Update rolling window
     const nextRecent = [chosen.id, ...recentPromptIds.filter((id) => id !== chosen.id)].slice(0, RECENT_WINDOW)
     writeRecentIds(nextRecent)
 
     setPrompt(chosen)
-  }, [memoryCount, periodCount, existingCategories])
+    setDisplayText(text)
+  }, [memoryCount, periodCount, existingCategories, profileSignals])
 
   if (!prompt) {
     return <div className="px-4 h-[170px]" aria-hidden />
@@ -113,7 +119,7 @@ export function HomeMemoryPrompt({
         </p>
 
         <p className="text-[18px] font-medium text-foreground/85 leading-snug mt-3">
-          {prompt.text}
+          {displayText}
         </p>
 
         <div className="flex flex-wrap items-center gap-2 mt-6">
