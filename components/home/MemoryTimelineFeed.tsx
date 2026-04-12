@@ -52,6 +52,10 @@ type TimelineBlock =
 interface MemoryTimelineFeedProps {
   memories: FeedMemory[]
   pattern: RepeatedPattern | null
+  /** Prompt engine context — passed through to HomeMemoryPrompt */
+  memoryCount?: number
+  periodCount?: number
+  existingCategories?: string[]
 }
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
@@ -788,7 +792,7 @@ function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations
 
 // ── The feed itself ─────────────────────────────────────────────────────────
 
-export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProps) {
+export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount, existingCategories }: MemoryTimelineFeedProps) {
   const blocks = composeBlocks(memories, pattern)
   if (blocks.length === 0) return null
 
@@ -845,7 +849,14 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
             )
           case 'prompt':
             // HomeMemoryPrompt renders its own px-4 wrapper.
-            return <HomeMemoryPrompt key={`pro-${idx}`} />
+            return (
+              <HomeMemoryPrompt
+                key={`pro-${idx}`}
+                memoryCount={memoryCount}
+                periodCount={periodCount}
+                existingCategories={existingCategories}
+              />
+            )
         }
       })}
     </div>

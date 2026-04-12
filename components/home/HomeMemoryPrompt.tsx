@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { PROMPTS, pickPromptFromPool, getPromptHref, type Prompt } from '@/lib/constants/memory-prompts'
+import { getNextPrompt, getPromptHref } from '@/lib/prompts/prompt-engine'
+import type { PromptEntity, PromptEngineInput } from '@/lib/prompts/prompt-types'
 
 /**
  * HomeMemoryPrompt
  *
- * Shows ONE structured prompt at a time. The prompt has a type
- * (moment / period / cluster) and routes to the matching creation
- * flow. Rotation avoids recently-shown prompts via a localStorage
- * rolling window.
+ * Shows ONE structured prompt at a time, selected by the Prompt Engine V1.
+ * The engine factors in the user's memory/period count, recent prompt history,
+ * existing categories, and emotional weight to pick the best prompt.
  *
- * Pure V1 — no AI, no backend, no carousel.
+ * Rotation state lives in localStorage (rolling window of 8 recent prompt IDs).
+ * Engine context (memoryCount, periodCount, categories) is passed as props
+ * from the server component that renders this block.
  */
 
 const RECENT_KEY = 'appnd_recent_prompt_ids'
@@ -39,43 +41,58 @@ function writeRecentIds(list: string[]) {
   }
 }
 
-function pickPrompt(): Prompt {
-  const recent = readRecentIds()
-  const chosen = pickPromptFromPool(recent)
-  const nextRecent = [chosen.id, ...recent.filter((id) => id !== chosen.id)].slice(0, RECENT_WINDOW)
-  writeRecentIds(nextRecent)
-  return chosen
-}
-
-// Subtle label varies by prompt type — each type invites a different kind
-// of recall, so the eyebrow copy follows.
-function labelForType(type: Prompt['type']): string {
-  switch (type) {
+// Subtle label varies by prompt kind.
+function labelForKind(kind: PromptEntity['kind']): string {
+  switch (kind) {
     case 'moment':  return 'ti è tornato in mente questo?'
     case 'period':  return 'un periodo della tua vita'
     case 'cluster': return 'qualcosa che si è ripetuto'
   }
 }
 
-// Primary CTA label also varies by type to stay honest about what the
-// next screen will do.
-function primaryCtaForType(type: Prompt['type']): string {
-  switch (type) {
+// Primary CTA label varies by kind.
+function primaryCtaForKind(kind: PromptEntity['kind']): string {
+  switch (kind) {
     case 'moment':  return 'Salvalo'
     case 'period':  return 'Racconta quel periodo'
     case 'cluster': return 'Raggruppa questi momenti'
   }
 }
 
-export function HomeMemoryPrompt() {
-  const [prompt, setPrompt] = useState<Prompt | null>(null)
+export interface HomeMemoryPromptProps {
+  /** Total event-type memories the user has. Default: 0. */
+  memoryCount?: number
+  /** Total periods the user has. Default: 0. */
+  periodCount?: number
+  /** Categories the user already has memories in. Default: []. */
+  existingCategories?: string[]
+}
+
+export function HomeMemoryPrompt({
+  memoryCount = 0,
+  periodCount = 0,
+  existingCategories = [],
+}: HomeMemoryPromptProps) {
+  const [prompt, setPrompt] = useState<PromptEntity | null>(null)
 
   useEffect(() => {
-    setPrompt(pickPrompt())
-  }, [])
+    const recentPromptIds = readRecentIds()
+    const engineInput: PromptEngineInput = {
+      memoryCount,
+      periodCount,
+      recentPromptIds,
+      existingCategories,
+    }
+    const chosen = getNextPrompt(engineInput)
+
+    // Update rolling window
+    const nextRecent = [chosen.id, ...recentPromptIds.filter((id) => id !== chosen.id)].slice(0, RECENT_WINDOW)
+    writeRecentIds(nextRecent)
+
+    setPrompt(chosen)
+  }, [memoryCount, periodCount, existingCategories])
 
   if (!prompt) {
-    // Invisible placeholder preserves vertical space to avoid layout jump
     return <div className="px-4 h-[170px]" aria-hidden />
   }
 
@@ -88,7 +105,7 @@ export function HomeMemoryPrompt() {
         style={{ background: 'rgba(107,95,232,0.05)' }}
       >
         <p className="text-[11px] text-muted-foreground/45 lowercase tracking-wide">
-          {labelForType(prompt.type)}
+          {labelForKind(prompt.kind)}
         </p>
 
         <p className="text-[18px] font-medium text-foreground/85 leading-snug mt-3">
@@ -100,7 +117,7 @@ export function HomeMemoryPrompt() {
             href={href}
             className="inline-flex items-center rounded-full bg-foreground text-background px-5 py-2.5 text-[13px] font-medium active:scale-[0.98] transition-transform"
           >
-            {primaryCtaForType(prompt.type)}
+            {primaryCtaForKind(prompt.kind)}
           </Link>
           <Link
             href={href}

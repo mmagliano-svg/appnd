@@ -213,6 +213,9 @@ export default async function DashboardPage() {
           <MemoryTimelineFeed
             memories={feedMemories}
             pattern={repeatedPattern}
+            memoryCount={events.length}
+            periodCount={memoriesRaw.filter((m) => m.end_date).length}
+            existingCategories={Array.from(new Set(events.map((m) => m.category).filter(Boolean) as string[]))}
           />
         </div>
       </div>
