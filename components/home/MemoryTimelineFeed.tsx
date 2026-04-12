@@ -35,6 +35,8 @@ export interface FeedMemory {
   isFirstTime: boolean
   isAnniversary: boolean
   isPartOfPeriod: boolean
+  // ── Grouping signals ───────────────────────────────────────────────────
+  tags: string[]
 }
 
 type MemorySize = 'large' | 'medium' | 'small'
@@ -45,6 +47,7 @@ type TimelineBlock =
   | { kind: 'pattern'; pattern: RepeatedPattern }
   | { kind: 'continue'; memory: FeedMemory }
   | { kind: 'prompt' }
+  | { kind: 'cluster'; lead: FeedMemory; continuations: FeedMemory[] }
 
 interface MemoryTimelineFeedProps {
   memories: FeedMemory[]
@@ -181,7 +184,7 @@ function promotionScore(m: FeedMemory): number {
  * list of identical rows.
  */
 function isHeavyBlock(b: TimelineBlock): boolean {
-  if (b.kind === 'period' || b.kind === 'pattern') return true
+  if (b.kind === 'period' || b.kind === 'pattern' || b.kind === 'cluster') return true
   if (b.kind === 'memory' && b.size === 'large') return true
   return false
 }
@@ -233,61 +236,160 @@ function enforceRhythm(blocks: TimelineBlock[]): TimelineBlock[] {
   return result
 }
 
+// ── Life-event cluster detection ───────────────────────────────────────────
+
+/**
+ * Keywords that hint a memory belongs to a life-defining event arc — the
+ * same list used in importanceScore, plus broader topic words.
+ */
+const EVENT_ARC_KEYWORDS = [
+  'nascita', 'nato', 'nata', 'gravidanza', 'parto',
+  'matrimonio', 'nozze', 'sposato', 'sposata',
+  'primo', 'prima',
+  'figlio', 'figlia',
+  'battesimo', 'cresima', 'laurea',
+  'trasloco', 'casa nuova',
+  'viaggio', 'vacanza', 'vacanze',
+]
+
+/** How many days can separate two memories and still be part of the same arc. */
+const ARC_TIME_WINDOW_MS = 180 * 24 * 60 * 60 * 1000 // ±6 months
+
+/**
+ * Extracts a cheap "topic fingerprint" from a memory: lowercased title
+ * words that are in the arc keyword list. Returns an empty array if the
+ * memory doesn't match any arc topic — those memories are standalone.
+ */
+function arcTopics(m: FeedMemory): string[] {
+  const normalized = m.title.toLowerCase()
+  const hits: string[] = []
+  for (const kw of EVENT_ARC_KEYWORDS) {
+    if (normalized.includes(kw)) hits.push(kw)
+  }
+  return hits
+}
+
+/**
+ * Two memories share an arc when:
+ *  1. At least one arc keyword appears in BOTH titles, OR
+ *  2. They share the same non-null location_name.
+ * AND they are within 6 months of each other.
+ */
+function sharesArc(a: FeedMemory, b: FeedMemory): boolean {
+  const timeDiff = Math.abs(new Date(a.start_date).getTime() - new Date(b.start_date).getTime())
+  if (timeDiff > ARC_TIME_WINDOW_MS) return false
+
+  // Same location?
+  if (a.location_name && a.location_name === b.location_name) return true
+
+  // Shared keyword?
+  const topicsA = arcTopics(a)
+  if (topicsA.length === 0) return false
+  const topicsB = arcTopics(b)
+  return topicsA.some((t) => topicsB.includes(t))
+}
+
+/**
+ * Pre-pass: walks the chronological memory list and groups consecutive
+ * memories that share a life-event arc. Returns a mixed array of
+ * standalone memories and cluster objects. Clusters of 1 are emitted
+ * as standalone. Preserves chronological order.
+ */
+type ClusterOrStandalone =
+  | { type: 'standalone'; memory: FeedMemory }
+  | { type: 'cluster'; lead: FeedMemory; continuations: FeedMemory[] }
+
+function detectClusters(memories: FeedMemory[]): ClusterOrStandalone[] {
+  const result: ClusterOrStandalone[] = []
+  let i = 0
+
+  while (i < memories.length) {
+    const m = memories[i]
+    // Skip periods — they render their own block type.
+    if (m.end_date) {
+      result.push({ type: 'standalone', memory: m })
+      i++
+      continue
+    }
+
+    // Try to start a cluster from this memory.
+    const group = [m]
+    let j = i + 1
+    while (j < memories.length && group.length < 5) {
+      const next = memories[j]
+      if (next.end_date) break // don't absorb periods
+      if (sharesArc(m, next)) {
+        group.push(next)
+        j++
+      } else {
+        break
+      }
+    }
+
+    if (group.length >= 2) {
+      result.push({ type: 'cluster', lead: group[0], continuations: group.slice(1) })
+      i = j
+    } else {
+      result.push({ type: 'standalone', memory: m })
+      i++
+    }
+  }
+
+  return result
+}
+
 // ── Block composition ──────────────────────────────────────────────────────
 
 /**
  * Interleaves memories, patterns, prompts and continue nudges into one flow.
- *
- * Order stays chronological for most items (users expect time to flow). The
- * importance layer operates on SIZE, not position — so a key moment is still
- * at its real date but the eye sees it first because it occupies more space.
- *
- * Fixed rhythm slots:
- *   - after the 3rd memory: insert pattern block (if present)
- *   - after the 8th memory: insert prompt block
- *   - after the 14th memory: insert continue block (anchored to that memory)
+ * Now also detects life-event clusters so related memories render as a single
+ * visual group (lead = LARGE, continuations = compact inline list with a
+ * connector line).
  */
 function composeBlocks(memories: FeedMemory[], pattern: RepeatedPattern | null): TimelineBlock[] {
   const blocks: TimelineBlock[] = []
-  const limit = Math.min(memories.length, 30)
+  const items = detectClusters(memories.slice(0, 30))
 
   let patternInserted = false
   let promptInserted = false
   let continueInserted = false
+  let memoryCount = 0
 
-  for (let i = 0; i < limit; i++) {
-    const m = memories[i]
-    if (m.end_date) {
-      blocks.push({ kind: 'period', period: m })
+  for (const item of items) {
+    if (item.type === 'cluster') {
+      blocks.push({ kind: 'cluster', lead: item.lead, continuations: item.continuations })
+      memoryCount += 1 + item.continuations.length
     } else {
-      blocks.push({ kind: 'memory', memory: m, size: memorySize(m) })
+      const m = item.memory
+      if (m.end_date) {
+        blocks.push({ kind: 'period', period: m })
+      } else {
+        blocks.push({ kind: 'memory', memory: m, size: memorySize(m) })
+      }
+      memoryCount++
     }
 
-    const position = i + 1 // 1-indexed
-
-    if (position === 3 && pattern && !patternInserted) {
+    if (memoryCount >= 3 && pattern && !patternInserted) {
       blocks.push({ kind: 'pattern', pattern })
       patternInserted = true
     }
 
-    if (position === 8 && !promptInserted) {
+    if (memoryCount >= 8 && !promptInserted) {
       blocks.push({ kind: 'prompt' })
       promptInserted = true
     }
 
-    if (position === 14 && !continueInserted && m) {
-      blocks.push({ kind: 'continue', memory: m })
+    if (memoryCount >= 14 && !continueInserted) {
+      const lastMem = item.type === 'cluster' ? item.lead : item.memory
+      blocks.push({ kind: 'continue', memory: lastMem })
       continueInserted = true
     }
   }
 
-  // If the list is short, make sure one prompt is still present.
-  if (!promptInserted && limit >= 3) {
+  if (!promptInserted && memoryCount >= 3) {
     blocks.push({ kind: 'prompt' })
   }
 
-  // Rhythm pass — guarantees no more than 4 non-heavy blocks in a row
-  // without touching chronological order.
   return enforceRhythm(blocks)
 }
 
@@ -470,6 +572,37 @@ function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
 
 // ── Continue block ─────────────────────────────────────────────────────────
 
+// ── Cluster block — life-event arc ──────────────────────────────────────────
+
+function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations: FeedMemory[] }) {
+  return (
+    <div className="space-y-6">
+      {/* Lead memory — always rendered at LARGE scale */}
+      <LargeMemoryBlock memory={lead} />
+
+      {/* Continuations — compact inline list, visually subordinate */}
+      <div className="pl-4 border-l-2 border-border/20 space-y-4">
+        {continuations.map((c) => (
+          <Link key={c.id} href={`/memories/${c.id}`} className="block group">
+            <p className="text-[14px] text-foreground/70 leading-snug group-hover:text-foreground transition-colors">
+              {c.title}
+            </p>
+            <p className="text-[11px] text-muted-foreground/50 mt-0.5">
+              {formatDate(c.start_date)}
+              {c.location_name && <span> · {c.location_name}</span>}
+            </p>
+          </Link>
+        ))}
+      </div>
+
+      {/* Connector */}
+      <p className="text-[13px] italic text-muted-foreground/45">
+        Questo momento può continuare.
+      </p>
+    </div>
+  )
+}
+
 function ContinueBlock({ memory }: { memory: FeedMemory }) {
   return (
     <div>
@@ -535,6 +668,12 @@ export function MemoryTimelineFeed({ memories, pattern }: MemoryTimelineFeedProp
             return (
               <div key={`pat-${idx}`} className="px-5">
                 <PatternBlock pattern={block.pattern} />
+              </div>
+            )
+          case 'cluster':
+            return (
+              <div key={`clu-${block.lead.id}-${idx}`} className="px-5">
+                <ClusterBlock lead={block.lead} continuations={block.continuations} />
               </div>
             )
           case 'continue':

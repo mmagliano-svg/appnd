@@ -188,6 +188,7 @@ export default async function DashboardPage() {
         isFirstTime: Boolean(m.is_first_time),
         isAnniversary: Boolean(m.is_anniversary),
         isPartOfPeriod: Boolean(m.parent_period_id),
+        tags: m.tags ?? [],
       }
     })
 
