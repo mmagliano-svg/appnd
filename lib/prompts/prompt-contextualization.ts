@@ -1,16 +1,28 @@
 /**
- * Prompt Contextualization V2
+ * Prompt Contextualization V2.1
  *
- * Given a selected PromptEntity and the user's ProfileSignals, returns
- * a more specific prompt text when confidence is high. Falls back to
- * the original text when no strong signal exists.
+ * Adapts a selected PromptEntity using ProfileSignals to make it
+ * more personal. Falls back to the original when no safe adaptation
+ * exists.
  *
- * Rules:
- *   - Never generates new prompts from scratch
- *   - Never uses AI
- *   - Only adapts when a clear, safe substitution exists
- *   - Keeps the language natural and short
- *   - Returns the ORIGINAL text if nothing contextualizes cleanly
+ * STRICT QUALITY RULE (V2.1):
+ *   A contextualized prompt must be STRICTLY BETTER than the base.
+ *   "Better" means: more personal AND equally clear AND equally
+ *   structured AND equally answerable.
+ *
+ *   If the candidate is vaguer, less structured, or sounds synthetic,
+ *   we discard it and return the original unchanged.
+ *
+ * Allowed transformations:
+ *   - Inject a proper name into a slot that already expects one
+ *     ("qualcuno di importante" → "Federico")
+ *   - Replace a generic phrase with a personal equivalent that keeps
+ *     the same structure ("la tua relazione più lunga" → "la vostra storia")
+ *
+ * Disallowed transformations:
+ *   - Rewriting the entire sentence into a different structure
+ *   - Appending contextual phrases that change the question's scope
+ *   - Replacing a concrete question with a vague/poetic one
  */
 
 import type { PromptEntity } from './prompt-types'
@@ -23,11 +35,6 @@ interface ContextSignals {
   hasLongRelationship?: boolean
 }
 
-/**
- * Attempt to make a prompt more personal using profile signals.
- * Returns { text, wasContextualized } so the caller knows whether
- * the prompt was adapted or kept as-is.
- */
 export function contextualizePrompt(
   prompt: PromptEntity,
   signals: ContextSignals | undefined,
@@ -35,86 +42,53 @@ export function contextualizePrompt(
   if (!signals) return { text: prompt.text, wasContextualized: false }
 
   const childName = signals.childNames?.[0]
-  const topPlace = signals.repeatedPlaces?.[0]
   const original = prompt.text
 
-  // ── Family + child name ──────────────────────────────────────────────
-  // "Dove eri il primo Natale che ricordi davvero?"
-  //  → "Dove eri il primo Natale con {childName}?"
+  // ── Family + child name: safe slot injections only ───────────────────
+  //
+  // These work because the base prompt already has a generic placeholder
+  // ("qualcuno", "di famiglia") that the name replaces 1:1. The question
+  // structure stays identical.
   if (prompt.category === 'family' && childName && signals.hasChildren) {
-    // Only contextualize if the prompt doesn't already mention a specific name
-    if (!original.includes(childName)) {
-      // Pattern: prompts ending with "?" that mention a generic event
-      if (original.includes('primo') || original.includes('prima')) {
-        const adapted = original.replace(
-          /\?\s*$/,
-          ` con ${childName}?`,
-        )
-        if (adapted !== original) return { text: adapted, wasContextualized: true }
+    if (original.includes(childName)) {
+      // Already mentions the name — skip
+    } else if (original.includes('qualcuno di importante per te')) {
+      // "il giorno in cui è nato qualcuno di importante per te"
+      //  → "il giorno in cui è nato Federico"
+      return {
+        text: original.replace('qualcuno di importante per te', childName),
+        wasContextualized: true,
       }
-
-      // Pattern: "il giorno in cui è nato qualcuno" → "il giorno in cui è nato {childName}"
-      if (original.includes('qualcuno di importante')) {
-        return {
-          text: original.replace('qualcuno di importante per te', childName),
-          wasContextualized: true,
-        }
-      }
-
-      // Pattern: "un compleanno di famiglia" → "un compleanno di {childName}"
-      if (original.includes('compleanno di famiglia')) {
-        return {
-          text: original.replace('compleanno di famiglia', `compleanno di ${childName}`),
-          wasContextualized: true,
-        }
+    } else if (original.includes('compleanno di famiglia')) {
+      // "un compleanno di famiglia che non dimentichi"
+      //  → "un compleanno di Federico che non dimentichi"
+      return {
+        text: original.replace('compleanno di famiglia', `compleanno di ${childName}`),
+        wasContextualized: true,
       }
     }
+    // NOTE: the V2 "primo/prima + append con {name}?" rule is REMOVED.
+    // It produced results like "Dove eri il primo Natale che ricordi
+    // davvero con Federico?" which sounds unnatural (the "con" clashes
+    // with the sentence structure in most cases).
   }
 
-  // ── Cluster/travel + repeated place ──────────────────────────────────
-  // "C'è una città in cui sei tornato più volte nella vita?"
-  //  → "Cosa ti riporta spesso a {topPlace}?"
-  if (topPlace && (prompt.category === 'travel' || prompt.category === 'home')) {
-    if (prompt.kind === 'cluster') {
-      // Replace the generic cluster question with a specific one
-      if (original.includes('città in cui sei tornato')) {
-        return {
-          text: `Cosa ti riporta spesso a ${topPlace}?`,
-          wasContextualized: true,
-        }
-      }
-      if (original.includes('posto in cui tornavi')) {
-        return {
-          text: `Cosa ti legava a ${topPlace}?`,
-          wasContextualized: true,
-        }
-      }
-    }
-
-    // Moment travel prompts: if we have a place, append it
-    if (prompt.kind === 'moment' && !original.toLowerCase().includes(topPlace.toLowerCase())) {
-      // "Dove sei andato nel tuo primo viaggio da solo?"
-      // Only if the prompt is about going somewhere (avoid forcing on "childhood room" etc.)
-      if (original.includes('viaggio') || original.includes('aereo') || original.includes('treno')) {
-        // Don't append — just keep original. Forcing a place into a "first trip" prompt
-        // feels wrong if they went somewhere else. Only cluster prompts get place injection.
-      }
-    }
-  }
-
-  // ── Relationship + long relationship signal ──────────────────────────
-  // "Dove vi siete conosciuti quando è iniziata la tua relazione più lunga?"
-  //  → "Dove vi siete conosciuti quando è iniziata la vostra storia?"
+  // ── Relationship: minimal phrase swap ────────────────────────────────
+  //
+  // These work because the replacement is shorter/warmer and keeps the
+  // exact same question skeleton.
   if (signals.hasLongRelationship && prompt.category === 'relationships') {
-    if (original.includes('relazione più lunga')) {
+    if (original.includes('la tua relazione più lunga')) {
+      // "quando è iniziata la tua relazione più lunga"
+      //  → "quando è iniziata la vostra storia"
       return {
         text: original.replace('la tua relazione più lunga', 'la vostra storia'),
         wasContextualized: true,
       }
     }
-    // "la prima casa che hai condiviso con qualcuno"
-    // → "la prima casa che avete condiviso"
-    if (original.includes('condiviso con qualcuno')) {
+    if (original.includes('hai condiviso con qualcuno')) {
+      // "la prima casa che hai condiviso con qualcuno"
+      //  → "la prima casa che avete condiviso"
       return {
         text: original.replace('hai condiviso con qualcuno', 'avete condiviso'),
         wasContextualized: true,
@@ -122,18 +96,27 @@ export function contextualizePrompt(
     }
   }
 
-  // ── Home + repeated place ────────────────────────────────────────────
-  // "Ti ricordi tutte le case in cui hai vissuto?"
-  //  → "Ti ricordi tutte le case prima di {topPlace}?"
-  if (topPlace && prompt.category === 'home' && prompt.kind === 'cluster') {
-    if (original.includes('tutte le case')) {
-      return {
-        text: `Ti ricordi tutte le case prima di ${topPlace}?`,
-        wasContextualized: true,
-      }
-    }
-  }
+  // ── REMOVED contextualizations (V2.1 quality gate) ──────────────────
+  //
+  // The following V2 rules are intentionally removed because the
+  // candidates were weaker than the base prompts:
+  //
+  // ❌ "C'è una città in cui sei tornato più volte?" → "Cosa ti riporta spesso a Roma?"
+  //    Reason: replaces a concrete, structured question with a vague poetic one.
+  //    The base already works perfectly and leads to place + time data.
+  //
+  // ❌ "C'è un posto in cui tornavi sempre?" → "Cosa ti legava a Roma?"
+  //    Reason: too abstract. The user doesn't know how to answer "cosa ti legava".
+  //
+  // ❌ "Ti ricordi tutte le case in cui hai vissuto?" → "Ti ricordi tutte le case prima di Roma?"
+  //    Reason: "prima di Roma" changes the semantic scope. The base prompt asks
+  //    about ALL houses; the adapted version asks only about the subset before
+  //    one specific city, which is a different (narrower) question.
+  //
+  // ❌ "Dove eri il primo Natale?" → "Dove eri il primo Natale con {childName}?"
+  //    Reason: "con" appended to the end sounds mechanical. The first Christmas
+  //    might not have involved the child at all.
 
   // ── No strong signal → keep original ─────────────────────────────────
-  return { text: original, wasContextualized: false }
+  return { text: prompt.text, wasContextualized: false }
 }
