@@ -637,17 +637,36 @@ function PeriodBlock({ period }: { period: FeedMemory }) {
 
 // ── Pattern block ──────────────────────────────────────────────────────────
 
-function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
-  // Narrative copy — no "questo torna" eyebrow, no raw count sentence.
-  const sentence =
-    pattern.kind === 'location'
-      ? `${pattern.label} torna spesso nella tua vita.`
-      : `${pattern.label} continua a tornare.`
+/**
+ * Richer narrative sentence for pattern blocks. Uses label, count,
+ * and pattern kind to vary the voice — avoids the "Sei stato N volte a X"
+ * data-dump feel. Deterministic via label hash so the same pattern
+ * always gets the same sentence across page loads.
+ */
+function patternSentence(pattern: RepeatedPattern): string {
+  if (pattern.kind !== 'location') {
+    return `${pattern.label} continua a tornare.`
+  }
 
+  // Location patterns — rotate through 4 variants deterministically.
+  let h = 0
+  for (let i = 0; i < pattern.label.length; i++) {
+    h = (h * 31 + pattern.label.charCodeAt(i)) & 0xffff
+  }
+  const variants = [
+    `${pattern.label} torna spesso nella tua vita.`,
+    `Un posto che ritorna: ${pattern.label}.`,
+    `${pattern.label}. Ci sei stato più di una volta.`,
+    `Qualcosa ti riporta sempre a ${pattern.label}.`,
+  ]
+  return variants[h % variants.length]
+}
+
+function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
   return (
     <div>
       <p className="text-[18px] italic text-foreground/75 leading-snug">
-        {sentence}
+        {patternSentence(pattern)}
       </p>
       <div className="flex items-center gap-5 mt-4">
         <Link
@@ -671,12 +690,61 @@ function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
 
 // ── Cluster block — life-event arc ──────────────────────────────────────────
 
+/**
+ * Auto-generate a short narrative label for a cluster based on the
+ * titles of the lead + continuations. Returns null for clusters that
+ * don't warrant a label (generic trips, minor groupings) — the rule
+ * is "rare and meaningful, never on every block."
+ *
+ * Only emotionally significant arcs get a label.
+ */
+function clusterNarrativeLabel(lead: FeedMemory, continuations: FeedMemory[]): string | null {
+  const allTitles = [lead, ...continuations].map((m) => m.title.toLowerCase()).join(' ')
+
+  // ── Life-defining arcs → always label ────────────────────────────
+  if (allTitles.includes('nascita') || allTitles.includes('nato') || allTitles.includes('nata')) {
+    // Try to extract a name from the lead title ("Nascita di Federico" → "Federico")
+    const match = lead.title.match(/(?:nascita|nato|nata)\s+(?:di\s+)?(\w+)/i)
+    if (match) return `L'inizio di ${match[1]}.`
+    return 'Quando è iniziato tutto.'
+  }
+
+  if (allTitles.includes('matrimonio') || allTitles.includes('nozze') || allTitles.includes('sposato')) {
+    return 'Un momento che ha cambiato tutto.'
+  }
+
+  if (allTitles.includes('gravidanza') || allTitles.includes('parto')) {
+    return 'I mesi che hanno cambiato tutto.'
+  }
+
+  if (allTitles.includes('laurea')) {
+    return 'La fine di un capitolo.'
+  }
+
+  if (allTitles.includes('trasloco') || allTitles.includes('casa nuova')) {
+    return 'Un nuovo inizio.'
+  }
+
+  // ── Travel arcs — only if the same location repeats ──────────────
+  if (lead.location_name && continuations.some((c) => c.location_name === lead.location_name)) {
+    return `Quei giorni a ${lead.location_name}.`
+  }
+
+  // ── Everything else → no label (keep it rare) ────────────────────
+  return null
+}
+
 function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations: FeedMemory[] }) {
-  // One story arc: lead at LARGE, continuations as compact inline list
-  // with a subtle left-border connector. No duplicate connector text —
-  // the border itself IS the continuity signal.
+  const narrativeLabel = clusterNarrativeLabel(lead, continuations)
+
   return (
     <div className="space-y-6">
+      {/* Narrative label — only for emotionally meaningful arcs */}
+      {narrativeLabel && (
+        <p className="text-[14px] italic text-muted-foreground/55 leading-snug">
+          {narrativeLabel}
+        </p>
+      )}
       <LargeMemoryBlock memory={lead} />
       <div className="pl-4 border-l-2 border-border/20 space-y-4">
         {continuations.map((c) => (
