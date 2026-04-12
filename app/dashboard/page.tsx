@@ -6,6 +6,7 @@ import { getRepeatedPattern } from '@/actions/home'
 import { HomeTopBar } from '@/components/home/HomeTopBar'
 import { HomeHero, type HeroMemory } from '@/components/home/HomeHero'
 import { MemoryTimelineFeed, type FeedMemory } from '@/components/home/MemoryTimelineFeed'
+import { extractProfileSignals } from '@/lib/profile/profile-signals'
 
 export default async function DashboardPage() {
   const supabase = await createServerClient()
@@ -161,6 +162,9 @@ export default async function DashboardPage() {
     )
   }
 
+  // ── Profile signals — extracted from existing data, powers prompt engine ──
+  const profileSignals = extractProfileSignals(memoriesRaw)
+
   // ── Build feed data ────────────────────────────────────────────────────────
   // Chronological descending list of memories, excluding the hero (which is
   // rendered separately on top). Capped at 30 to keep the page fast.
@@ -216,6 +220,13 @@ export default async function DashboardPage() {
             memoryCount={events.length}
             periodCount={memoriesRaw.filter((m) => m.end_date).length}
             existingCategories={Array.from(new Set(events.map((m) => m.category).filter(Boolean) as string[]))}
+            profileSignals={{
+              hasChildren: profileSignals.hasChildren,
+              hasLongRelationship: profileSignals.hasLongRelationship,
+              keyThemes: profileSignals.keyThemes,
+              repeatedPlaces: profileSignals.repeatedPlaces,
+              keyPeople: profileSignals.keyPeople,
+            }}
           />
         </div>
       </div>

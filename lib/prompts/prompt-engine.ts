@@ -55,6 +55,7 @@ export function getNextPrompt(input: PromptEngineInput): PromptEntity {
   }
 
   // ── 4–5. Score each candidate ──────────────────────────────────────────
+  const ps = input.profileSignals
   const scored = pool.map((p) => {
     let score = (p.emotionalWeight ?? 3) // base: 1–5
 
@@ -65,6 +66,29 @@ export function getNextPrompt(input: PromptEngineInput): PromptEntity {
     // explored yet get a boost so the feed feels broad, not narrow.
     if (!existingCategories.includes(p.category)) {
       score += 2
+    }
+
+    // ── Profile signal boosts (V1.5) ──────────────────────────────
+    if (ps) {
+      // If user has children, boost family prompts
+      if (ps.hasChildren && p.category === 'family') {
+        score += 2
+      }
+      // If user has a long relationship, boost relationship prompts
+      if (ps.hasLongRelationship && p.category === 'relationships') {
+        score += 1.5
+      }
+      // If prompt text mentions a place the user revisits, boost it
+      if (ps.repeatedPlaces?.length) {
+        const promptLower = p.text.toLowerCase()
+        if (ps.repeatedPlaces.some((place) => promptLower.includes(place.toLowerCase()))) {
+          score += 1
+        }
+      }
+      // If user has key themes, boost matching category prompts
+      if (ps.keyThemes?.length && ps.keyThemes.includes(p.category)) {
+        score += 1
+      }
     }
 
     // Small random jitter for tie-breaking (0–0.99)

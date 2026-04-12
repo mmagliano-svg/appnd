@@ -56,6 +56,7 @@ interface MemoryTimelineFeedProps {
   memoryCount?: number
   periodCount?: number
   existingCategories?: string[]
+  profileSignals?: import('@/lib/prompts/prompt-types').PromptEngineInput['profileSignals']
 }
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
@@ -792,7 +793,7 @@ function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations
 
 // ── The feed itself ─────────────────────────────────────────────────────────
 
-export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount, existingCategories }: MemoryTimelineFeedProps) {
+export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount, existingCategories, profileSignals }: MemoryTimelineFeedProps) {
   const blocks = composeBlocks(memories, pattern)
   if (blocks.length === 0) return null
 
@@ -855,6 +856,7 @@ export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount
                 memoryCount={memoryCount}
                 periodCount={periodCount}
                 existingCategories={existingCategories}
+                profileSignals={profileSignals}
               />
             )
         }

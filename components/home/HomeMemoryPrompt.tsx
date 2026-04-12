@@ -66,12 +66,15 @@ export interface HomeMemoryPromptProps {
   periodCount?: number
   /** Categories the user already has memories in. Default: []. */
   existingCategories?: string[]
+  /** Profile signals for smarter prompt selection. */
+  profileSignals?: PromptEngineInput['profileSignals']
 }
 
 export function HomeMemoryPrompt({
   memoryCount = 0,
   periodCount = 0,
   existingCategories = [],
+  profileSignals,
 }: HomeMemoryPromptProps) {
   const [prompt, setPrompt] = useState<PromptEntity | null>(null)
 
@@ -82,6 +85,7 @@ export function HomeMemoryPrompt({
       periodCount,
       recentPromptIds,
       existingCategories,
+      profileSignals,
     }
     const chosen = getNextPrompt(engineInput)
 

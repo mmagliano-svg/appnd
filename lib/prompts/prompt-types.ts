@@ -65,4 +65,12 @@ export interface PromptEngineInput {
   recentPromptIds: string[]
   /** Categories the user already has memories in (for variety) */
   existingCategories?: string[]
+  /** Profile signals extracted from the user's memories (optional V1.5) */
+  profileSignals?: {
+    hasChildren?: boolean
+    hasLongRelationship?: boolean
+    keyThemes?: string[]
+    repeatedPlaces?: string[]
+    keyPeople?: string[]
+  }
 }
