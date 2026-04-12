@@ -37,6 +37,7 @@ export interface FeedMemory {
   isPartOfPeriod: boolean
   // ── Grouping signals ───────────────────────────────────────────────────
   tags: string[]
+  category: string | null
 }
 
 type MemorySize = 'large' | 'medium' | 'small'
@@ -539,22 +540,59 @@ function SmallMemoryBlock({ memory }: { memory: FeedMemory }) {
 
 // ── Period block ───────────────────────────────────────────────────────────
 
+/**
+ * Auto-generate a short emotional narrative line for a period based on
+ * its category and title keywords. Falls back to a generic line when
+ * nothing specific matches. This makes periods read as life chapters
+ * with a voice, not as database entries.
+ */
+function periodNarrative(period: FeedMemory): string {
+  const t = period.title.toLowerCase()
+  const cat = period.category?.toLowerCase() ?? ''
+
+  // Category-first matches
+  if (cat.includes('lavoro') || cat.includes('work'))
+    return 'È qui che è iniziato tutto.'
+  if (cat.includes('scuola') || cat.includes('studio') || cat.includes('school'))
+    return 'Gli anni che ti hanno formato.'
+  if (cat.includes('relazione') || cat.includes('amore'))
+    return 'Una parte importante della tua vita.'
+  if (cat.includes('viaggio') || cat.includes('travel'))
+    return 'Un pezzo di mondo che ti sei portato dentro.'
+  if (cat.includes('sport'))
+    return 'Il tempo in cui lo davi tutto.'
+
+  // Title-keyword fallbacks
+  if (t.includes('lavoro') || t.includes('ufficio') || t.includes('azienda'))
+    return 'È qui che è iniziato tutto.'
+  if (t.includes('scuola') || t.includes('liceo') || t.includes('università'))
+    return 'Gli anni che ti hanno formato.'
+  if (t.includes('casa') || t.includes('appartamento') || t.includes('trasloco'))
+    return 'Un posto che hai chiamato casa.'
+  if (t.includes('amici') || t.includes('gruppo') || t.includes('compagni'))
+    return "Le persone che c'erano sempre."
+  if (t.includes('viaggio') || t.includes('vacanz'))
+    return 'Un pezzo di mondo che ti sei portato dentro.'
+
+  // Generic fallback — still emotional, not blank
+  return 'Un capitolo della tua vita.'
+}
+
 function PeriodBlock({ period }: { period: FeedMemory }) {
-  // Period = structural chapter in the user's life, not a memory item.
-  // Clean text block: larger title, more visible date range, lighter
-  // CTA. The chapter rhythm (extra top margin) lives on the outer
-  // wrapper in the feed render loop.
   return (
     <Link href={`/memories/${period.id}`} className="block group">
-      <p className="text-[23px] font-semibold text-foreground/90 leading-[1.15] tracking-tight group-hover:text-foreground transition-colors">
+      <p className="text-[24px] font-bold text-foreground/92 leading-[1.12] tracking-tight group-hover:text-foreground transition-colors">
         {period.title}
       </p>
-      <p className="text-[13px] text-muted-foreground/65 mt-2">
+      <p className="text-[14px] text-muted-foreground/65 mt-2.5">
         {formatPeriodRange(period.start_date, period.end_date)}
         {period.location_name && <span> · {period.location_name}</span>}
       </p>
-      <p className="text-[11px] italic text-muted-foreground/40 mt-4 group-hover:text-muted-foreground/70 transition-colors">
-        Vedi →
+      <p className="text-[15px] italic text-foreground/50 mt-4 leading-snug">
+        {periodNarrative(period)}
+      </p>
+      <p className="text-[11px] text-muted-foreground/40 mt-5 group-hover:text-muted-foreground/70 transition-colors">
+        Rivedi →
       </p>
     </Link>
   )
