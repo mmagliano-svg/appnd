@@ -4,12 +4,13 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { updateDisplayName } from '@/actions/profile'
+import { updateDisplayName, updateBirthDate } from '@/actions/profile'
 
 interface Props {
   userId: string
   email: string
   initialDisplayName: string
+  initialBirthDate: string
   memberSince: string
   stats: { memories: number; contributions: number }
 }
@@ -31,7 +32,7 @@ function initials(name: string, email: string) {
   return email.slice(0, 2).toUpperCase()
 }
 
-export function ProfileClient({ userId, email, initialDisplayName, memberSince, stats }: Props) {
+export function ProfileClient({ userId, email, initialDisplayName, initialBirthDate, memberSince, stats }: Props) {
   const router = useRouter()
   const [displayName, setDisplayName] = useState(initialDisplayName)
   const [draft, setDraft] = useState(initialDisplayName)
@@ -40,6 +41,13 @@ export function ProfileClient({ userId, email, initialDisplayName, memberSince, 
   const [error, setError] = useState('')
   const [isPending, startTransition] = useTransition()
   const [signingOut, setSigningOut] = useState(false)
+
+  // Birth date
+  const [birthDate, setBirthDate] = useState(initialBirthDate)
+  const [birthDraft, setBirthDraft] = useState(initialBirthDate)
+  const [editingBirth, setEditingBirth] = useState(false)
+  const [birthSaved, setBirthSaved] = useState(false)
+  const [birthError, setBirthError] = useState('')
 
   const ini = initials(displayName || draft, email)
   const displayLabel = displayName || email
@@ -199,6 +207,76 @@ export function ProfileClient({ userId, email, initialDisplayName, memberSince, 
           <p className="text-xs text-muted-foreground mt-1">
             L&apos;email non può essere modificata.
           </p>
+        </div>
+
+        {/* ── Birth date ── */}
+        <div className="py-6 border-b border-border/50">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-4">
+            Data di nascita
+          </p>
+
+          {editingBirth ? (
+            <div className="space-y-3">
+              <input
+                type="date"
+                value={birthDraft}
+                onChange={(e) => { setBirthDraft(e.target.value); setBirthError('') }}
+                autoFocus
+                className="w-full rounded-xl border border-input bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              {birthError && <p className="text-xs text-destructive">{birthError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    startTransition(async () => {
+                      const result = await updateBirthDate(birthDraft)
+                      if (result?.error) {
+                        setBirthError(result.error)
+                      } else {
+                        setBirthDate(birthDraft)
+                        setEditingBirth(false)
+                        setBirthSaved(true)
+                        router.refresh()
+                      }
+                    })
+                  }}
+                  disabled={isPending}
+                  className="flex-1 rounded-full bg-foreground text-background py-2.5 text-sm font-medium hover:bg-foreground/90 disabled:opacity-50 transition-colors"
+                >
+                  {isPending ? 'Salvataggio…' : 'Salva'}
+                </button>
+                <button
+                  onClick={() => { setBirthDraft(birthDate); setEditingBirth(false); setBirthError('') }}
+                  disabled={isPending}
+                  className="flex-1 rounded-full border border-border py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                >
+                  Annulla
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-base font-medium">
+                  {birthDate
+                    ? new Date(birthDate).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })
+                    : <span className="text-muted-foreground italic">Non impostata</span>}
+                </p>
+                {birthSaved && (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">✓ Salvato</p>
+                )}
+                <p className="text-[10px] text-muted-foreground/50 mt-1">
+                  Serve per calcolare la tua età nei ricordi.
+                </p>
+              </div>
+              <button
+                onClick={() => { setBirthDraft(birthDate); setEditingBirth(true); setBirthSaved(false); setBirthError('') }}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors underline underline-offset-2"
+              >
+                {birthDate ? 'Modifica' : 'Aggiungi'}
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ── Sign out ── */}

@@ -21,3 +21,18 @@ export async function updateDisplayName(
 
   if (error) return { error: 'Errore durante il salvataggio. Riprova.' }
 }
+
+export async function updateBirthDate(
+  birthDate: string,
+): Promise<{ error?: string } | void> {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth/login')
+
+  const { error } = await supabase
+    .from('users')
+    .update({ birth_date: birthDate || null } as Record<string, unknown>)
+    .eq('id', user.id)
+
+  if (error) return { error: 'Errore durante il salvataggio. Riprova.' }
+}

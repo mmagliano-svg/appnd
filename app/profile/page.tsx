@@ -37,6 +37,12 @@ export default async function ProfilePage() {
       userId={user.id}
       email={profile?.email ?? user.email ?? ''}
       initialDisplayName={profile?.display_name ?? ''}
+      initialBirthDate={(() => {
+        // birth_date column added by migration 0023 — not yet in TS types.
+        // Safe cast: returns empty string if column doesn't exist yet.
+        const p = profile as { birth_date?: string | null } | null
+        return p?.birth_date ?? ''
+      })()}
       memberSince={profile?.created_at ?? user.created_at}
       stats={stats}
     />

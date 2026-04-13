@@ -28,10 +28,15 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Age system: users.birth_date doesn't exist yet. When it does, fetch
-  // it here and pass to formatAgeInline / getAgeRange. Until then, null
-  // makes the age display safely no-op.
-  const userBirthDate: string | null = null
+  // Age system: fetch the current user's birth date for age display.
+  // birth_date column added by migration 0023 — not yet in TS types.
+  // Returns null when the user hasn't set it or the column doesn't exist.
+  const { data: userProfileRaw } = await supabase
+    .from('users')
+    .select('*')
+    .eq('id', user!.id)
+    .single()
+  const userBirthDate: string | null = (userProfileRaw as Record<string, unknown> | null)?.birth_date as string | null ?? null
 
   const { data: memory } = await supabase
     .from('memories')
