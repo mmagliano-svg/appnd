@@ -4,6 +4,7 @@ import { Suspense, useState, useRef, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createPeriodPrototype } from '@/actions/periods'
+import { CORE_CATEGORIES } from '@/lib/taxonomy/core-categories'
 
 /**
  * /periods/new
@@ -32,6 +33,7 @@ function NewPeriodForm() {
   const [endDate, setEndDate] = useState('')
   const [place, setPlace] = useState('')
   const [description, setDescription] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   useEffect(() => {
     // Focus the title after a short delay so the fade-in feels intentional
@@ -63,6 +65,7 @@ function NewPeriodForm() {
         end_date: endDate || undefined,
         location_name: place.trim() || undefined,
         description: description.trim() || undefined,
+        categories: selectedCategory ? [selectedCategory] : undefined,
       })
       router.push(href)
     } catch (err) {
@@ -120,6 +123,35 @@ function NewPeriodForm() {
             <p className="text-[10px] text-muted-foreground/30 mt-2 italic">
               Dagli un nome che abbia senso per te — anche imperfetto.
             </p>
+          </div>
+
+          {/* Life category */}
+          <div className="space-y-2">
+            <p className="text-[11px] text-muted-foreground/45 lowercase tracking-wide">
+              a che area della tua vita appartiene?
+            </p>
+            <div
+              className="flex gap-2 overflow-x-auto -mx-5 px-5 pb-1"
+              style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+            >
+              {CORE_CATEGORIES.map((cat) => {
+                const active = selectedCategory === cat.id
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory((prev) => prev === cat.id ? null : cat.id)}
+                    className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] transition-all ${
+                      active
+                        ? 'bg-foreground text-background font-medium'
+                        : 'bg-foreground/[0.04] text-foreground/50 hover:bg-foreground/[0.08]'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           {/* When */}

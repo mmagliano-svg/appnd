@@ -38,6 +38,7 @@ export interface CreatePeriodPrototypeInput {
   end_date?: string
   location_name?: string
   description?: string
+  categories?: string[]
 }
 
 export interface CreatePeriodPrototypeResult {
@@ -62,6 +63,7 @@ export async function createPeriodPrototype(
     end_date: input.end_date,
     location_name: input.location_name,
     description: input.description,
+    categories: input.categories,
   })
 
   return {

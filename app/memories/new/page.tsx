@@ -12,6 +12,7 @@ import type { SimplePerson } from '@/actions/persons'
 import { createClient } from '@/lib/supabase/client'
 import { TagInput } from '@/components/memory/TagInput'
 import { getPromptForCategory } from '@/lib/constants/prompts'
+import { CORE_CATEGORIES } from '@/lib/taxonomy/core-categories'
 import { getPromptEntityById } from '@/lib/prompts/prompt-library'
 
 // ── Anchor system v1 — fixed list ────────────────────────────────────────────
@@ -50,6 +51,7 @@ function NewMemoryForm() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
   const [selectedPeople, setSelectedPeople] = useState<SimplePerson[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
   const [memoryType, setMemoryType] = useState<'day' | 'period'>('day')
   const [isOngoing, setIsOngoing] = useState(false)
@@ -173,7 +175,7 @@ function NewMemoryForm() {
         parent_period_id: memoryType === 'day' ? autoParentPeriodId : null,
         location_name: form.get('location_name') as string,
         description: form.get('description') as string,
-        categories: [],
+        categories: selectedCategory ? [selectedCategory] : [],
         tags,
         anchor_id: selectedAnchor,
         is_anniversary: isAnniversary,
@@ -468,6 +470,35 @@ function NewMemoryForm() {
                   Parte di {suggestedPeriod.title}
                 </p>
               )}
+            </div>
+
+            {/* ── Life category — optional bucket ── */}
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted-foreground/45 lowercase tracking-wide">
+                a che area della tua vita appartiene?
+              </p>
+              <div
+                className="flex gap-2 overflow-x-auto -mx-4 px-4 pb-1"
+                style={{ scrollbarWidth: 'none' } as React.CSSProperties}
+              >
+                {CORE_CATEGORIES.map((cat) => {
+                  const active = selectedCategory === cat.id
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setSelectedCategory((prev) => prev === cat.id ? null : cat.id)}
+                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-[13px] transition-all ${
+                        active
+                          ? 'bg-foreground text-background font-medium'
+                          : 'bg-foreground/[0.04] text-foreground/50 hover:bg-foreground/[0.08]'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
 
             {/* ── Anchor — "Che momento era?" ── */}

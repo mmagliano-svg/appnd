@@ -16,6 +16,7 @@ import { LoopNeHaiAltri } from '@/components/memory/LoopNeHaiAltri'
 import { PostCreateFollowUps } from '@/components/memory/PostCreateFollowUps'
 import { getFollowUpsForMemory, getFollowUpsForPeriod, topFollowUps } from '@/lib/prompts/prompt-followup'
 import { isFresh } from '@/lib/memory/is-fresh'
+import { formatAgeInline, getAgeRange } from '@/lib/user/age'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -26,6 +27,11 @@ function initials(name: string) {
 export default async function MemoryPage({ params, searchParams }: { params: { id: string }; searchParams: { contributed?: string } }) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Age system: users.birth_date doesn't exist yet. When it does, fetch
+  // it here and pass to formatAgeInline / getAgeRange. Until then, null
+  // makes the age display safely no-op.
+  const userBirthDate: string | null = null
 
   const { data: memory } = await supabase
     .from('memories')
@@ -354,6 +360,10 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
             </h1>
             <p className="text-xl font-semibold text-muted-foreground tabular-nums">
               {formatPeriodDisplay(memoryStartDate, memoryEndDate!)}
+              {(() => {
+                const ageRange = getAgeRange(memoryStartDate, memoryEndDate, userBirthDate)
+                return ageRange ? <span className="text-base font-normal text-muted-foreground/60"> · {ageRange}</span> : null
+              })()}
             </p>
 
             {/* Stats row */}
@@ -570,6 +580,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
                 {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
                 {memory.location_name && <span className="text-white/40"> · </span>}
                 {memory.location_name && <span>{memory.location_name}</span>}
+                {(() => {
+                  const age = isPeriod
+                    ? getAgeRange(memoryStartDate, memoryEndDate, userBirthDate)
+                    : formatAgeInline(memoryStartDate, userBirthDate)
+                  return age ? <span className="text-white/40"> · {age}</span> : null
+                })()}
               </p>
             </div>
           </>
@@ -636,6 +652,12 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
               <p className="text-sm text-muted-foreground mt-2">
                 {formatMemoryDateFull(memoryStartDate, memoryEndDate)}
                 {memory.location_name && <span> · {memory.location_name}</span>}
+                {(() => {
+                  const age = isPeriod
+                    ? getAgeRange(memoryStartDate, memoryEndDate, userBirthDate)
+                    : formatAgeInline(memoryStartDate, userBirthDate)
+                  return age ? <span> · {age}</span> : null
+                })()}
               </p>
             </>
           )}
