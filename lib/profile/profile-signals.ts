@@ -18,6 +18,8 @@
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface ProfileSignals {
+  /** The user's most frequent place — likely their home base */
+  homePlace: string | null
   /** Places that appear in 2+ memories (most frequent first) */
   repeatedPlaces: string[]
   /** All unique places the user has memories in */
@@ -144,6 +146,16 @@ export function extractProfileSignals(memories: MemoryInput[]): ProfileSignals {
   // Sort by frequency desc
   repeatedPlaces.sort((a, b) => (placeCounts.get(b) ?? 0) - (placeCounts.get(a) ?? 0))
 
+  // Home place = most frequent place (likely the user's base)
+  let homePlace: string | null = null
+  let homePlaceCount = 0
+  placeCounts.forEach((count, place) => {
+    if (count > homePlaceCount) {
+      homePlaceCount = count
+      homePlace = place
+    }
+  })
+
   // ── Categories / themes ───────────────────────────────────────────
   const catCounts = new Map<string, number>()
   for (const m of memories) {
@@ -206,6 +218,7 @@ export function extractProfileSignals(memories: MemoryInput[]): ProfileSignals {
   })
 
   return {
+    homePlace,
     repeatedPlaces,
     keyPlaces,
     keyThemes,

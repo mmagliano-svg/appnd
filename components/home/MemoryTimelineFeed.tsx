@@ -57,6 +57,7 @@ interface MemoryTimelineFeedProps {
   periodCount?: number
   existingCategories?: string[]
   profileSignals?: import('@/lib/prompts/prompt-types').PromptEngineInput['profileSignals']
+  homePlace?: string | null
 }
 
 // ── Formatting helpers ──────────────────────────────────────────────────────
@@ -671,9 +672,14 @@ function PeriodBlock({ period }: { period: FeedMemory }) {
  * data-dump feel. Deterministic via label hash so the same pattern
  * always gets the same sentence across page loads.
  */
-function patternSentence(pattern: RepeatedPattern): string {
+function patternSentence(pattern: RepeatedPattern, homePlace?: string | null): string {
   if (pattern.kind !== 'location') {
     return `${pattern.label} continua a tornare.`
+  }
+
+  // If this is the user's home place, use grounded copy instead of "returns"
+  if (homePlace && pattern.label.toLowerCase() === homePlace.toLowerCase()) {
+    return `Molti momenti della tua vita sono a ${pattern.label}.`
   }
 
   // Location patterns — rotate through 4 variants deterministically.
@@ -690,11 +696,11 @@ function patternSentence(pattern: RepeatedPattern): string {
   return variants[h % variants.length]
 }
 
-function PatternBlock({ pattern }: { pattern: RepeatedPattern }) {
+function PatternBlock({ pattern, homePlace }: { pattern: RepeatedPattern; homePlace?: string | null }) {
   return (
     <div>
       <p className="text-[18px] italic text-foreground/75 leading-snug">
-        {patternSentence(pattern)}
+        {patternSentence(pattern, homePlace)}
       </p>
       <div className="flex items-center gap-5 mt-4">
         <Link
@@ -793,7 +799,7 @@ function ClusterBlock({ lead, continuations }: { lead: FeedMemory; continuations
 
 // ── The feed itself ─────────────────────────────────────────────────────────
 
-export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount, existingCategories, profileSignals }: MemoryTimelineFeedProps) {
+export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount, existingCategories, profileSignals, homePlace }: MemoryTimelineFeedProps) {
   const blocks = composeBlocks(memories, pattern)
   if (blocks.length === 0) return null
 
@@ -839,7 +845,7 @@ export function MemoryTimelineFeed({ memories, pattern, memoryCount, periodCount
           case 'pattern':
             return (
               <div key={`pat-${idx}`} className="px-5">
-                <PatternBlock pattern={block.pattern} />
+                <PatternBlock pattern={block.pattern} homePlace={homePlace} />
               </div>
             )
           case 'cluster':

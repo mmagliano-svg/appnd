@@ -223,7 +223,7 @@ function NewMemoryForm() {
       } else if (selectedPeople.length > 0) {
         router.push(`/memories/${memoryId}/share`)
       } else {
-        router.push(`/memories/${memoryId}?created=1`)
+        router.push(`/memories/${memoryId}`)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Qualcosa è andato storto. Riprova.')

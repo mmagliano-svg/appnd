@@ -227,6 +227,7 @@ export default async function DashboardPage() {
               repeatedPlaces: profileSignals.repeatedPlaces,
               keyPeople: profileSignals.keyPeople,
             }}
+            homePlace={profileSignals.homePlace}
           />
         </div>
       </div>

@@ -19,8 +19,20 @@ interface PostCreateFollowUpsProps {
   memoryId: string
 }
 
+const DISMISS_PREFIX = 'followups_dismissed_'
+
+function isDismissedInStorage(memoryId: string): boolean {
+  if (typeof window === 'undefined') return false
+  try { return window.localStorage.getItem(DISMISS_PREFIX + memoryId) === '1' } catch { return false }
+}
+
+function persistDismiss(memoryId: string) {
+  if (typeof window === 'undefined') return
+  try { window.localStorage.setItem(DISMISS_PREFIX + memoryId, '1') } catch { /* silent */ }
+}
+
 export function PostCreateFollowUps({ suggestions, memoryId }: PostCreateFollowUpsProps) {
-  const [dismissed, setDismissed] = useState(false)
+  const [dismissed, setDismissed] = useState(() => isDismissedInStorage(memoryId))
   const visible = suggestions.slice(0, 2)
 
   if (dismissed || visible.length === 0) return null
@@ -50,7 +62,7 @@ export function PostCreateFollowUps({ suggestions, memoryId }: PostCreateFollowU
 
       <button
         type="button"
-        onClick={() => setDismissed(true)}
+        onClick={() => { persistDismiss(memoryId); setDismissed(true) }}
         className="mt-5 text-[11px] text-muted-foreground/35 hover:text-muted-foreground/60 transition-colors"
       >
         Per ora va bene così

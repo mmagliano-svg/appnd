@@ -15,6 +15,7 @@ import { MemoryFAB } from '@/components/memory/MemoryFAB'
 import { LoopNeHaiAltri } from '@/components/memory/LoopNeHaiAltri'
 import { PostCreateFollowUps } from '@/components/memory/PostCreateFollowUps'
 import { getFollowUpsForMemory, getFollowUpsForPeriod, topFollowUps } from '@/lib/prompts/prompt-followup'
+import { isFresh } from '@/lib/memory/is-fresh'
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/)
@@ -22,7 +23,7 @@ function initials(name: string) {
   return name.slice(0, 2).toUpperCase()
 }
 
-export default async function MemoryPage({ params, searchParams }: { params: { id: string }; searchParams: { contributed?: string; created?: string } }) {
+export default async function MemoryPage({ params, searchParams }: { params: { id: string }; searchParams: { contributed?: string } }) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -645,8 +646,8 @@ export default async function MemoryPage({ params, searchParams }: { params: { i
           </p>
         </div>
 
-        {/* ── Post-create follow-ups (only shown right after creation) ── */}
-        {searchParams.created === '1' && isCreator && (() => {
+        {/* ── Post-create follow-ups (shown when memory is fresh — created < 5 min ago) ── */}
+        {isCreator && isFresh(memory.created_at) && (() => {
           const followUps = isPeriod
             ? topFollowUps(getFollowUpsForPeriod({
                 title: memory.title,
